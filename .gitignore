@@ -1,0 +1,34 @@
+# Credenciales — NUNCA subir
+.streamlit/secrets.toml
+.env
+
+# Datos de negocio — NUNCA subir
+data dashboard/
+*.xlsx
+*.xls
+*.csv
+
+# Modelos entrenados
+*.pkl
+
+# Métricas generadas
+metricas_mejoradas.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.DS_Store
