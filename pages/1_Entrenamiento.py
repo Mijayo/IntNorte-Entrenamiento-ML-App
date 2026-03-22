@@ -67,7 +67,7 @@ def run_adf_test(series):
         'lags_used': result[2], 'critical_1pct': round(result[4]['1%'], 4),
         'critical_5pct': round(result[4]['5%'], 4),
         'critical_10pct': round(result[4]['10%'], 4),
-        'is_stationary': result[1] < 0.05
+        'is_stationary': bool(result[1] < 0.05)
     }
 
 
