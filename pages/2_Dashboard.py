@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 
 import supabase_io as sio
 from auth_system import (init_session_state, show_login_page, show_user_info,
-                         check_session_timeout, has_permission)
+                         check_session_timeout, has_permission, show_header)
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
@@ -76,12 +76,9 @@ with st.spinner('Cargando datos...'):
 
 # ── Header ───────────────────────────────────────────────────────────────────
 
-st.title("🚗 Dashboard Predicción TIGGO 2")
-st.markdown(
-    f"**Sistema de Predicción de Demanda** &nbsp;|&nbsp; "
-    f"Modelo: `{sio.format_run_label(selected_run)}` "
-    f"{'🟢' if is_latest else '🔵'}",
-    unsafe_allow_html=True
+show_header(
+    "Dashboard Predicción TIGGO 2",
+    f"Sistema de Predicción de Demanda  |  Modelo: {sio.format_run_label(selected_run)} {'🟢' if is_latest else '🔵'}"
 )
 
 role_badges = {

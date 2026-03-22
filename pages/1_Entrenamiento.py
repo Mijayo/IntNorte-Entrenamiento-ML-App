@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore')
 
 import supabase_io as sio
 from auth_system import (init_session_state, show_login_page, show_user_info,
-                         check_session_timeout, has_permission)
+                         check_session_timeout, has_permission, show_header)
 from utils_validacion import (validate_dataframe, show_validation_results,
                               preview_data, plot_temporal_distribution,
                               plot_missing_data)
@@ -55,8 +55,7 @@ if not has_permission('entrenar_modelos'):
     st.error("❌ No tienes permiso para acceder a esta aplicación")
     st.stop()
 
-st.title("🤖 Entrenamiento de Modelos SARIMA")
-st.markdown("**Sistema de Entrenamiento Automatizado**")
+show_header("Entrenamiento de Modelos SARIMA", "Sistema de Entrenamiento Automatizado")
 show_user_info()
 
 # ── Funciones de modelo (sin I/O) ────────────────────────────────────────────

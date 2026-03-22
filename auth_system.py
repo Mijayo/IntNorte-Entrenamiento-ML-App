@@ -10,6 +10,8 @@ import hashlib
 import time
 from datetime import datetime, timedelta
 
+LOGO_URL = "https://cdn.brandfetch.io/idbC6t7DJN/w/904/h/196/theme/light/logo.png?c=1bxid64Mup7aczewSAYMX&t=1766585238441"
+
 # ============================================================================
 # CONFIGURACIÓN DE USUARIOS Y ROLES
 # Cargado desde .streamlit/secrets.toml (nunca en el código fuente)
@@ -130,7 +132,7 @@ def show_login_page(app_title="Sistema TIGGO 2"):
         # Logo
         st.markdown(f"""
             <div class="login-header">
-                <img src="https://cdn.brandfetch.io/idbC6t7DJN/w/904/h/196/theme/dark/logo.png" 
+                <img src="{LOGO_URL}"
                      class="login-logo">
                 <h2 style="color: #003B5C;">{app_title}</h2>
             </div>
@@ -200,3 +202,17 @@ def has_permission(permission_name):
     if not st.session_state.get('authenticated', False):
         return False
     return st.session_state.permissions.get(permission_name, False)
+
+def show_header(title, subtitle=""):
+    """Mostrar header corporativo con logo y título"""
+    col_logo, col_title = st.columns([1, 4])
+    with col_logo:
+        st.markdown(
+            f'<img src="{LOGO_URL}" style="width:180px; margin-top:8px;">',
+            unsafe_allow_html=True
+        )
+    with col_title:
+        st.markdown(f"## {title}")
+        if subtitle:
+            st.markdown(f"_{subtitle}_")
+    st.markdown("---")

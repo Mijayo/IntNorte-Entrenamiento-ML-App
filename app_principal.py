@@ -6,7 +6,7 @@ Gestiona la autenticación compartida y muestra la página de inicio.
 """
 
 import streamlit as st
-from auth_system import init_session_state, show_login_page, check_session_timeout, show_user_info
+from auth_system import init_session_state, show_login_page, check_session_timeout, show_user_info, show_header
 
 st.set_page_config(
     page_title="Sistema TIGGO 2",
@@ -27,8 +27,7 @@ if not st.session_state.authenticated:
 
 # ── Página de inicio ─────────────────────────────────────────────────────────
 
-st.title("🚗 Sistema de Predicción TIGGO 2")
-st.markdown("Selecciona una aplicación en el menú lateral izquierdo.")
+show_header("Sistema de Predicción TIGGO 2", "Selecciona una aplicación en el menú lateral izquierdo.")
 
 show_user_info()
 
