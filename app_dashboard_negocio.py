@@ -20,6 +20,37 @@ warnings.filterwarnings('ignore')
 # Directorio base: siempre relativo a este fichero, en cualquier máquina
 DATA_DIR = Path(__file__).parent / "data dashboard"
 
+
+def get_available_runs():
+    """Devuelve lista de runs disponibles ordenados del más reciente al más antiguo"""
+    if not DATA_DIR.exists():
+        return []
+    return sorted(
+        [d.name for d in DATA_DIR.iterdir()
+         if d.is_dir() and d.name[:8].isdigit()],
+        reverse=True
+    )
+
+
+def get_default_run(runs):
+    """Devuelve el run activo según latest.txt, o el más reciente si no existe"""
+    latest_path = DATA_DIR / 'latest.txt'
+    if latest_path.exists():
+        candidate = latest_path.read_text().strip()
+        if candidate in runs:
+            return candidate
+    return runs[0] if runs else None
+
+
+def format_run_label(run_name):
+    """Formatea 20260322_143000 → 22/03/2026 14:30"""
+    try:
+        dt = datetime.strptime(run_name, '%Y%m%d_%H%M%S')
+        return dt.strftime('%d/%m/%Y  %H:%M')
+    except ValueError:
+        return run_name
+
+
 # Importar sistema de autenticación
 from auth_system import (init_session_state, show_login_page, show_user_info,
                          check_session_timeout, has_permission)
@@ -79,7 +110,12 @@ if not st.session_state.authenticated:
 # ============================================================================
 
 st.title("🚗 Dashboard Predicción TIGGO 2")
-st.markdown(f"**Sistema de Predicción de Demanda** | Interamericana Norte Perú")
+st.markdown(
+    f"**Sistema de Predicción de Demanda** &nbsp;|&nbsp; "
+    f"Modelo: `{format_run_label(selected_run)}` "
+    f"{'🟢' if is_latest else '🔵'}",
+    unsafe_allow_html=True
+)
 
 # Badge de rol
 role_badges = {
@@ -98,35 +134,59 @@ show_user_info()
 # ============================================================================
 
 @st.cache_data
-def load_precargados():
-    """Cargar datos precargados de los modelos mejorados"""
+def load_precargados(run_folder: str):
+    """Cargar datos del run especificado"""
+    run_dir = DATA_DIR / run_folder
     try:
-        # Métricas
-        with open(DATA_DIR / 'metricas_mejoradas.json', 'r') as f:
+        with open(run_dir / 'metricas_mejoradas.json', 'r') as f:
             metricas = json.load(f)
 
-        # Excel files
-        pred_total = pd.read_excel(DATA_DIR / 'prediccion_total_mejorada.xlsx', engine='openpyxl')
+        pred_total = pd.read_excel(run_dir / 'prediccion_total_mejorada.xlsx', engine='openpyxl')
         pred_total['Fecha'] = pd.to_datetime(pred_total['Fecha'])
 
-        grid_search = pd.read_excel(DATA_DIR / 'grid_search_results.xlsx', engine='openpyxl')
+        grid_search = pd.read_excel(run_dir / 'grid_search_results.xlsx', engine='openpyxl')
 
-        walk_forward = pd.read_excel(DATA_DIR / 'walk_forward_validation.xlsx', engine='openpyxl')
+        walk_forward = pd.read_excel(run_dir / 'walk_forward_validation.xlsx', engine='openpyxl')
         walk_forward['fecha'] = pd.to_datetime(walk_forward['fecha'])
 
-        hist_total = pd.read_excel(DATA_DIR / 'historico_total_mejorado.xlsx', engine='openpyxl', index_col=0)
+        hist_total = pd.read_excel(run_dir / 'historico_total_mejorado.xlsx',
+                                   engine='openpyxl', index_col=0)
         hist_total.index = pd.to_datetime(hist_total.index)
         hist_total = hist_total.squeeze()
-        
+
         return metricas, pred_total, grid_search, walk_forward, hist_total
-    
+
     except Exception as e:
-        st.error(f"❌ Error cargando datos: {str(e)}")
+        st.error(f"❌ Error cargando datos de `{run_folder}`: {str(e)}")
         st.stop()
 
-# Cargar datos
+
+# ── Selector de versión del modelo ─────────────────────────────────────────
+available_runs = get_available_runs()
+
+if not available_runs:
+    st.error("❌ No hay modelos entrenados. Ejecuta primero la app de entrenamiento.")
+    st.stop()
+
+default_run = get_default_run(available_runs)
+
+selected_run = st.sidebar.selectbox(
+    "📦 Versión del modelo",
+    options=available_runs,
+    index=available_runs.index(default_run),
+    format_func=format_run_label,
+    help="Selecciona qué ejecución de entrenamiento quieres visualizar."
+)
+
+is_latest = (DATA_DIR / 'latest.txt').exists() and \
+            (DATA_DIR / 'latest.txt').read_text().strip() == selected_run
+st.sidebar.caption(
+    f"{'🟢 Activo en producción' if is_latest else '🔵 Versión histórica'}"
+)
+
+# Cargar datos del run seleccionado
 with st.spinner('Cargando datos...'):
-    metricas, pred_total, grid_search, walk_forward, hist_total = load_precargados()
+    metricas, pred_total, grid_search, walk_forward, hist_total = load_precargados(selected_run)
 
 # ============================================================================
 # DEFINIR TABS SEGÚN ROL

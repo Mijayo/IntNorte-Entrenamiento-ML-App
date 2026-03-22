@@ -20,8 +20,6 @@ import json
 from datetime import datetime, date
 from pathlib import Path
 import itertools
-import io
-import zipfile
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -126,9 +124,15 @@ show_user_info()
 # ============================================================================
 
 def load_current_model():
-    """Cargar métricas del modelo actual si existe"""
+    """Cargar métricas del último modelo aprobado (según latest.txt)"""
     try:
-        with open(DATA_DIR / 'metricas_mejoradas.json', 'r') as f:
+        latest_path = DATA_DIR / 'latest.txt'
+        if latest_path.exists():
+            run_folder = latest_path.read_text().strip()
+            metrics_path = DATA_DIR / run_folder / 'metricas_mejoradas.json'
+        else:
+            metrics_path = DATA_DIR / 'metricas_mejoradas.json'
+        with open(metrics_path, 'r') as f:
             return json.load(f)
     except Exception:
         return None
@@ -353,44 +357,33 @@ def plot_residuals(model_results):
     return fig
 
 
-def create_download_package(modelo, predicciones, grid_results, walk_forward,
-                            historico, metricas, acf_fig, pacf_fig):
-    """Crear paquete ZIP con todos los archivos para el dashboard"""
+def save_to_dashboard(run_dir, modelo, predicciones, grid_results, walk_forward,
+                      historico, metricas, acf_fig, pacf_fig):
+    """Guardar todos los artefactos del modelo en la carpeta del run"""
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    zip_buffer = io.BytesIO()
+    with open(run_dir / 'modelo_total_mejorado.pkl', 'wb') as f:
+        pickle.dump(modelo, f)
 
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        model_buffer = io.BytesIO()
-        pickle.dump(modelo, model_buffer)
-        zip_file.writestr('modelo_total_mejorado.pkl', model_buffer.getvalue())
+    predicciones.to_excel(run_dir / 'prediccion_total_mejorada.xlsx',
+                          index=False, engine='openpyxl')
+    grid_results.to_excel(run_dir / 'grid_search_results.xlsx',
+                          index=False, engine='openpyxl')
+    walk_forward.to_excel(run_dir / 'walk_forward_validation.xlsx',
+                          index=False, engine='openpyxl')
+    historico.to_excel(run_dir / 'historico_total_mejorado.xlsx',
+                       engine='openpyxl')
 
-        pred_buffer = io.BytesIO()
-        predicciones.to_excel(pred_buffer, index=False, engine='openpyxl')
-        zip_file.writestr('prediccion_total_mejorada.xlsx', pred_buffer.getvalue())
+    with open(run_dir / 'metricas_mejoradas.json', 'w') as f:
+        json.dump(metricas, f, indent=2, ensure_ascii=False)
 
-        grid_buffer = io.BytesIO()
-        grid_results.to_excel(grid_buffer, index=False, engine='openpyxl')
-        zip_file.writestr('grid_search_results.xlsx', grid_buffer.getvalue())
+    acf_fig.savefig(run_dir / 'acf_plot.png', dpi=150, bbox_inches='tight')
+    pacf_fig.savefig(run_dir / 'pacf_plot.png', dpi=150, bbox_inches='tight')
 
-        wf_buffer = io.BytesIO()
-        walk_forward.to_excel(wf_buffer, index=False, engine='openpyxl')
-        zip_file.writestr('walk_forward_validation.xlsx', wf_buffer.getvalue())
 
-        hist_buffer = io.BytesIO()
-        historico.to_excel(hist_buffer, engine='openpyxl')
-        zip_file.writestr('historico_total_mejorado.xlsx', hist_buffer.getvalue())
-
-        zip_file.writestr('metricas_mejoradas.json', json.dumps(metricas, indent=2))
-
-        acf_img_buffer = io.BytesIO()
-        acf_fig.savefig(acf_img_buffer, format='png', dpi=150, bbox_inches='tight')
-        zip_file.writestr('acf_plot.png', acf_img_buffer.getvalue())
-
-        pacf_img_buffer = io.BytesIO()
-        pacf_fig.savefig(pacf_img_buffer, format='png', dpi=150, bbox_inches='tight')
-        zip_file.writestr('pacf_plot.png', pacf_img_buffer.getvalue())
-
-    return zip_buffer.getvalue()
+def approve_model(run_name):
+    """Activar un run como modelo de producción (actualiza latest.txt)"""
+    (DATA_DIR / 'latest.txt').write_text(run_name)
 
 
 # ============================================================================
@@ -756,6 +749,16 @@ with tabs[2]:
                 progress_bar.progress(1.0)
                 status_text.text("✅ ¡Entrenamiento completado!")
 
+                # Guardar artefactos en carpeta con timestamp
+                run_name = datetime.now().strftime('%Y%m%d_%H%M%S')
+                run_dir = DATA_DIR / run_name
+
+                with st.spinner("Guardando artefactos..."):
+                    save_to_dashboard(
+                        run_dir, model_final, predicciones, df_grid,
+                        df_wf, ventas_modelo, metricas, fig_acf, fig_pacf
+                    )
+
                 # Guardar en session state
                 st.session_state['new_model'] = model_final
                 st.session_state['new_predictions'] = predicciones
@@ -765,11 +768,13 @@ with tabs[2]:
                 st.session_state['new_metrics'] = metricas
                 st.session_state['new_acf_fig'] = fig_acf
                 st.session_state['new_pacf_fig'] = fig_pacf
+                st.session_state['current_run_name'] = run_name
                 st.session_state['training_complete'] = True
 
                 # Guardar en historial
                 save_training_log({
                     'timestamp': datetime.now().isoformat(),
+                    'run_name': run_name,
                     'usuario': st.session_state.username,
                     'modelo': modelo_filtro,
                     'marca': marca_filtro,
@@ -786,8 +791,8 @@ with tabs[2]:
                 })
 
                 st.success(
-                    "✅ Modelo entrenado y guardado en historial. "
-                    "Ve a la pestaña **Comparación** para ver resultados."
+                    f"✅ Modelo guardado en `data dashboard/{run_name}/`. "
+                    "Ve a la pestaña **Comparación** para revisar y activarlo."
                 )
 
             except Exception as e:
@@ -911,45 +916,44 @@ with tabs[3]:
             col2.metric("Desv. estándar", f"{resid.std():.4f}")
             col3.metric("Residuo máx. abs.", f"{resid.abs().max():.4f}")
 
-        # Descargar paquete
-        st.subheader("📥 Descargar Paquete para Dashboard")
+        # Activar en Dashboard
+        st.subheader("🚀 Activar en Dashboard")
 
-        st.info("""
-        **El paquete incluye:**
-        - Modelo entrenado (.pkl)
-        - Predicciones futuras (.xlsx)
-        - Resultados grid search (.xlsx)
-        - Walk-forward validation (.xlsx)
-        - Histórico (.xlsx)
-        - Métricas (.json)
-        - Gráficos ACF/PACF (.png)
-        """)
+        run_name = st.session_state.get('current_run_name', '')
 
-        if st.button("📦 Generar Paquete ZIP", type="primary", use_container_width=True):
-            with st.spinner("Generando paquete..."):
-                zip_data = create_download_package(
-                    st.session_state['new_model'],
-                    st.session_state['new_predictions'],
-                    st.session_state['new_grid'],
-                    st.session_state['new_walkforward'],
-                    st.session_state['new_historico'],
-                    st.session_state['new_metrics'],
-                    st.session_state['new_acf_fig'],
-                    st.session_state['new_pacf_fig']
-                )
+        if not run_name:
+            st.info("Los archivos se guardan automáticamente al terminar el entrenamiento.")
+        else:
+            st.info(f"Archivos guardados en: `data dashboard/{run_name}/`")
 
-                st.download_button(
-                    label="⬇️ Descargar Paquete Dashboard",
-                    data=zip_data,
-                    file_name=f"modelo_tiggo2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                    mime="application/zip",
-                    use_container_width=True
-                )
+            latest_path = DATA_DIR / 'latest.txt'
+            already_active = (
+                latest_path.exists()
+                and latest_path.read_text().strip() == run_name
+            )
 
-                st.success(
-                    "✅ Paquete generado. "
-                    "Descarga el ZIP y extrae los archivos en la carpeta 'data dashboard/'."
-                )
+            if already_active:
+                st.success("✅ Este modelo ya está activo en el Dashboard.")
+            else:
+                current = load_current_model()
+                if current:
+                    current_run = (DATA_DIR / 'latest.txt').read_text().strip() \
+                        if latest_path.exists() else '(ninguno)'
+                    st.warning(
+                        f"El Dashboard usa actualmente: `{current_run}`. "
+                        "Si apruebas, se actualizará inmediatamente."
+                    )
+                else:
+                    st.info("No hay modelo previo. Este será el primero en producción.")
+
+                if st.button("✅ Aprobar y activar en Dashboard",
+                             type="primary", use_container_width=True):
+                    approve_model(run_name)
+                    st.success(
+                        "✅ Dashboard actualizado. "
+                        f"El modelo `{run_name}` está ahora activo."
+                    )
+                    st.rerun()
 
 # ============================================================================
 # TAB 5: HISTORIAL
