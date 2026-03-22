@@ -6,6 +6,7 @@ Bucket: configurado en st.secrets["supabase"]["bucket"]
 ============================================================================
 """
 
+import gzip
 import io
 import json
 import pickle
@@ -97,10 +98,11 @@ def save_to_dashboard(run_name, modelo, predicciones, grid_results,
     """Sube todos los artefactos del run a Supabase Storage"""
     p = f"{run_name}/"
 
-    # Modelo PKL
+    # Modelo PKL (comprimido con gzip para reducir tamaño)
     buf = io.BytesIO()
-    pickle.dump(modelo, buf)
-    _upload(p + "modelo_total_mejorado.pkl", buf.getvalue())
+    with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+        pickle.dump(modelo, gz)
+    _upload(p + "modelo_total_mejorado.pkl.gz", buf.getvalue())
 
     # Excel
     excel_ct = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

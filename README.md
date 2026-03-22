@@ -35,7 +35,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     grid_search_results.xlsx
     walk_forward_validation.xlsx
     historico_total_mejorado.xlsx
-    modelo_total_mejorado.pkl
+    modelo_total_mejorado.pkl.gz
     acf_plot.png
     pacf_plot.png
 ```
