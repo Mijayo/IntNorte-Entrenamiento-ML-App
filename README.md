@@ -107,9 +107,9 @@ streamlit run app_principal.py
 
 | Rol | Entrenamiento | Tabs del Dashboard |
 |-----|:-------------:|---------------------|
-| `admin` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas |
-| `analyst` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas |
-| `manager` | — | Dashboard, Predicciones, Recomendaciones de compra |
+| `admin` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, Concesionarios |
+| `analyst` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, Concesionarios |
+| `manager` | — | Dashboard, Predicciones, Recomendaciones de compra, Concesionarios |
 | `viewer` | — | Dashboard, Predicciones |
 
 ---
@@ -210,6 +210,28 @@ La pestaña **Comparación** muestra métricas lado a lado con el modelo de prod
 
 La barra lateral lista todos los runs disponibles ordenados por fecha. El run activo (apuntado por `latest.txt`) aparece con 🟢. Los históricos con 🔵 pueden seleccionarse sin alterar producción.
 
+### Carga de datos de concesionarios (sidebar)
+
+El expander **📂 Datos de Concesionarios** en la barra lateral acepta un Excel con el histórico de ventas del mercado. El archivo se normaliza automáticamente:
+
+- Columnas de fecha aceptadas: `FECHA_VENTA`, `FECHA-VENTA`, `FECHA VENTA`
+- Columnas de modelo aceptadas: `MODELO2`, `MODELO3`, `MODELO`
+- Columna de concesionario: `DET_CC` (prioridad) o `AGE`
+- Columna de ciudad: `AGE` o `CIUDAD`/`REGION`
+- Si la primera fila contiene descripciones (todo texto), se descarta automáticamente
+
+### Tab 🏪 Concesionarios (admin / analista / gerente)
+
+Disponible una vez cargado el Excel desde el sidebar. Muestra análisis de ventas CHERY filtradas por año, modelo y ciudad:
+
+| Elemento | Descripción |
+|----------|-------------|
+| KPIs | Total ventas CHERY, nº de concesionarios, top concesionario, modelo más vendido |
+| Barras horizontales | Ventas totales por concesionario, coloreadas por ciudad |
+| Evolución mensual | Serie temporal por concesionario (multiselect, hasta 5 por defecto) |
+| Distribución modelos | Barras apiladas modelos × concesionario |
+| Ranking | Tabla con ventas, % total y % acumulado (análisis ABC) |
+
 ### Tabs por rol
 
 | Tab | Admin | Analista | Gerente | Viewer |
@@ -221,6 +243,7 @@ La barra lateral lista todos los runs disponibles ordenados por fecha. El run ac
 | Resultados Grid Search | ✅ | ✅ | — | — |
 | Walk-forward validation | ✅ | ✅ | — | — |
 | Métricas técnicas completas | ✅ | ✅ | — | — |
+| Ventas por Concesionario | ✅ | ✅ | ✅ | — |
 
 ---
 
@@ -248,6 +271,9 @@ __pycache__/
 ---
 
 ## Changelog
+
+### 2026-03-23 (v3)
+- **feat**: Nueva pestaña **🏪 Concesionarios** en el Dashboard — análisis de ventas CHERY por concesionario con KPIs, barras horizontales por ciudad, evolución mensual y ranking ABC. Accesible para admin, analista y gerente. Los datos se cargan desde la barra lateral (expander *📂 Datos de Concesionarios*) y se normalizan automáticamente (columnas de fecha, modelo y concesionario con alias múltiples).
 
 ### 2026-03-23 (v2)
 - **feat**: Nueva pestaña **🎓 Preparar Datos** — pipeline académico paso a paso con descarga del `.xlsx` de entrenamiento.
