@@ -16,7 +16,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pickle
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+import io
 import itertools
 import warnings
 warnings.filterwarnings('ignore')
@@ -157,7 +158,7 @@ def plot_residuals(model_results):
 
 # ── Tabs ─────────────────────────────────────────────────────────────────────
 
-tabs = st.tabs(["📤 Cargar Datos", "✅ Validación",
+tabs = st.tabs(["📤 Cargar Datos", "✅ Validación", "🎓 Preparar Datos",
                 "🤖 Entrenamiento", "📊 Comparación", "📋 Historial"])
 
 # ── Tab 1: Cargar Datos ───────────────────────────────────────────────────────
@@ -232,9 +233,186 @@ with tabs[1]:
         st.session_state['validation_passed'] = is_valid
         st.session_state['df_validated'] = df_raw
 
-# ── Tab 3: Entrenamiento ──────────────────────────────────────────────────────
+# ── Tab 3: Preparar Datos (académico) ─────────────────────────────────────────
 
 with tabs[2]:
+    st.header("🎓 ¿Cómo se construye el Excel de entrenamiento?", divider='violet')
+
+    if 'df_validated' not in st.session_state:
+        st.info("👈 Primero carga y valida los datos en las pestañas anteriores.")
+    else:
+        df_ac = st.session_state['df_validated'].copy()
+        df_ac['FECHA-VENTA'] = pd.to_datetime(df_ac['FECHA-VENTA'], errors='coerce')
+
+        st.markdown(
+            "Esta pestaña muestra paso a paso cómo se transforma el histórico de ventas "
+            "en la **serie temporal mensual** que alimenta el modelo SARIMA. "
+            "Configura los filtros y observa cómo evoluciona el dataset en cada etapa."
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            ac_marca  = st.text_input("Marca",  value="CHERY",   key="ac_marca")
+            ac_modelo = st.text_input("Modelo", value="TIGGO 2", key="ac_modelo")
+        with col2:
+            ac_fecha_ini = st.date_input("Fecha inicio", value=date(2021, 1, 1), key="ac_fi")
+            ac_fecha_fin = st.date_input("Fecha fin",    value=date.today(),      key="ac_ff")
+
+        # Cálculo del límite superior exclusivo
+        if ac_fecha_fin.month == 12:
+            ac_fecha_fin_excl = pd.Timestamp(ac_fecha_fin.year + 1, 1, 1)
+        else:
+            ac_fecha_fin_excl = pd.Timestamp(ac_fecha_fin.year, ac_fecha_fin.month + 1, 1)
+
+        st.markdown("---")
+
+        # ── Paso 1: datos brutos ──────────────────────────────────────────────
+        with st.expander("📋 Paso 1 — Datos brutos (muestra)", expanded=True):
+            st.markdown(
+                "El Excel de entrada contiene **una fila por venta individual**. "
+                "Cada registro tiene al menos: fecha de venta, marca y modelo del vehículo."
+            )
+            st.dataframe(df_ac.head(10), use_container_width=True, hide_index=True)
+            st.caption(f"Total en memoria: **{len(df_ac):,} filas** · columnas: {df_ac.columns.tolist()}")
+
+        # ── Paso 2: filtrar marca ─────────────────────────────────────────────
+        df_p2 = df_ac[df_ac['MARCA'] == ac_marca]
+        with st.expander(f"🏷️ Paso 2 — Filtrar por marca: «{ac_marca}»"):
+            st.markdown(
+                f"Se descartan todas las filas que no pertenezcan a la marca **{ac_marca}**. "
+                "Esto reduce el conjunto a un fabricante concreto."
+            )
+            st.dataframe(df_p2.head(10), use_container_width=True, hide_index=True)
+            pct = len(df_p2) / len(df_ac) * 100 if len(df_ac) > 0 else 0
+            st.caption(f"Resultado: **{len(df_p2):,} filas** ({pct:.1f}% del total)")
+
+        # ── Paso 3: filtrar modelo ────────────────────────────────────────────
+        df_p3 = df_p2[df_p2['MODELO3'] == ac_modelo]
+        with st.expander(f"🚗 Paso 3 — Filtrar por modelo: «{ac_modelo}»"):
+            st.markdown(
+                f"Del subconjunto anterior se conservan solo las ventas de **{ac_modelo}**. "
+                "Esta será la serie objetivo (y) que el modelo aprenderá a predecir."
+            )
+            st.dataframe(df_p3.head(10), use_container_width=True, hide_index=True)
+            st.caption(f"Resultado: **{len(df_p3):,} filas**")
+
+        # ── Paso 4: filtrar rango de fechas ────────────────────────────────────
+        df_p4 = df_p3[
+            (df_p3['FECHA-VENTA'] >= pd.Timestamp(ac_fecha_ini)) &
+            (df_p3['FECHA-VENTA'] <  ac_fecha_fin_excl)
+        ]
+        with st.expander(f"📅 Paso 4 — Filtrar rango de fechas: {ac_fecha_ini} → {ac_fecha_fin}"):
+            st.markdown(
+                "Se recorta el histórico al rango seleccionado para evitar datos "
+                "demasiado antiguos (que podrían distorsionar la tendencia) o meses "
+                "incompletos al final de la serie."
+            )
+            st.dataframe(df_p4.head(10), use_container_width=True, hide_index=True)
+            if len(df_p4) > 0:
+                st.caption(
+                    f"Resultado: **{len(df_p4):,} filas** · "
+                    f"{df_p4['FECHA-VENTA'].min().strftime('%Y-%m')} → "
+                    f"{df_p4['FECHA-VENTA'].max().strftime('%Y-%m')}"
+                )
+            else:
+                st.warning("⚠️ Sin datos para los filtros seleccionados.")
+
+        if len(df_p4) > 0:
+            # ── Paso 5: resample mensual ──────────────────────────────────────
+            ventas_ac = df_p4.set_index('FECHA-VENTA').resample('ME').size().rename('ventas')
+            df_mensual = ventas_ac.reset_index().rename(columns={'FECHA-VENTA': 'Mes', 'ventas': 'Ventas'})
+
+            with st.expander("📊 Paso 5 — Agregar por mes (resample 'ME')", expanded=True):
+                st.markdown(
+                    "Se **cuenta el número de ventas por mes** (`resample('ME').size()`). "
+                    "Esto convierte las filas individuales en una serie temporal de frecuencia mensual, "
+                    "que es el formato que requiere SARIMA."
+                )
+                col_t, col_g = st.columns([1, 2])
+                with col_t:
+                    st.dataframe(df_mensual, use_container_width=True, hide_index=True)
+                with col_g:
+                    fig_ts = go.Figure()
+                    fig_ts.add_trace(go.Scatter(
+                        x=df_mensual['Mes'], y=df_mensual['Ventas'],
+                        mode='lines+markers',
+                        line=dict(color='#1C7293', width=2),
+                        marker=dict(size=6),
+                        name='Ventas'
+                    ))
+                    fig_ts.update_layout(
+                        title=f"Serie temporal mensual — {ac_modelo}",
+                        xaxis_title="Mes", yaxis_title="Unidades vendidas",
+                        template='plotly_white', height=300
+                    )
+                    st.plotly_chart(fig_ts, use_container_width=True, config={'displayModeBar': False})
+                st.caption(
+                    f"**{len(df_mensual)} meses** · min={df_mensual['Ventas'].min()} · "
+                    f"max={df_mensual['Ventas'].max()} · media={df_mensual['Ventas'].mean():.1f}"
+                )
+
+            # ── Paso 6: variable exógena ──────────────────────────────────────
+            df_otros_ac = df_p2[
+                (df_p2['MODELO3'] != ac_modelo) &
+                (df_p2['FECHA-VENTA'] >= pd.Timestamp(ac_fecha_ini)) &
+                (df_p2['FECHA-VENTA'] <  ac_fecha_fin_excl)
+            ]
+            ventas_otros_ac = (df_otros_ac.set_index('FECHA-VENTA')
+                               .resample('ME').size().rename('ventas_otros'))
+            exog_ac = (pd.DataFrame({'ventas_otros': ventas_otros_ac})
+                       .reindex(ventas_ac.index, fill_value=0))
+
+            with st.expander("📐 Paso 6 — Variable exógena (ventas otros modelos de la marca)"):
+                st.markdown(
+                    "SARIMA admite una variable explicativa externa (**exog**). "
+                    "Se usa la **suma mensual de ventas de todos los demás modelos de la misma marca** "
+                    "como proxy de la dinámica general del mercado. "
+                    "Cuando la marca vende más en conjunto, probablemente también sube la demanda del modelo objetivo."
+                )
+                df_exog_show = pd.DataFrame({
+                    'Mes': ventas_ac.index.strftime('%Y-%m'),
+                    f'{ac_modelo} (y)': ventas_ac.values,
+                    'Otros modelos (exog)': exog_ac['ventas_otros'].values
+                })
+                st.dataframe(df_exog_show, use_container_width=True, hide_index=True)
+
+            # ── Resultado final ───────────────────────────────────────────────
+            st.markdown("---")
+            st.subheader("📥 DataFrame final que recibe SARIMA")
+            st.markdown(
+                "- **Índice**: `DatetimeIndex` con frecuencia mensual (`ME`)  \n"
+                "- **`ventas`**: variable objetivo **(y)** — lo que el modelo predice  \n"
+                "- **`ventas_otros`**: variable exógena **(X)** — ayuda al modelo a captar tendencias del mercado"
+            )
+
+            df_final_ac = pd.DataFrame({
+                'Mes': ventas_ac.index.strftime('%Y-%m'),
+                'ventas (y)': ventas_ac.values,
+                'ventas_otros (exog)': exog_ac['ventas_otros'].values
+            })
+            st.dataframe(df_final_ac, use_container_width=True, hide_index=True)
+
+            # Descarga Excel
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+                df_final_ac.to_excel(writer, index=False, sheet_name='Serie_SARIMA')
+                df_mensual.to_excel(writer, index=False, sheet_name='Ventas_Mensuales')
+                df_exog_show.to_excel(writer, index=False, sheet_name='Comparativa')
+            nombre_xlsx = (
+                f"datos_sarima_{ac_modelo.replace(' ','_')}"
+                f"_{ac_fecha_ini}_{ac_fecha_fin}.xlsx"
+            )
+            st.download_button(
+                "📥 Descargar Excel de entrenamiento",
+                data=buf.getvalue(),
+                file_name=nombre_xlsx,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+
+# ── Tab 4: Entrenamiento ──────────────────────────────────────────────────────
+
+with tabs[3]:
     st.header("🤖 Entrenamiento del Modelo", divider='orange')
 
     if 'df_validated' not in st.session_state:
@@ -251,12 +429,18 @@ with tabs[2]:
             marca_filtro = st.text_input("Filtro Marca", value="CHERY")
         with col2:
             fecha_inicio = st.date_input("Fecha de inicio", value=date(2021, 1, 1))
-            horizonte = st.slider("Horizonte (meses)", 3, 12, 6)
-        col3, col4 = st.columns(2)
+            fecha_fin = st.date_input("Fecha fin de datos", value=date.today(),
+                                      help="Límite superior del histórico usado para entrenar. "
+                                           "Si 'Eliminar mes actual' también está marcado, "
+                                           "se aplica el corte más conservador de los dos.")
+
+        col3, col4, col5 = st.columns(3)
         with col3:
+            horizonte = st.slider("Horizonte (meses)", 3, 12, 6)
+        with col4:
             max_ventas = st.number_input("Límite máximo ventas/mes",
                                          min_value=10, max_value=10000, value=100, step=10)
-        with col4:
+        with col5:
             eliminar_mes_actual = st.checkbox("Eliminar mes actual", value=True)
 
         st.markdown("---")
@@ -273,10 +457,21 @@ with tabs[2]:
                 df_chery = df[df['MARCA'] == marca_filtro].copy()
                 df_modelo = df_chery[df_chery['MODELO3'] == modelo_filtro].copy()
 
+                # Calcular límite superior exclusivo a partir de fecha_fin
+                if fecha_fin.month == 12:
+                    fecha_fin_excl = datetime(fecha_fin.year + 1, 1, 1)
+                else:
+                    fecha_fin_excl = datetime(fecha_fin.year, fecha_fin.month + 1, 1)
+
                 if eliminar_mes_actual:
-                    fecha_limite = datetime.now().replace(day=1)
-                    df_modelo = df_modelo[df_modelo['FECHA-VENTA'] < fecha_limite]
-                    st.info(f"✅ Datos hasta: {fecha_limite.strftime('%Y-%m-%d')}")
+                    fecha_mes_actual = datetime.now().replace(
+                        day=1, hour=0, minute=0, second=0, microsecond=0)
+                    fecha_limite = min(fecha_fin_excl, fecha_mes_actual)
+                else:
+                    fecha_limite = fecha_fin_excl
+
+                df_modelo = df_modelo[df_modelo['FECHA-VENTA'] < fecha_limite]
+                st.info(f"✅ Datos hasta: {(fecha_limite - timedelta(days=1)).strftime('%Y-%m-%d')}")
 
                 fecha_inicio_str = fecha_inicio.strftime('%Y-%m-%d')
                 df_modelo = df_modelo[df_modelo['FECHA-VENTA'] >= fecha_inicio_str]
@@ -285,8 +480,7 @@ with tabs[2]:
                 st.success(f"✅ {len(ventas_modelo)} meses · {len(df_modelo):,} ventas")
 
                 df_otros = df_chery[df_chery['MODELO3'] != modelo_filtro].copy()
-                if eliminar_mes_actual:
-                    df_otros = df_otros[df_otros['FECHA-VENTA'] < fecha_limite]
+                df_otros = df_otros[df_otros['FECHA-VENTA'] < fecha_limite]
                 df_otros = df_otros[df_otros['FECHA-VENTA'] >= fecha_inicio_str]
                 ventas_otros = df_otros.set_index('FECHA-VENTA').resample('ME').size()
                 exog_data = pd.DataFrame({'ventas_otros': ventas_otros}) \
@@ -384,7 +578,9 @@ with tabs[2]:
                     'usuario': st.session_state.username,
                     'configuracion': {
                         'modelo_filtro': modelo_filtro, 'marca_filtro': marca_filtro,
-                        'fecha_inicio': fecha_inicio_str, 'horizonte': horizonte,
+                        'fecha_inicio': fecha_inicio_str,
+                        'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),
+                        'horizonte': horizonte,
                         'max_ventas': int(max_ventas)
                     },
                     'datos_limpios': {
@@ -443,9 +639,9 @@ with tabs[2]:
                 import traceback
                 st.code(traceback.format_exc())
 
-# ── Tab 4: Comparación ────────────────────────────────────────────────────────
+# ── Tab 5: Comparación ────────────────────────────────────────────────────────
 
-with tabs[3]:
+with tabs[4]:
     st.header("📊 Comparación: Nuevo vs Actual", divider='green')
 
     if 'training_complete' not in st.session_state:
@@ -536,9 +732,9 @@ with tabs[3]:
                     st.success(f"✅ Modelo `{run_name}` activado. El Dashboard ya lo usa.")
                     st.rerun()
 
-# ── Tab 5: Historial ──────────────────────────────────────────────────────────
+# ── Tab 6: Historial ──────────────────────────────────────────────────────────
 
-with tabs[4]:
+with tabs[5]:
     st.header("📋 Historial de Entrenamientos", divider='gray')
 
     log = sio.load_training_log()
