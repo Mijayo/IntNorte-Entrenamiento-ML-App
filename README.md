@@ -138,7 +138,16 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 
 ### Formato de datos de entrada
 
-Excel (`.xlsx` / `.xls`) con hoja `Hoja1`:
+El uploader detecta automáticamente el tipo de archivo según las hojas disponibles:
+
+| Tipo | Hoja requerida | Se guarda en |
+|------|---------------|--------------|
+| Ventas | `Hoja1` | `session_state['df_raw']` |
+| Stock | `Stock Actual` | `session_state['df_stock']` |
+
+Se pueden subir varios archivos de ambos tipos en una misma carga.
+
+**Columnas esperadas en el Excel de ventas (`Hoja1`):**
 
 | Columna | Descripción |
 |---------|-------------|
@@ -210,6 +219,15 @@ La barra lateral lista todos los runs disponibles ordenados por fecha. El run ac
 __pycache__/
 .env
 ```
+
+---
+
+## Changelog
+
+### 2026-03-23
+- **feat**: Detección automática de tipo de hoja al subir archivos — `Hoja1` → ventas, `Stock Actual` → stock. Permite cargar ambos tipos en una misma subida sin configuración adicional.
+- **fix**: Serialización JSON del test ADF corregida (`numpy.bool_` → `Python bool`) para evitar error al guardar métricas en Supabase.
+- **fix**: Modelo `.pkl` comprimido con gzip antes de subir a Supabase Storage, resolviendo el error 413 (payload demasiado grande) en modelos grandes.
 
 ---
 
