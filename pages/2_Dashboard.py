@@ -69,6 +69,38 @@ selected_run = st.sidebar.selectbox(
 is_latest = sio.get_default_run(available_runs) == selected_run
 st.sidebar.caption("🟢 Activo en producción" if is_latest else "🔵 Versión histórica")
 
+# ── Datos de concesionarios (sidebar) ────────────────────────────────────────
+
+st.sidebar.markdown("---")
+with st.sidebar.expander("📂 Datos de Concesionarios", expanded=False):
+    con_file = st.file_uploader(
+        "Excel histórico de ventas", type=['xlsx', 'xls'], key="con_uploader",
+        help="Archivo con columnas MARCA, MODELO2/MODELO3, FECHA_VENTA/FECHA-VENTA, DET_CC, AGE"
+    )
+    if con_file:
+        with st.spinner("Procesando..."):
+            df_con_raw = pd.read_excel(con_file, engine='openpyxl')
+            df_con_raw.columns = [str(c).strip() for c in df_con_raw.columns]
+            # Saltar fila de descripciones si la primera fila es todo texto
+            if df_con_raw.iloc[0].apply(lambda x: isinstance(x, str)).all():
+                df_con_raw = df_con_raw.iloc[1:].reset_index(drop=True)
+            # Normalizar columna de fecha
+            for _fc in ['FECHA_VENTA', 'FECHA-VENTA', 'FECHA VENTA']:
+                if _fc in df_con_raw.columns:
+                    df_con_raw[_fc] = pd.to_datetime(df_con_raw[_fc], errors='coerce')
+                    if _fc != 'FECHA_VENTA':
+                        df_con_raw = df_con_raw.rename(columns={_fc: 'FECHA_VENTA'})
+                    break
+            # Normalizar columna de modelo
+            for _mc in ['MODELO2', 'MODELO3', 'MODELO']:
+                if _mc in df_con_raw.columns:
+                    if _mc != 'MODELO_NORM':
+                        df_con_raw = df_con_raw.rename(columns={_mc: 'MODELO_NORM'})
+                    break
+            st.session_state['df_concesionarios'] = df_con_raw
+            n_chery = len(df_con_raw[df_con_raw['MARCA'] == 'CHERY']) if 'MARCA' in df_con_raw.columns else len(df_con_raw)
+            st.success(f"✅ {len(df_con_raw):,} registros · {n_chery:,} CHERY")
+
 # ── Cargar datos ──────────────────────────────────────────────────────────────
 
 with st.spinner('Cargando datos...'):
@@ -94,9 +126,11 @@ show_user_info()
 
 if st.session_state.role in ['admin', 'analyst']:
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "🔬 ACF/PACF",
-                    "🔍 Grid Search", "🔄 Walk-Forward", "📋 Métricas Técnicas"])
+                    "🔍 Grid Search", "🔄 Walk-Forward", "📋 Métricas Técnicas",
+                    "🏪 Concesionarios"])
 elif st.session_state.role == 'manager':
-    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "💼 Recomendaciones"])
+    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "💼 Recomendaciones",
+                    "🏪 Concesionarios"])
 else:
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones"])
 
@@ -338,6 +372,178 @@ if st.session_state.role in ['admin', 'analyst']:
                     f"Meses:  {metricas['datos_limpios']['meses_datos']}\n"
                     f"Período: {metricas['datos_limpios']['periodo']}\n"
                     f"Horizonte: {cfg.get('horizonte', 6)} meses")
+
+# ── Tab Concesionarios (admin / analyst / manager) ────────────────────────────
+
+if st.session_state.role in ['admin', 'analyst', 'manager']:
+    con_idx = 6 if st.session_state.role in ['admin', 'analyst'] else 3
+
+    with tabs[con_idx]:
+        st.header("🏪 Ventas CHERY por Concesionario", divider='violet')
+
+        if 'df_concesionarios' not in st.session_state:
+            st.info(
+                "👈 Carga el Excel histórico de ventas desde el panel lateral "
+                "(**📂 Datos de Concesionarios**) para ver este análisis."
+            )
+        else:
+            df_c = st.session_state['df_concesionarios'].copy()
+
+            # Filtrar CHERY
+            if 'MARCA' in df_c.columns:
+                df_c = df_c[df_c['MARCA'] == 'CHERY']
+
+            # Detectar columnas
+            conc_col   = next((c for c in ['DET_CC', 'AGE', 'SUCURSAL', 'CONCESIONARIO']
+                               if c in df_c.columns), None)
+            ciudad_col = next((c for c in ['AGE', 'CIUDAD', 'REGION']
+                               if c in df_c.columns), None)
+            modelo_col = ('MODELO_NORM' if 'MODELO_NORM' in df_c.columns
+                          else next((c for c in ['MODELO2', 'MODELO3', 'MODELO']
+                                     if c in df_c.columns), None))
+            fecha_col  = 'FECHA_VENTA' if 'FECHA_VENTA' in df_c.columns else None
+
+            # Si DET_CC disponible, usarlo como concesionario y AGE como ciudad
+            if conc_col == 'AGE' and 'DET_CC' in df_c.columns:
+                conc_col   = 'DET_CC'
+                ciudad_col = 'AGE'
+
+            if not conc_col or len(df_c) == 0:
+                st.warning("⚠️ No se encontró columna de concesionario (DET_CC / AGE) "
+                           "o no hay registros CHERY en el archivo.")
+            else:
+                # ── Filtros ───────────────────────────────────────────────────
+                col_f1, col_f2, col_f3 = st.columns(3)
+                with col_f1:
+                    if fecha_col:
+                        years_all = sorted(
+                            df_c[fecha_col].dt.year.dropna().unique().astype(int),
+                            reverse=True
+                        )
+                        years_sel = st.multiselect("Año", years_all, default=years_all)
+                        if years_sel:
+                            df_c = df_c[df_c[fecha_col].dt.year.isin(years_sel)]
+                with col_f2:
+                    if modelo_col:
+                        modelos_all = ['Todos'] + sorted(df_c[modelo_col].dropna().unique())
+                        modelo_sel = st.selectbox("Modelo", modelos_all)
+                        if modelo_sel != 'Todos':
+                            df_c = df_c[df_c[modelo_col] == modelo_sel]
+                with col_f3:
+                    if ciudad_col and ciudad_col != conc_col:
+                        ciudades_all = ['Todas'] + sorted(df_c[ciudad_col].dropna().unique())
+                        ciudad_sel = st.selectbox("Ciudad", ciudades_all)
+                        if ciudad_sel != 'Todas':
+                            df_c = df_c[df_c[ciudad_col] == ciudad_sel]
+
+                if len(df_c) == 0:
+                    st.warning("No hay datos con los filtros seleccionados.")
+                else:
+                    ventas_por_conc = df_c.groupby(conc_col).size().sort_values(ascending=False)
+                    top_conc   = ventas_por_conc.index[0]
+                    top_modelo = df_c[modelo_col].value_counts().index[0] if modelo_col else '—'
+
+                    # ── KPIs ─────────────────────────────────────────────────
+                    k1, k2, k3, k4 = st.columns(4)
+                    k1.metric("Total Ventas CHERY", f"{len(df_c):,}")
+                    k2.metric("Concesionarios", len(ventas_por_conc))
+                    k3.metric("Top Concesionario", top_conc)
+                    k4.metric("Modelo más vendido", top_modelo)
+
+                    st.markdown("---")
+
+                    # ── Gráfico 1: barras horizontales por concesionario ──────
+                    st.subheader("📊 Ventas totales por concesionario")
+                    df_bar = ventas_por_conc.reset_index()
+                    df_bar.columns = ['Concesionario', 'Ventas']
+                    if ciudad_col and ciudad_col != conc_col:
+                        df_bar['Ciudad'] = df_bar['Concesionario'].map(
+                            df_c.groupby(conc_col)[ciudad_col].first()
+                        )
+                        fig_bar = px.bar(
+                            df_bar, x='Ventas', y='Concesionario', color='Ciudad',
+                            orientation='h', text='Ventas',
+                            color_discrete_sequence=px.colors.qualitative.Set2
+                        )
+                    else:
+                        fig_bar = px.bar(
+                            df_bar, x='Ventas', y='Concesionario',
+                            orientation='h', text='Ventas',
+                            color_discrete_sequence=['#1C7293']
+                        )
+                    fig_bar.update_traces(textposition='outside')
+                    fig_bar.update_layout(
+                        template='plotly_white',
+                        height=max(350, 60 + len(df_bar) * 35),
+                        yaxis={'categoryorder': 'total ascending'},
+                        margin=dict(r=80), showlegend=True
+                    )
+                    st.plotly_chart(fig_bar, use_container_width=True,
+                                    config={'displayModeBar': False})
+
+                    # ── Gráfico 2: evolución mensual por concesionario ────────
+                    if fecha_col:
+                        st.subheader("📈 Evolución mensual por concesionario")
+                        concs_disp = sorted(df_c[conc_col].dropna().unique())
+                        concs_sel = st.multiselect(
+                            "Selecciona concesionarios",
+                            concs_disp,
+                            default=concs_disp[:min(5, len(concs_disp))],
+                            key="conc_ts_sel"
+                        )
+                        if concs_sel:
+                            df_ts = (
+                                df_c[df_c[conc_col].isin(concs_sel)]
+                                .groupby([pd.Grouper(key=fecha_col, freq='ME'), conc_col])
+                                .size().reset_index(name='Ventas')
+                            )
+                            fig_ts = px.line(
+                                df_ts, x=fecha_col, y='Ventas', color=conc_col,
+                                markers=True, template='plotly_white',
+                                color_discrete_sequence=px.colors.qualitative.Plotly
+                            )
+                            fig_ts.update_layout(
+                                height=420, hovermode='x unified',
+                                xaxis_title='Mes', yaxis_title='Unidades',
+                                legend_title='Concesionario'
+                            )
+                            st.plotly_chart(fig_ts, use_container_width=True,
+                                            config={'displayModeBar': False})
+
+                    # ── Gráfico 3: modelos por concesionario ──────────────────
+                    if modelo_col:
+                        st.subheader("🚗 Distribución de modelos por concesionario")
+                        df_mod = (df_c.groupby([conc_col, modelo_col])
+                                  .size().reset_index(name='Ventas'))
+                        fig_mod = px.bar(
+                            df_mod, x=conc_col, y='Ventas', color=modelo_col,
+                            barmode='stack', template='plotly_white',
+                            color_discrete_sequence=px.colors.qualitative.Pastel
+                        )
+                        fig_mod.update_layout(
+                            height=450, xaxis_tickangle=-30,
+                            xaxis_title='', yaxis_title='Unidades',
+                            legend_title='Modelo'
+                        )
+                        st.plotly_chart(fig_mod, use_container_width=True,
+                                        config={'displayModeBar': False})
+
+                    # ── Tabla resumen ─────────────────────────────────────────
+                    st.subheader("📋 Ranking de concesionarios")
+                    group_cols = [conc_col]
+                    if ciudad_col and ciudad_col != conc_col:
+                        group_cols.insert(0, ciudad_col)
+                    df_tabla = (df_c.groupby(group_cols)
+                                .size().reset_index(name='Ventas')
+                                .sort_values('Ventas', ascending=False))
+                    df_tabla['% Total'] = (df_tabla['Ventas'] / df_tabla['Ventas'].sum() * 100).round(1)
+                    df_tabla['Acumulado %'] = df_tabla['% Total'].cumsum().round(1)
+                    st.dataframe(
+                        df_tabla.style
+                                .background_gradient(subset=['Ventas'], cmap='Blues')
+                                .format({'% Total': '{:.1f}%', 'Acumulado %': '{:.1f}%'}),
+                        use_container_width=True, hide_index=True
+                    )
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 
