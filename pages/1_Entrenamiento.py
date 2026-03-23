@@ -183,18 +183,29 @@ with tabs[0]:
 
         if st.button("🔄 Procesar Archivos", type="primary"):
             with st.spinner("Procesando..."):
-                dfs = []
+                dfs_ventas = []
+                df_stock_cargado = None
                 for f in uploaded_files:
                     try:
-                        df = pd.read_excel(f, sheet_name='Hoja1', engine='openpyxl')
-                        dfs.append(df)
-                        st.success(f"✅ {f.name}: {len(df):,} filas")
+                        sheets = pd.ExcelFile(f, engine='openpyxl').sheet_names
+                        if 'Hoja1' in sheets:
+                            df = pd.read_excel(f, sheet_name='Hoja1', engine='openpyxl')
+                            dfs_ventas.append(df)
+                            st.success(f"✅ {f.name} → ventas ({len(df):,} filas)")
+                        elif 'Stock Actual' in sheets:
+                            df_stock_cargado = pd.read_excel(f, sheet_name='Stock Actual', engine='openpyxl')
+                            st.success(f"✅ {f.name} → stock ({len(df_stock_cargado):,} filas)")
+                        else:
+                            st.error(f"❌ {f.name}: hojas encontradas {sheets} — se esperaba 'Hoja1' o 'Stock Actual'")
                     except Exception as e:
                         st.error(f"❌ {f.name}: {e}")
-                if dfs:
-                    df_unified = pd.concat(dfs, ignore_index=True)
+                if dfs_ventas:
+                    df_unified = pd.concat(dfs_ventas, ignore_index=True)
                     st.session_state['df_raw'] = df_unified
-                    st.success(f"✅ {len(df_unified):,} registros totales")
+                    st.success(f"✅ {len(df_unified):,} registros de ventas totales")
+                if df_stock_cargado is not None:
+                    st.session_state['df_stock'] = df_stock_cargado
+                if dfs_ventas or df_stock_cargado is not None:
                     st.rerun()
 
 # ── Tab 2: Validación ─────────────────────────────────────────────────────────
