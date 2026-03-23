@@ -155,16 +155,41 @@ Se pueden subir varios archivos de ambos tipos en una misma carga.
 | `MARCA` | Marca del vehículo |
 | `MODELO3` | Nombre del modelo |
 
-### Parámetros configurables (UI)
+### Pestañas de la app de Entrenamiento
+
+| # | Pestaña | Descripción |
+|---|---------|-------------|
+| 1 | 📤 Cargar Datos | Subida de Excel de ventas y/o stock |
+| 2 | ✅ Validación | Calidad de datos, preview, distribución temporal |
+| 3 | 🎓 Preparar Datos | Pipeline académico paso a paso + descarga del `.xlsx` de entrenamiento |
+| 4 | 🤖 Entrenamiento | Configuración, grid search, walk-forward, guardado en Supabase |
+| 5 | 📊 Comparación | Métricas nuevo vs. actual, residuos, botón de aprobación |
+| 6 | 📋 Historial | Log de todos los entrenamientos con evolución del MAPE |
+
+### Parámetros configurables (pestaña Entrenamiento)
 
 | Parámetro | Por defecto | Descripción |
 |-----------|-------------|-------------|
 | Marca | `CHERY` | Filtro de marca |
 | Modelo | `TIGGO 2` | Filtro de modelo |
-| Fecha inicio | `2021-01-01` | Ignorar ventas anteriores |
+| Fecha inicio | `2021-01-01` | Ignorar ventas anteriores a esta fecha |
+| Fecha fin de datos | hoy | Límite superior del histórico usado para entrenar. Se combina con «Eliminar mes actual»: gana el corte más conservador |
 | Horizonte | `6` meses | Meses a predecir (3–12) |
 | Máx. ventas | `100` unid./mes | Límite superior de predicciones válidas |
-| Excluir mes actual | `true` | Eliminar mes incompleto del entrenamiento |
+| Excluir mes actual | `true` | Eliminar el mes en curso (datos incompletos) |
+
+### Pestaña 🎓 Preparar Datos
+
+Modo académico que muestra el pipeline completo de transformación de datos, sin necesidad de lanzar un entrenamiento:
+
+1. **Datos brutos** — muestra de las filas individuales del Excel
+2. **Filtro marca** — descarte de filas de otras marcas
+3. **Filtro modelo** — aislamiento del modelo objetivo
+4. **Rango de fechas** — recorte temporal configurable
+5. **Resample mensual** — conversión de filas individuales a serie temporal (`resample('ME').size()`) con tabla y gráfico
+6. **Variable exógena** — ventas mensuales de los demás modelos de la marca, usadas como regresora en SARIMAX
+
+Al final de la pestaña hay un **botón de descarga** del `.xlsx` resultante con tres hojas: `Serie_SARIMA`, `Ventas_Mensuales` y `Comparativa`.
 
 ### Modelo SARIMA
 
@@ -224,7 +249,11 @@ __pycache__/
 
 ## Changelog
 
-### 2026-03-23
+### 2026-03-23 (v2)
+- **feat**: Nueva pestaña **🎓 Preparar Datos** — pipeline académico paso a paso con descarga del `.xlsx` de entrenamiento.
+- **feat**: Parámetro **Fecha fin de datos** en la pestaña Entrenamiento — permite acotar el histórico por una fecha máxima explícita; se combina con «Eliminar mes actual» tomando el corte más conservador. Se persiste en `metricas` (Supabase).
+
+### 2026-03-23 (v1)
 - **feat**: Detección automática de tipo de hoja al subir archivos — `Hoja1` → ventas, `Stock Actual` → stock. Permite cargar ambos tipos en una misma subida sin configuración adicional.
 - **fix**: Serialización JSON del test ADF corregida (`numpy.bool_` → `Python bool`) para evitar error al guardar métricas en Supabase.
 - **fix**: Modelo `.pkl` comprimido con gzip antes de subir a Supabase Storage, resolviendo el error 413 (payload demasiado grande) en modelos grandes.
