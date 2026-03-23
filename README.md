@@ -46,7 +46,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
 
 ```
 streamlit, pandas, numpy, statsmodels, scikit-learn,
-matplotlib, plotly, pillow, openpyxl, supabase
+matplotlib, plotly, pillow, openpyxl, supabase, google-genai
 ```
 
 ```bash
@@ -71,6 +71,9 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 Estructura esperada en `secrets.toml`:
 
 ```toml
+# Clave API de Google Gemini (para el Asistente IA del Dashboard)
+GENAI_API_KEY = "..."
+
 [supabase]
 url    = "https://<proyecto>.supabase.co"
 key    = "SUPABASE_ANON_KEY"
@@ -107,9 +110,9 @@ streamlit run app_principal.py
 
 | Rol | Entrenamiento | Tabs del Dashboard |
 |-----|:-------------:|---------------------|
-| `admin` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, Concesionarios |
-| `analyst` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, Concesionarios |
-| `manager` | — | Dashboard, Predicciones, Recomendaciones de compra, Concesionarios |
+| `admin` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
+| `analyst` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
+| `manager` | — | Dashboard, Predicciones, Recomendaciones de compra, **Asistente IA**, Concesionarios |
 | `viewer` | — | Dashboard, Predicciones |
 
 ---
@@ -243,7 +246,18 @@ Disponible una vez cargado el Excel desde el sidebar. Muestra análisis de venta
 | Resultados Grid Search | ✅ | ✅ | — | — |
 | Walk-forward validation | ✅ | ✅ | — | — |
 | Métricas técnicas completas | ✅ | ✅ | — | — |
+| **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
 | Ventas por Concesionario | ✅ | ✅ | ✅ | — |
+
+### Tab 🤖 Asistente IA (admin / analista / gerente)
+
+Chat sobre el modelo entrenado, alimentado con Gemini (`gemini-2.5-flash`). El contexto que recibe el LLM incluye parámetros SARIMA, AIC/BIC, MAPE, predicciones con intervalos de confianza y tendencia de los últimos 3 meses. Las respuestas se cachean en `session_state` para evitar llamadas repetidas.
+
+El prompt está adaptado al rol:
+- **Admin / Analista** — tono técnico; acepta preguntas sobre AIC, MAPE, walk-forward o parámetros del modelo.
+- **Gerente** — tono accionable; orientado a recomendaciones de compra e interpretación de tendencias.
+
+Requiere `GENAI_API_KEY` en `secrets.toml`. Si la clave no está configurada, el tab muestra un aviso en lugar de fallar.
 
 ---
 
@@ -271,6 +285,10 @@ __pycache__/
 ---
 
 ## Changelog
+
+### 2026-03-23 (v4)
+- **feat**: Nueva pestaña **🤖 Asistente IA** en el Dashboard — chat sobre el modelo SARIMA entrenado, powered by Google Gemini (`gemini-2.5-flash`). Disponible para admin, analista y gerente. El prompt se adapta al rol: técnico para admin/analista, accionable para gerente. Las respuestas se cachean en `session_state`. Requiere `GENAI_API_KEY` en `secrets.toml`.
+- **chore**: Añadido `google-genai` a `requirements.txt` y `GENAI_API_KEY` a `secrets.toml.example`.
 
 ### 2026-03-23 (v3)
 - **feat**: Nueva pestaña **🏪 Concesionarios** en el Dashboard — análisis de ventas CHERY por concesionario con KPIs, barras horizontales por ciudad, evolución mensual y ranking ABC. Accesible para admin, analista y gerente. Los datos se cargan desde la barra lateral (expander *📂 Datos de Concesionarios*) y se normalizan automáticamente (columnas de fecha, modelo y concesionario con alias múltiples).

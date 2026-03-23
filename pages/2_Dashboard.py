@@ -14,6 +14,8 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
+from google import genai
+
 import supabase_io as sio
 from auth_system import (init_session_state, show_login_page, show_user_info,
                          check_session_timeout, has_permission, show_header)
@@ -41,6 +43,10 @@ st.markdown("""
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
 init_session_state()
+
+if 'cache_llm_tiggo' not in st.session_state:
+    st.session_state.cache_llm_tiggo = {}
+
 if check_session_timeout():
     st.warning("⏱️ Tu sesión ha expirado.")
     st.stop()
@@ -122,15 +128,49 @@ role_badges = {
 st.markdown(role_badges.get(st.session_state.role, ''), unsafe_allow_html=True)
 show_user_info()
 
+# ── Conexión Gemini ───────────────────────────────────────────────────────────
+
+GEMINI_MODEL = 'gemini-2.5-flash'
+
+try:
+    gemini = genai.Client(api_key=st.secrets['GENAI_API_KEY'])
+except Exception as _e:
+    st.sidebar.warning(f"⚠️ Asistente IA no disponible: {_e}")
+    gemini = None
+
+# ── Variables contextuales para LLM ──────────────────────────────────────────
+
+_orden     = metricas['mejor_modelo']['order']
+_orden_est = metricas['mejor_modelo']['seasonal_order']
+_mape      = metricas['walk_forward_validation']['mape']
+_proximo   = pred_total['Predicción'].iloc[0]
+_ic_inf    = pred_total['IC_Inferior'].iloc[0]
+_ic_sup    = pred_total['IC_Superior'].iloc[0]
+_prom_hist = hist_total.mean()
+_ultimos_3 = hist_total.iloc[-3:].mean()
+_tendencia_pct = ((_ultimos_3 - _prom_hist) / _prom_hist) * 100
+_cfg       = metricas.get('configuracion', {})
+
+context_tiggo = (
+    f"Modelo SARIMA{_orden}{_orden_est}\n"
+    f"AIC: {metricas['mejor_modelo']['aic']:.2f}  |  BIC: {metricas['mejor_modelo']['bic']:.2f}\n"
+    f"MAPE (walk-forward): {_mape:.2f}%\n"
+    f"Predicción próximo mes: {_proximo:.0f} uds  (IC 95%: {_ic_inf:.0f}–{_ic_sup:.0f})\n"
+    f"Predicción total horizonte ({_cfg.get('horizonte', 6)} meses): {pred_total['Predicción'].sum():.0f} uds\n"
+    f"Tendencia últimos 3 meses vs histórico: {_tendencia_pct:+.1f}%\n"
+    f"Promedio histórico mensual: {_prom_hist:.1f}  |  Total ventas: {metricas['datos_limpios']['total_ventas']:,}\n"
+    f"Período de datos: {metricas['datos_limpios']['periodo']}  |  Meses: {metricas['datos_limpios']['meses_datos']}"
+)
+
 # ── Tabs según rol ────────────────────────────────────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst']:
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "🔬 ACF/PACF",
                     "🔍 Grid Search", "🔄 Walk-Forward", "📋 Métricas Técnicas",
-                    "🏪 Concesionarios"])
+                    "🤖 Asistente IA", "🏪 Concesionarios"])
 elif st.session_state.role == 'manager':
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "💼 Recomendaciones",
-                    "🏪 Concesionarios"])
+                    "🤖 Asistente IA", "🏪 Concesionarios"])
 else:
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones"])
 
@@ -268,6 +308,56 @@ if st.session_state.role == 'manager':
             st.warning(f"⚠️ La predicción ({proximo:.0f}) difiere >30% del promedio histórico "
                        f"({prom_hist:.1f}). Revisa factores externos.")
 
+# ── Tab LLM (manager) ────────────────────────────────────────────────────────
+
+if st.session_state.role == 'manager':
+    with tabs[3]:
+        st.header("🤖 Asistente IA", divider='violet')
+        st.markdown(
+            "Consulta al asistente sobre las predicciones, el modelo o las recomendaciones de compra. "
+            "Las respuestas se basan únicamente en los datos del modelo SARIMA entrenado."
+        )
+
+        if gemini is None:
+            st.error("⚠️ Configura `GENAI_API_KEY` en `.streamlit/secrets.toml` para usar el asistente.")
+        else:
+            with st.form(key='form_llm_tiggo_manager', border=False):
+                question_m = st.text_input(
+                    placeholder='Ej: ¿Cuántas unidades debería pedir para el próximo trimestre?',
+                    key='input_llm_tiggo_manager', label='', label_visibility='collapsed'
+                )
+                btn_m = st.form_submit_button('Consultar al asistente')
+
+            if btn_m and question_m:
+                if question_m not in st.session_state.cache_llm_tiggo:
+                    try:
+                        prompt_tiggo = (
+                            'Actúa como un Senior Analyst experto en predicción de demanda automotriz '
+                            'y gestión de inventario de concesionarios.\n\n'
+                            '## OBJETIVO:\n'
+                            'Responder de forma precisa y accionable a la consulta del usuario '
+                            'sobre el sistema de predicción TIGGO 2.\n\n'
+                            f'## CONTEXTO DEL MODELO:\n{context_tiggo}\n\n'
+                            f'## SOLICITUD:\n{question_m}\n\n'
+                            '## INSTRUCCIONES OBLIGATORIAS:\n'
+                            '1. Basa tu respuesta únicamente en los datos del contexto proporcionado.\n'
+                            '2. Sé conciso y accionable; prioriza recomendaciones claras.\n'
+                            '3. Si la pregunta está fuera del alcance de los datos, indícalo.\n\n'
+                            '## FORMATO DE RESPUESTA:\n'
+                            '- Máximo 3-4 líneas. Si hay una recomendación numérica, resáltala.'
+                        )
+                        with st.spinner('El asistente está procesando tu consulta...'):
+                            response_m = gemini.models.generate_content(
+                                model=GEMINI_MODEL, contents=prompt_tiggo
+                            )
+                            st.session_state.cache_llm_tiggo[question_m] = response_m.text
+                    except Exception as e:
+                        st.error(f'Error al consultar el asistente: {e}')
+
+            if question_m in st.session_state.cache_llm_tiggo:
+                st.success('Análisis completado')
+                st.markdown(st.session_state.cache_llm_tiggo[question_m])
+
 # ── Tabs técnicos (admin / analyst) ──────────────────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst']:
@@ -373,10 +463,60 @@ if st.session_state.role in ['admin', 'analyst']:
                     f"Período: {metricas['datos_limpios']['periodo']}\n"
                     f"Horizonte: {cfg.get('horizonte', 6)} meses")
 
+# ── Tab LLM (admin / analyst) ────────────────────────────────────────────────
+
+if st.session_state.role in ['admin', 'analyst']:
+    with tabs[6]:
+        st.header("🤖 Asistente IA", divider='violet')
+        st.markdown(
+            "Consulta al asistente sobre las predicciones, el modelo SARIMA o las métricas de validación. "
+            "Las respuestas se basan únicamente en los datos del modelo entrenado."
+        )
+
+        if gemini is None:
+            st.error("⚠️ Configura `GENAI_API_KEY` en `.streamlit/secrets.toml` para usar el asistente.")
+        else:
+            with st.form(key='form_llm_tiggo_analyst', border=False):
+                question_a = st.text_input(
+                    placeholder='Ej: ¿Qué significa el MAPE obtenido? ¿Es fiable la predicción?',
+                    key='input_llm_tiggo_analyst', label='', label_visibility='collapsed'
+                )
+                btn_a = st.form_submit_button('Consultar al asistente')
+
+            if btn_a and question_a:
+                if question_a not in st.session_state.cache_llm_tiggo:
+                    try:
+                        prompt_tiggo_a = (
+                            'Actúa como un Senior Data Scientist experto en series temporales '
+                            'y modelos SARIMA aplicados a predicción de demanda automotriz.\n\n'
+                            '## OBJETIVO:\n'
+                            'Responder de forma técnica y precisa a la consulta del analista '
+                            'sobre el modelo o sus métricas de validación.\n\n'
+                            f'## CONTEXTO DEL MODELO:\n{context_tiggo}\n\n'
+                            f'## SOLICITUD:\n{question_a}\n\n'
+                            '## INSTRUCCIONES OBLIGATORIAS:\n'
+                            '1. Basa tu respuesta únicamente en los datos del contexto proporcionado.\n'
+                            '2. Puedes usar terminología técnica (AIC, MAPE, walk-forward, etc.).\n'
+                            '3. Si la pregunta está fuera del alcance de los datos, indícalo.\n\n'
+                            '## FORMATO DE RESPUESTA:\n'
+                            '- Conciso y técnico. Máximo 4-5 líneas.'
+                        )
+                        with st.spinner('El asistente está procesando tu consulta...'):
+                            response_a = gemini.models.generate_content(
+                                model=GEMINI_MODEL, contents=prompt_tiggo_a
+                            )
+                            st.session_state.cache_llm_tiggo[question_a] = response_a.text
+                    except Exception as e:
+                        st.error(f'Error al consultar el asistente: {e}')
+
+            if question_a in st.session_state.cache_llm_tiggo:
+                st.success('Análisis completado')
+                st.markdown(st.session_state.cache_llm_tiggo[question_a])
+
 # ── Tab Concesionarios (admin / analyst / manager) ────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst', 'manager']:
-    con_idx = 6 if st.session_state.role in ['admin', 'analyst'] else 3
+    con_idx = 7 if st.session_state.role in ['admin', 'analyst'] else 4
 
     with tabs[con_idx]:
         st.header("🏪 Ventas CHERY por Concesionario", divider='violet')
