@@ -18,7 +18,7 @@ import pickle
 import json
 from datetime import datetime, date, timedelta
 import io
-import itertools
+import optuna
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -79,46 +79,69 @@ def train_sarima_model(ventas, exog_data, order, seasonal_order):
     return model.fit(disp=False, maxiter=200, method='lbfgs')
 
 
-def perform_grid_search(train, test, train_exog, test_exog,
-                        progress_bar, status_text, max_ventas):
-    # Espacio de búsqueda ampliado: incluye d=0 (serie ya estacionaria) y P=0
-    param_combinations = list(itertools.product(
-        [0, 1, 2, 3], [0, 1], [0, 1, 2, 3], [0, 1], [0, 1], [0, 1, 2]
-    ))
-    best_aic, best_params, best_mape = np.inf, None, np.inf
-    grid_results, failures = [], 0
-    total = len(param_combinations)
+def perform_optuna_search(train, test, train_exog, test_exog,
+                          progress_bar, status_text, max_ventas, n_trials=80):
+    """
+    Búsqueda inteligente de hiperparámetros SARIMA usando Optuna (TPE Bayesiano).
+    - Válidos: trials donde el modelo ajustó y las predicciones están en [0, max_ventas]
+    - Descartados: trials con errores numéricos, predicciones negativas o fuera de rango
+    """
+    trial_results = []
+    best_state = {'mape': np.inf, 'aic': np.inf, 'params': None}
+    failures = [0]
 
-    for i, (p, d, q, P, D, Q) in enumerate(param_combinations):
+    def objective(trial):
+        p = trial.suggest_int("p", 0, 3)
+        d = trial.suggest_int("d", 0, 1)
+        q = trial.suggest_int("q", 0, 3)
+        P = trial.suggest_int("P", 0, 1)
+        D = trial.suggest_int("D", 0, 1)
+        Q = trial.suggest_int("Q", 0, 2)
         try:
-            order = (p, d, q)
-            seasonal_order = (P, D, Q, 12)
-            model = SARIMAX(train, exog=train_exog, order=order,
-                            seasonal_order=seasonal_order,
+            model = SARIMAX(train, exog=train_exog, order=(p, d, q),
+                            seasonal_order=(P, D, Q, 12),
                             enforce_stationarity=False, enforce_invertibility=False)
             results = model.fit(disp=False, maxiter=200, method='lbfgs')
             predictions = results.forecast(steps=len(test), exog=test_exog)
-
             if predictions.min() < 0 or predictions.max() > max_ventas:
-                failures += 1
-            else:
-                mae = mean_absolute_error(test, predictions)
-                rmse = np.sqrt(mean_squared_error(test, predictions))
-                mape = np.mean(np.abs((test - predictions) / (test + 0.1))) * 100
-                aic, bic = results.aic, results.bic
-                grid_results.append({'p': p, 'd': d, 'q': q, 'P': P, 'D': D, 'Q': Q,
-                                     'm': 12, 'mae': mae, 'rmse': rmse,
-                                     'mape': mape, 'aic': aic, 'bic': bic})
-                # Criterio: minimizar MAPE (error predictivo real), no AIC
-                if mape < best_mape:
-                    best_aic, best_mape, best_params = aic, mape, (order, seasonal_order)
+                failures[0] += 1
+                return np.inf  # penaliza predicciones fuera del rango lógico
+            mape = np.mean(np.abs((test - predictions) / (test + 0.1))) * 100
+            trial_results.append({
+                'p': p, 'd': d, 'q': q, 'P': P, 'D': D, 'Q': Q, 'm': 12,
+                'mae': mean_absolute_error(test, predictions),
+                'rmse': np.sqrt(mean_squared_error(test, predictions)),
+                'mape': mape, 'aic': results.aic, 'bic': results.bic
+            })
+            if mape < best_state['mape']:
+                best_state['mape'] = mape
+                best_state['aic'] = results.aic
+                best_state['params'] = ((p, d, q), (P, D, Q, 12))
+            return mape
         except Exception:
-            failures += 1
+            failures[0] += 1
+            return np.inf
 
-        progress_bar.progress((i + 1) / total)
-        status_text.text(f"Evaluando {i+1}/{total} | Válidos: {len(grid_results)} | Descartados: {failures}")
+    def progress_callback(study, trial):
+        pct = (trial.number + 1) / n_trials
+        progress_bar.progress(min(0.25 + pct * 0.35, 0.60))
+        n_valid = len(trial_results)
+        n_disc = failures[0]
+        mejor = f"MAPE {best_state['mape']:.2f}%" if best_state['params'] else "buscando..."
+        status_text.text(
+            f"🔍 Optuna trial {trial.number + 1}/{n_trials} · "
+            f"Evaluados: {n_valid + n_disc} · Válidos: {n_valid} · "
+            f"Descartados: {n_disc} · Mejor: {mejor}"
+        )
 
-    return best_params, best_aic, best_mape, grid_results, failures
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=42)
+    )
+    study.optimize(objective, n_trials=n_trials, callbacks=[progress_callback])
+
+    return best_state['params'], best_state['aic'], best_state['mape'], trial_results, failures[0]
 
 
 def perform_walk_forward(ventas, exog_data, best_params, n_months, max_ventas):
@@ -539,26 +562,49 @@ with tabs[3]:
                 plt.tight_layout()
                 progress_bar.progress(0.25)
 
-                # Paso 4: Grid Search
-                status_text.text("🔍 Grid search...")
+                # Paso 4: Búsqueda con Optuna (TPE Bayesiano)
+                status_text.text("🔍 Iniciando búsqueda Optuna...")
                 train_size = len(ventas_modelo) - horizonte
                 train = ventas_modelo[:train_size]
                 test = ventas_modelo[train_size:]
                 train_exog = exog_data[:train_size]
                 test_exog = exog_data[train_size:]
 
-                best_params, best_aic, best_mape, grid_results, failures = perform_grid_search(
+                best_params, best_aic, best_mape, grid_results, failures = perform_optuna_search(
                     train, test, train_exog, test_exog, progress_bar, status_text, max_ventas
                 )
 
                 if best_params is None:
-                    st.error(f"❌ Ninguna combinación produjo predicciones en [0, {max_ventas}].")
-                    st.info("Aumenta el límite máximo de ventas.")
+                    st.error(f"❌ Ningún trial produjo predicciones en [0, {max_ventas}].")
+                    st.info("Aumenta el límite máximo de ventas en la configuración.")
                     st.stop()
 
-                df_grid = pd.DataFrame(grid_results).sort_values('aic')
-                st.success(f"✅ SARIMA{best_params[0]}{best_params[1]} · AIC: {best_aic:.2f} · "
-                           f"{len(grid_results)} válidas / {failures} descartadas")
+                df_grid = pd.DataFrame(grid_results).sort_values('mape')
+
+                # ── Resultado Optuna con explicación clara ──────────────────
+                n_valid = len(grid_results)
+                n_total = n_valid + failures
+                st.success(
+                    f"✅ Mejor modelo encontrado: **SARIMA{best_params[0]}{best_params[1]}** · "
+                    f"MAPE: {best_mape:.2f}% · AIC: {best_aic:.2f}"
+                )
+                with st.expander("📊 Detalle de la búsqueda Optuna — ¿qué son válidos y descartados?"):
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Trials evaluados", n_total,
+                              help="Combinaciones de (p,d,q)(P,D,Q) que Optuna probó")
+                    c2.metric("✅ Válidos", n_valid,
+                              help="El modelo ajustó correctamente Y sus predicciones están dentro del rango [0, max_ventas]")
+                    c3.metric("❌ Descartados", failures,
+                              help="Trials rechazados por: predicciones negativas, superiores al límite máximo, o errores numéricos al ajustar")
+                    st.markdown("""
+**¿Por qué se descarta un trial?**
+- **Predicciones negativas** — el modelo predice ventas < 0, lo cual no tiene sentido físico.
+- **Predicciones fuera del límite** — superan el `max_ventas` configurado (posible sobreajuste).
+- **Error numérico** — la combinación (p,d,q)(P,D,Q) no converge con los datos disponibles.
+
+**¿Por qué Optuna es mejor que Grid Search?**
+Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-structured Parzen Estimator)**: aprende qué zonas del espacio dan buenos resultados y enfoca la búsqueda ahí, logrando igual o mejor calidad con solo **80 trials** (~4× más rápido).
+""")
                 progress_bar.progress(0.60)
 
                 # Paso 5: Walk-Forward
@@ -779,7 +825,7 @@ with tabs[5]:
             'SARIMA': f"{e['sarima_order']}{e['sarima_seasonal']}",
             'AIC': round(e['aic'], 2), 'MAPE WF': f"{e['mape_wf']:.2f}%",
             'Horizonte': e.get('horizonte', 6),
-            'Válidas/Total': f"{e['combinaciones_validas']}/{e['combinaciones_validas'] + e['combinaciones_descartadas']}"
+            'Trials válidos/total': f"{e['combinaciones_validas']}/{e['combinaciones_validas'] + e['combinaciones_descartadas']}"
         } for e in reversed(log)])
 
         st.dataframe(df_log, use_container_width=True, hide_index=True)

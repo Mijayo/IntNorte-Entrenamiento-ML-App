@@ -10,3 +10,4 @@ openpyxl
 supabase
 google-genai
 prophet
+optuna
