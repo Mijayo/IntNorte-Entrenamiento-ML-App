@@ -47,7 +47,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
 
 ```
 streamlit, pandas, numpy, statsmodels, scikit-learn,
-matplotlib, plotly, pillow, openpyxl, supabase, google-genai, prophet
+matplotlib, plotly, pillow, openpyxl, supabase, google-genai, prophet, optuna
 ```
 
 ```bash
@@ -125,7 +125,7 @@ streamlit run app_principal.py
 2. [Entrenamiento]  Limpieza automática: duplicados por CHASIS + filas sin MODELO3
 3. [Entrenamiento]  Validación automática de calidad de datos
 4. [Entrenamiento]  Test ADF de estacionariedad
-5. [Entrenamiento]  Grid search → mejores parámetros SARIMA (criterio: MAPE mínimo)
+5. [Entrenamiento]  Búsqueda Optuna (TPE) → mejores parámetros SARIMA (criterio: MAPE mínimo)
 6. [Entrenamiento]  Walk-forward validation sobre los últimos N meses
 6. [Entrenamiento]  Modelo final + forecast generado
 7. [Entrenamiento]  Artefactos subidos automáticamente a Supabase Storage
@@ -167,7 +167,7 @@ Se pueden subir varios archivos de ambos tipos en una misma carga.
 | 1 | 📤 Cargar Datos | Subida de Excel de ventas y/o stock |
 | 2 | ✅ Validación | Calidad de datos, preview, distribución temporal |
 | 3 | 🎓 Preparar Datos | Pipeline académico paso a paso + descarga del `.xlsx` de entrenamiento |
-| 4 | 🤖 Entrenamiento | Configuración, grid search, walk-forward, guardado en Supabase |
+| 4 | 🤖 Entrenamiento | Configuración, búsqueda Optuna (TPE), walk-forward, guardado en Supabase |
 | 5 | 📊 Comparación | Métricas nuevo vs. actual, residuos, botón de aprobación |
 | 6 | 📋 Historial | Log de todos los entrenamientos con evolución del MAPE |
 
@@ -199,8 +199,9 @@ Al final de la pestaña hay un **botón de descarga** del `.xlsx` resultante con
 ### Modelo SARIMA
 
 - **Algoritmo**: SARIMAX con variable exógena (ventas de otros modelos de la misma marca)
-- **Espacio de búsqueda**: `p ∈ {0,1,2,3}`, `d ∈ {0,1}`, `q ∈ {0,1,2,3}`, estacional `(P∈{0,1}, D∈{0,1}, Q∈{0,1,2}, m=12)` → 192 combinaciones
-- **Criterio**: MAPE mínimo sobre el conjunto de test con predicciones dentro del rango configurado
+- **Búsqueda de hiperparámetros**: [Optuna](https://optuna.org/) con sampler **TPE (Tree-structured Parzen Estimator)** — 80 trials bayesianos sobre el espacio `p ∈ {0–3}`, `d ∈ {0–1}`, `q ∈ {0–3}`, `P ∈ {0–1}`, `D ∈ {0–1}`, `Q ∈ {0–2}`, `m=12` (~4× más rápido que el grid search exhaustivo de 384 combinaciones, con igual o mejor calidad)
+- **Criterio**: MAPE mínimo sobre el conjunto de test; se descartan predicciones fuera del rango `[0, max_ventas]`
+- **Trials descartados**: combinaciones con predicciones negativas, superiores al límite configurado o con errores numéricos de convergencia
 - **Variable exógena**: ventas mensuales de los demás modelos de la misma marca (`ventas_otros`)
 - **Intervalos de confianza**: 95% en todos los puntos del forecast
 
@@ -336,6 +337,12 @@ __pycache__/
 ---
 
 ## Changelog
+
+### 2026-03-25 (v7)
+- **feat**: Búsqueda de hiperparámetros SARIMA migrada de grid search exhaustivo a **Optuna TPE** (80 trials bayesianos vs 384 combinaciones fijas, ~4× más rápido con igual calidad). La función `perform_grid_search` fue reemplazada por `perform_optuna_search`.
+- **feat**: UI de resultados de búsqueda mejorada — expander *📊 Detalle de la búsqueda Optuna* con métricas en 3 columnas (trials evaluados, válidos, descartados) y explicación clara de por qué se descarta cada trial (predicciones negativas, fuera de rango, error numérico).
+- **fix**: Corregido error `MS is not supported as period frequency` en `pages/3_Prophet_vs_SARIMA.py` (`to_timestamp('MS')` → `to_timestamp()`).
+- **chore**: Añadido `optuna` a `requirements.txt`.
 
 ### 2026-03-25 (v6)
 - **feat**: Nueva página **⚔️ Prophet vs SARIMA** (`pages/3_Prophet_vs_SARIMA.py`) — compara ambos modelos sobre el mismo histórico de ventas con métricas MAE, RMSE, MAPE y tiempo de entrenamiento. Carga datos desde cualquier run de Supabase o desde un Excel subido manualmente. Incluye gráficas de predicciones, errores por mes, descomposición Prophet (tendencia + estacionalidad anual) y explicación didáctica del resultado.
