@@ -198,7 +198,7 @@ if fuente == "Cargar desde un run guardado en Supabase":
                 # load_precargados retorna (metricas, pred_total, grid_search, walk_forward, hist_total)
                 _, _, _, _, hist = sio.load_precargados(run_sel)
                 hist = hist.sort_index()
-                hist.index = hist.index.to_period('M').to_timestamp('MS')
+                hist.index = hist.index.to_period('M').to_timestamp()
                 st.session_state["ventas_cmp"] = hist
                 st.success(f"Histórico cargado: {len(hist)} meses ({hist.index[0].strftime('%b %Y')} → {hist.index[-1].strftime('%b %Y')})")
             except Exception as e:
