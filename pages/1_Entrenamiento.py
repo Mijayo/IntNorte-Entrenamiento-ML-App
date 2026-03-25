@@ -81,8 +81,9 @@ def train_sarima_model(ventas, exog_data, order, seasonal_order):
 
 def perform_grid_search(train, test, train_exog, test_exog,
                         progress_bar, status_text, max_ventas):
+    # Espacio de búsqueda ampliado: incluye d=0 (serie ya estacionaria) y P=0
     param_combinations = list(itertools.product(
-        [1, 2, 3, 5, 7], [1], [0, 1, 2], [1], [1], [0, 1, 2]
+        [0, 1, 2, 3], [0, 1], [0, 1, 2, 3], [0, 1], [0, 1], [0, 1, 2]
     ))
     best_aic, best_params, best_mape = np.inf, None, np.inf
     grid_results, failures = [], 0
@@ -108,7 +109,8 @@ def perform_grid_search(train, test, train_exog, test_exog,
                 grid_results.append({'p': p, 'd': d, 'q': q, 'P': P, 'D': D, 'Q': Q,
                                      'm': 12, 'mae': mae, 'rmse': rmse,
                                      'mape': mape, 'aic': aic, 'bic': bic})
-                if aic < best_aic and mape < 100:
+                # Criterio: minimizar MAPE (error predictivo real), no AIC
+                if mape < best_mape:
                     best_aic, best_mape, best_params = aic, mape, (order, seasonal_order)
         except Exception:
             failures += 1
@@ -167,22 +169,22 @@ with tabs[0]:
     st.header("📤 Carga de Datos", divider='blue')
     st.markdown("""
     **Instrucciones:**
-    1. Carga uno o varios archivos Excel con datos de ventas
-    2. Los archivos se unificarán automáticamente
-    3. El sistema validará la calidad de los datos
+    1. Carga el archivo Excel con el histórico de ventas
+    2. El sistema limpiará y validará los datos automáticamente
+    3. También puedes cargar varios archivos si el histórico está dividido — se unificarán en uno solo
     """)
 
     uploaded_files = st.file_uploader(
-        "Selecciona archivo(s) Excel", type=['xlsx', 'xls'],
+        "Selecciona el archivo Excel", type=['xlsx', 'xls'],
         accept_multiple_files=True
     )
 
     if uploaded_files:
-        st.success(f"✅ {len(uploaded_files)} archivo(s) cargado(s)")
+        st.success(f"✅ {len(uploaded_files)} archivo{'s' if len(uploaded_files) > 1 else ''} cargado{'s' if len(uploaded_files) > 1 else ''}")
         for f in uploaded_files:
             st.markdown(f"- **{f.name}** ({f.size / 1024:.1f} KB)")
 
-        if st.button("🔄 Procesar Archivos", type="primary"):
+        if st.button("🔄 Procesar", type="primary"):
             with st.spinner("Procesando..."):
                 dfs_ventas = []
                 df_stock_cargado = None
@@ -202,8 +204,30 @@ with tabs[0]:
                         st.error(f"❌ {f.name}: {e}")
                 if dfs_ventas:
                     df_unified = pd.concat(dfs_ventas, ignore_index=True)
+                    n_bruto = len(df_unified)
+
+                    # ── Limpieza automática ───────────────────────────────────
+                    # 1. Eliminar filas con MODELO3 nulo
+                    n_nulos = int(df_unified['MODELO3'].isna().sum()) if 'MODELO3' in df_unified.columns else 0
+                    if n_nulos > 0:
+                        df_unified = df_unified.dropna(subset=['MODELO3'])
+
+                    # 2. Eliminar duplicados por CHASIS (conservar registro más reciente)
+                    n_antes_dedup = len(df_unified)
+                    if 'CHASIS' in df_unified.columns and 'FECHA-VENTA' in df_unified.columns:
+                        df_unified['FECHA-VENTA'] = pd.to_datetime(df_unified['FECHA-VENTA'], errors='coerce')
+                        df_unified = (df_unified
+                                      .sort_values('FECHA-VENTA')
+                                      .drop_duplicates(subset=['CHASIS'], keep='last')
+                                      .reset_index(drop=True))
+                    n_dupl = n_antes_dedup - len(df_unified)
+                    # ─────────────────────────────────────────────────────────
+
                     st.session_state['df_raw'] = df_unified
-                    st.success(f"✅ {len(df_unified):,} registros de ventas totales")
+                    st.success(f"✅ {n_bruto:,} registros brutos → **{len(df_unified):,} limpios**")
+                    if n_dupl > 0 or n_nulos > 0:
+                        st.warning(f"🧹 Limpieza: {n_dupl} duplicados por CHASIS eliminados · "
+                                   f"{n_nulos} filas sin MODELO3 eliminadas")
                 if df_stock_cargado is not None:
                     st.session_state['df_stock'] = df_stock_cargado
                 if dfs_ventas or df_stock_cargado is not None:

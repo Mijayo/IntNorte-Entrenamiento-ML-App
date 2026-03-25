@@ -120,11 +120,12 @@ streamlit run app_principal.py
 ## Flujo de trabajo
 
 ```
-1. [Entrenamiento]  Cargar uno o varios Excel con datos de ventas
-2. [Entrenamiento]  Validación automática de calidad de datos
-3. [Entrenamiento]  Test ADF de estacionariedad
-4. [Entrenamiento]  Grid search → mejores parámetros SARIMA (AIC + MAPE)
-5. [Entrenamiento]  Walk-forward validation sobre los últimos N meses
+1. [Entrenamiento]  Cargar el Excel con el histórico de ventas
+2. [Entrenamiento]  Limpieza automática: duplicados por CHASIS + filas sin MODELO3
+3. [Entrenamiento]  Validación automática de calidad de datos
+4. [Entrenamiento]  Test ADF de estacionariedad
+5. [Entrenamiento]  Grid search → mejores parámetros SARIMA (criterio: MAPE mínimo)
+6. [Entrenamiento]  Walk-forward validation sobre los últimos N meses
 6. [Entrenamiento]  Modelo final + forecast generado
 7. [Entrenamiento]  Artefactos subidos automáticamente a Supabase Storage
 8. [Entrenamiento]  Comparación con el modelo de producción actual
@@ -197,8 +198,9 @@ Al final de la pestaña hay un **botón de descarga** del `.xlsx` resultante con
 ### Modelo SARIMA
 
 - **Algoritmo**: SARIMAX con variable exógena (ventas de otros modelos de la misma marca)
-- **Espacio de búsqueda**: `p ∈ {1,2,3,5,7}`, `d=1`, `q ∈ {0,1,2}`, estacional `(P=1, D=1, Q∈{0,1,2}, m=12)`
-- **Criterio**: AIC más bajo con MAPE < 100% y predicciones dentro del rango configurado
+- **Espacio de búsqueda**: `p ∈ {0,1,2,3}`, `d ∈ {0,1}`, `q ∈ {0,1,2,3}`, estacional `(P∈{0,1}, D∈{0,1}, Q∈{0,1,2}, m=12)` → 192 combinaciones
+- **Criterio**: MAPE mínimo sobre el conjunto de test con predicciones dentro del rango configurado
+- **Variable exógena**: ventas mensuales de los demás modelos de la misma marca (`ventas_otros`)
 - **Intervalos de confianza**: 95% en todos los puntos del forecast
 
 ### Flujo de aprobación
@@ -285,6 +287,14 @@ __pycache__/
 ---
 
 ## Changelog
+
+### 2026-03-25 (v5)
+- **feat**: Limpieza automática de datos integrada en Tab 1 — elimina duplicados por `CHASIS` (conserva el registro más reciente) y filas con `MODELO3` nulo al cargar el Excel. Muestra conteo de filas eliminadas.
+- **feat**: Grid search ampliado de 45 a 192 combinaciones — incluye `d∈{0,1}` y `P∈{0,1}` (antes fijos a 1).
+- **fix**: Criterio de selección del modelo cambiado de AIC mínimo a **MAPE mínimo** sobre el set de test, alineado con el objetivo predictivo.
+- **fix**: Variables exógenas simplificadas a solo `ventas_otros` — eliminadas `tendencia` y `mes` por redundancia con los componentes internos de SARIMA.
+- **fix**: Dashboard Grid Search actualizado para mostrar y ordenar por MAPE (antes ordenaba por AIC).
+- **chore**: UI Tab 1 actualizada — botón "Procesar" y texto en singular para el caso de un único archivo.
 
 ### 2026-03-23 (v4)
 - **feat**: Nueva pestaña **🤖 Asistente IA** en el Dashboard — chat sobre el modelo SARIMA entrenado, powered by Google Gemini (`gemini-2.5-flash`). Disponible para admin, analista y gerente. El prompt se adapta al rol: técnico para admin/analista, accionable para gerente. Las respuestas se cachean en `session_state`. Requiere `GENAI_API_KEY` en `secrets.toml`.

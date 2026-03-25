@@ -385,17 +385,17 @@ if st.session_state.role in ['admin', 'analyst']:
         st.header("🔍 Grid Search de Parámetros", divider='blue')
         col1, col2, col3 = st.columns(3)
         col1.metric("Combinaciones Evaluadas", len(grid_search))
-        col2.metric("Mejor AIC", f"{grid_search['aic'].min():.2f}")
-        col3.metric("MAPE (mejor)", f"{grid_search.loc[grid_search['aic'].idxmin(), 'mape']:.2f}%")
+        col2.metric("Mejor MAPE", f"{grid_search['mape'].min():.2f}%")
+        col3.metric("AIC del modelo seleccionado", f"{grid_search.loc[grid_search['mape'].idxmin(), 'aic']:.2f}")
 
-        st.subheader("Top 10 Modelos por AIC")
-        top10 = grid_search.nsmallest(10, 'aic')[
-            ['p', 'd', 'q', 'P', 'D', 'Q', 'aic', 'bic', 'mape', 'mae', 'rmse']
+        st.subheader("Top 10 Modelos por MAPE")
+        top10 = grid_search.nsmallest(10, 'mape')[
+            ['p', 'd', 'q', 'P', 'D', 'Q', 'mape', 'mae', 'rmse', 'aic', 'bic']
         ]
         st.dataframe(
             top10.style
-                 .background_gradient(subset=['aic'], cmap='Greens_r')
                  .background_gradient(subset=['mape'], cmap='RdYlGn_r')
+                 .background_gradient(subset=['aic'], cmap='Greens_r')
                  .format({'aic': '{:.2f}', 'bic': '{:.2f}',
                           'mape': '{:.2f}%', 'mae': '{:.2f}', 'rmse': '{:.2f}'}),
             use_container_width=True, hide_index=True
