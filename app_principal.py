@@ -33,7 +33,7 @@ show_user_info()
 
 st.markdown("---")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.info("""
@@ -51,4 +51,13 @@ with col2:
     Cambia entre versiones históricas desde el panel lateral.
 
     > Disponible para **todos los roles**.
+    """)
+
+with col3:
+    st.warning("""
+    ### ⚔️ Prophet vs SARIMA
+    Compara el rendimiento de Prophet (Meta) contra SARIMA
+    sobre el mismo histórico de ventas.
+
+    > Solo disponible para **Administradores** y **Analistas**.
     """)

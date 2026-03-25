@@ -1,23 +1,24 @@
-# Sistema TIGGO 2 — Predicción de Ventas con SARIMA
+# Sistema TIGGO 2 — Predicción de Ventas con SARIMA y Prophet
 
-Sistema multipage en Streamlit para entrenar modelos SARIMA y visualizar predicciones de demanda de vehículos. Desplegado en **Streamlit Cloud** con almacenamiento persistente en **Supabase Storage** y control de acceso por roles.
+Sistema multipage en Streamlit para entrenar modelos SARIMA, comparar con Prophet y visualizar predicciones de demanda de vehículos. Desplegado en **Streamlit Cloud** con almacenamiento persistente en **Supabase Storage** y control de acceso por roles.
 
 ---
 
 ## Arquitectura
 
 ```
-app_principal.py          ← Entry point (autenticación + página de inicio)
+app_principal.py              ← Entry point (autenticación + página de inicio)
 pages/
-├── 1_Entrenamiento.py    ← Entrenamiento SARIMA (Admin / Analista)
-└── 2_Dashboard.py        ← Dashboard de negocio (todos los roles)
-auth_system.py            ← Autenticación, sesiones y show_header()
-supabase_io.py            ← Capa de I/O centralizada (Supabase Storage)
-utils_validacion.py       ← Validación de datos de entrada
+├── 1_Entrenamiento.py        ← Entrenamiento SARIMA (Admin / Analista)
+├── 2_Dashboard.py            ← Dashboard de negocio (todos los roles)
+└── 3_Prophet_vs_SARIMA.py    ← Comparación Prophet vs SARIMA (Admin / Analista)
+auth_system.py                ← Autenticación, sesiones y show_header()
+supabase_io.py                ← Capa de I/O centralizada (Supabase Storage)
+utils_validacion.py           ← Validación de datos de entrada
 requirements.txt
 .streamlit/
-├── secrets.toml          ← Credenciales reales (NO en el repo)
-└── secrets.toml.example  ← Plantilla (sí en el repo)
+├── secrets.toml              ← Credenciales reales (NO en el repo)
+└── secrets.toml.example      ← Plantilla (sí en el repo)
 ```
 
 > No hay carpetas locales de datos. Todos los artefactos del modelo se guardan y leen desde **Supabase Storage** (`bucket: modelos-ml`).
@@ -46,7 +47,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
 
 ```
 streamlit, pandas, numpy, statsmodels, scikit-learn,
-matplotlib, plotly, pillow, openpyxl, supabase, google-genai
+matplotlib, plotly, pillow, openpyxl, supabase, google-genai, prophet
 ```
 
 ```bash
@@ -108,12 +109,12 @@ streamlit run app_principal.py
 
 ## Roles y permisos
 
-| Rol | Entrenamiento | Tabs del Dashboard |
-|-----|:-------------:|---------------------|
-| `admin` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
-| `analyst` | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
-| `manager` | — | Dashboard, Predicciones, Recomendaciones de compra, **Asistente IA**, Concesionarios |
-| `viewer` | — | Dashboard, Predicciones |
+| Rol | Entrenamiento | Prophet vs SARIMA | Tabs del Dashboard |
+|-----|:-------------:|:-----------------:|---------------------|
+| `admin` | ✅ | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
+| `analyst` | ✅ | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
+| `manager` | — | — | Dashboard, Predicciones, Recomendaciones de compra, **Asistente IA**, Concesionarios |
+| `viewer` | — | — | Dashboard, Predicciones |
 
 ---
 
@@ -209,6 +210,54 @@ La pestaña **Comparación** muestra métricas lado a lado con el modelo de prod
 
 ---
 
+## App 3 — Prophet vs SARIMA (`pages/3_Prophet_vs_SARIMA.py`)
+
+Página de comparación académica/técnica que enfrenta Prophet (Meta) contra SARIMA sobre el mismo histórico de ventas. Accesible solo para `admin` y `analyst`.
+
+### Flujo de la comparación
+
+| Paso | Descripción |
+|------|-------------|
+| 1. Fuente de datos | Carga el histórico desde un run guardado en Supabase **o** sube un Excel propio |
+| 2. Configuración | Meses de test (hold-out), festivos MX para Prophet, parámetros SARIMA manuales |
+| 3. Entrenar | Entrena ambos modelos y mide el tiempo de ejecución |
+| 4. Resultados | Tabla de métricas, gráficas, descomposición de Prophet y explicación didáctica |
+
+### Métricas comparadas
+
+| Métrica | Descripción |
+|---------|-------------|
+| MAE | Error absoluto medio (unidades) |
+| RMSE | Raíz del error cuadrático medio |
+| MAPE (%) | Error porcentual medio — criterio principal de desempate |
+| AIC | Solo disponible para SARIMA |
+| Tiempo (s) | Tiempo de entrenamiento de cada modelo |
+
+### Configuración de Prophet
+
+- **Estacionalidad**: anual multiplicativa (apta para series con tendencia creciente)
+- **Festivos**: `add_country_holidays('MX')` — Día de Muertos, Navidad, Año Nuevo, etc.
+- **Frecuencia**: mensual (`MS` — inicio de mes)
+
+### Gráficas de resultados
+
+1. **Predicciones en test** — histórico train + real test + SARIMA + Prophet en el mismo eje
+2. **Error absoluto por mes** — barras agrupadas para comparar mes a mes
+3. **Descomposición Prophet** — tendencia + estacionalidad anual en ejes separados
+
+### ¿Por qué Prophet?
+
+| Característica | SARIMA | Prophet |
+|---|---|---|
+| Estacionalidad múltiple | Solo una (mensual) | Anual + mensual + eventos |
+| Festivos/eventos | Manual, complejo | Nativo (`holidays=`) |
+| Datos faltantes | Relleno manual | Manejados automáticamente |
+| Cambios de tendencia | Difícil | Detecta *changepoints* automáticamente |
+| Calibración | Grid search de 300+ combinaciones | Pocos hiperparámetros intuitivos |
+| Interpretabilidad | Difícil de explicar | Descompone: tendencia + estacionalidad |
+
+---
+
 ## App 2 — Dashboard (`pages/2_Dashboard.py`)
 
 ### Selector de versión
@@ -287,6 +336,11 @@ __pycache__/
 ---
 
 ## Changelog
+
+### 2026-03-25 (v6)
+- **feat**: Nueva página **⚔️ Prophet vs SARIMA** (`pages/3_Prophet_vs_SARIMA.py`) — compara ambos modelos sobre el mismo histórico de ventas con métricas MAE, RMSE, MAPE y tiempo de entrenamiento. Carga datos desde cualquier run de Supabase o desde un Excel subido manualmente. Incluye gráficas de predicciones, errores por mes, descomposición Prophet (tendencia + estacionalidad anual) y explicación didáctica del resultado.
+- **feat**: Landing page actualizada con tarjeta de acceso a Prophet vs SARIMA.
+- **chore**: Añadido `prophet` a `requirements.txt`.
 
 ### 2026-03-25 (v5)
 - **feat**: Limpieza automática de datos integrada en Tab 1 — elimina duplicados por `CHASIS` (conserva el registro más reciente) y filas con `MODELO3` nulo al cargar el Excel. Muestra conteo de filas eliminadas.

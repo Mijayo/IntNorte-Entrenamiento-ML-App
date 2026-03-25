@@ -9,3 +9,4 @@ pillow
 openpyxl
 supabase
 google-genai
+prophet
