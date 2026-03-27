@@ -1,6 +1,6 @@
-# Sistema TIGGO 2 — Predicción de Ventas con SARIMA y Prophet
+# Sistema TIGGO 2 — Predicción de Ventas con ML
 
-Sistema multipage en Streamlit para entrenar modelos SARIMA, comparar con Prophet y visualizar predicciones de demanda de vehículos. Desplegado en **Streamlit Cloud** con almacenamiento persistente en **Supabase Storage** y control de acceso por roles.
+Sistema multipage en Streamlit para entrenar modelos SARIMA, comparar múltiples algoritmos de predicción (SARIMA, Prophet, Regresión Lineal, Random Forest, XGBoost) y visualizar predicciones de demanda del Chery Tiggo 2. Desplegado en **Streamlit Cloud** con almacenamiento persistente en **Supabase Storage** y control de acceso por roles.
 
 ---
 
@@ -11,7 +11,7 @@ app_principal.py              ← Entry point (autenticación + página de inici
 pages/
 ├── 1_Entrenamiento.py        ← Entrenamiento SARIMA (Admin / Analista)
 ├── 2_Dashboard.py            ← Dashboard de negocio (todos los roles)
-└── 3_Prophet_vs_SARIMA.py    ← Comparación Prophet vs SARIMA (Admin / Analista)
+└── 3_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
 auth_system.py                ← Autenticación, sesiones y show_header()
 supabase_io.py                ← Capa de I/O centralizada (Supabase Storage)
 utils_validacion.py           ← Validación de datos de entrada
@@ -47,7 +47,8 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
 
 ```
 streamlit, pandas, numpy, statsmodels, scikit-learn,
-matplotlib, plotly, pillow, openpyxl, supabase, google-genai, prophet, optuna
+matplotlib, plotly, pillow, openpyxl, supabase, google-genai,
+prophet, optuna, xgboost
 ```
 
 ```bash
@@ -109,8 +110,8 @@ streamlit run app_principal.py
 
 ## Roles y permisos
 
-| Rol | Entrenamiento | Prophet vs SARIMA | Tabs del Dashboard |
-|-----|:-------------:|:-----------------:|---------------------|
+| Rol | Entrenamiento | Comparativa ML | Tabs del Dashboard |
+|-----|:-------------:|:--------------:|---------------------|
 | `admin` | ✅ | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
 | `analyst` | ✅ | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
 | `manager` | — | — | Dashboard, Predicciones, Recomendaciones de compra, **Asistente IA**, Concesionarios |
@@ -127,12 +128,13 @@ streamlit run app_principal.py
 4. [Entrenamiento]  Test ADF de estacionariedad
 5. [Entrenamiento]  Búsqueda Optuna (TPE) → mejores parámetros SARIMA (criterio: MAPE mínimo)
 6. [Entrenamiento]  Walk-forward validation sobre los últimos N meses
-6. [Entrenamiento]  Modelo final + forecast generado
-7. [Entrenamiento]  Artefactos subidos automáticamente a Supabase Storage
-8. [Entrenamiento]  Comparación con el modelo de producción actual
-9. [Entrenamiento]  Clic en "Aprobar" → latest.txt actualizado → Dashboard activo
-10. [Dashboard]     Carga el modelo activo automáticamente al arrancar
-11. [Dashboard]     Barra lateral permite cambiar entre cualquier run histórico
+7. [Entrenamiento]  Modelo final + forecast generado
+8. [Entrenamiento]  Artefactos subidos automáticamente a Supabase Storage
+9. [Entrenamiento]  Comparación con el modelo de producción actual
+10. [Entrenamiento] Clic en "Aprobar" → latest.txt actualizado → Dashboard activo
+11. [Dashboard]     Carga el modelo activo automáticamente al arrancar
+12. [Dashboard]     Barra lateral permite cambiar entre cualquier run histórico
+13. [Comparativa]   Carga el mismo histórico y enfrenta 5 modelos en un solo clic
 ```
 
 Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase y el dashboard lee desde allí.
@@ -211,51 +213,64 @@ La pestaña **Comparación** muestra métricas lado a lado con el modelo de prod
 
 ---
 
-## App 3 — Prophet vs SARIMA (`pages/3_Prophet_vs_SARIMA.py`)
+## App 3 — Comparativa ML (`pages/3_Comparativa_ML.py`)
 
-Página de comparación académica/técnica que enfrenta Prophet (Meta) contra SARIMA sobre el mismo histórico de ventas. Accesible solo para `admin` y `analyst`.
+Página de comparación que enfrenta hasta **5 modelos** sobre el mismo histórico mensual de ventas del Tiggo 2. Accesible solo para `admin` y `analyst`.
+
+### Modelos disponibles
+
+| Modelo | Tipo | Enfoque |
+|--------|------|---------|
+| **SARIMA** | Serie de tiempo | Parámetros (p,d,q)(P,D,Q)₁₂ configurables manualmente |
+| **Prophet** | Serie de tiempo | Estacionalidad multiplicativa anual + festivos de México (MX) |
+| **Regresión Lineal** | ML supervisado | Lag features + rolling stats + calendario |
+| **Random Forest** | ML supervisado | 300 estimadores, captura relaciones no lineales |
+| **XGBoost** | ML supervisado | Gradient boosting, lr=0.05, max_depth=4 |
+
+### Feature engineering para modelos ML
+
+Los modelos ML (Regresión Lineal, Random Forest, XGBoost) se alimentan de features derivadas de la propia serie temporal:
+
+| Feature | Descripción |
+|---------|-------------|
+| `lag_1` … `lag_12` | Ventas de 1, 2, 3, 6 y 12 meses atrás |
+| `roll_mean_3` / `roll_mean_6` | Media móvil de los últimos 3 y 6 meses (desplazada 1 período) |
+| `roll_std_3` | Desviación estándar móvil de 3 meses |
+| `mes` | Mes del año (1–12) |
+| `trimestre` | Trimestre del año (1–4) |
+
+> Los modelos ML requieren al menos **`12 + n_test + 5`** meses de histórico para tener un conjunto de entrenamiento estable (el lag de 12 meses consume las primeras 12 observaciones).
 
 ### Flujo de la comparación
 
 | Paso | Descripción |
 |------|-------------|
 | 1. Fuente de datos | Carga el histórico desde un run guardado en Supabase **o** sube un Excel propio |
-| 2. Configuración | Meses de test (hold-out), festivos MX para Prophet, parámetros SARIMA manuales |
-| 3. Entrenar | Entrena ambos modelos y mide el tiempo de ejecución |
-| 4. Resultados | Tabla de métricas, gráficas, descomposición de Prophet y explicación didáctica |
+| 2. Configuración | Meses de test (hold-out 3–12), selección de modelos a incluir, parámetros SARIMA y festivos Prophet |
+| 3. Ejecutar | Entrena cada modelo seleccionado con barra de progreso y tiempo de ejecución |
+| 4. Resultados | Tabla de métricas, ganador por MAPE, gráficas y tabla detallada descargable |
 
 ### Métricas comparadas
 
-| Métrica | Descripción |
-|---------|-------------|
-| MAE | Error absoluto medio (unidades) |
-| RMSE | Raíz del error cuadrático medio |
-| MAPE (%) | Error porcentual medio — criterio principal de desempate |
-| AIC | Solo disponible para SARIMA |
-| Tiempo (s) | Tiempo de entrenamiento de cada modelo |
+| Métrica | Descripción | Criterio |
+|---------|-------------|---------|
+| **MAE** | Error absoluto medio (unidades) | Menor |
+| **RMSE** | Raíz del error cuadrático medio | Menor |
+| **MAPE (%)** | Error porcentual medio — criterio principal | Menor |
+| **R²** | Proporción de varianza explicada | Mayor (máx. 1.0) |
+| **Tiempo (s)** | Segundos de entrenamiento | Menor |
 
-### Configuración de Prophet
-
-- **Estacionalidad**: anual multiplicativa (apta para series con tendencia creciente)
-- **Festivos**: `add_country_holidays('MX')` — Día de Muertos, Navidad, Año Nuevo, etc.
-- **Frecuencia**: mensual (`MS` — inicio de mes)
+La tabla de resultados resalta en verde las mejores celdas de cada métrica. El ganador se anuncia por MAPE mínimo.
 
 ### Gráficas de resultados
 
-1. **Predicciones en test** — histórico train + real test + SARIMA + Prophet en el mismo eje
-2. **Error absoluto por mes** — barras agrupadas para comparar mes a mes
-3. **Descomposición Prophet** — tendencia + estacionalidad anual en ejes separados
+1. **Predicciones vs Real** — histórico train + real test + todos los modelos en el mismo eje, cada uno con su color
+2. **Error absoluto por mes** — barras agrupadas para comparar el error mes a mes entre modelos
+3. **Importancia de features** — solo para modelos ML (Gini para RF/XGBoost, |coeficiente| para Regresión Lineal)
 
-### ¿Por qué Prophet?
+### Descarga de resultados
 
-| Característica | SARIMA | Prophet |
-|---|---|---|
-| Estacionalidad múltiple | Solo una (mensual) | Anual + mensual + eventos |
-| Festivos/eventos | Manual, complejo | Nativo (`holidays=`) |
-| Datos faltantes | Relleno manual | Manejados automáticamente |
-| Cambios de tendencia | Difícil | Detecta *changepoints* automáticamente |
-| Calibración | Grid search de 300+ combinaciones | Pocos hiperparámetros intuitivos |
-| Interpretabilidad | Difícil de explicar | Descompone: tendencia + estacionalidad |
+Botón de descarga del período de test como **CSV**, con columnas `Real`, predicción y error absoluto de cada modelo.
 
 ---
 
@@ -306,8 +321,8 @@ Disponible una vez cargado el Excel desde el sidebar. Muestra análisis de venta
 Chat sobre el modelo entrenado, alimentado con Gemini (`gemini-2.5-flash`). El contexto que recibe el LLM incluye parámetros SARIMA, AIC/BIC, MAPE, predicciones con intervalos de confianza y tendencia de los últimos 3 meses. Las respuestas se cachean en `session_state` para evitar llamadas repetidas.
 
 El prompt está adaptado al rol:
-- **Admin / Analista** — tono técnico; acepta preguntas sobre AIC, MAPE, walk-forward o parámetros del modelo.
-- **Gerente** — tono accionable; orientado a recomendaciones de compra e interpretación de tendencias.
+- **Admin / Analista** — tono técnico; acepta preguntas sobre AIC, MAPE, walk-forward, parámetros del modelo o comparativa de algoritmos. El asistente conoce SARIMA, Prophet, Random Forest, XGBoost y Regresión Lineal.
+- **Gerente** — tono accionable; orientado a recomendaciones de compra e interpretación de tendencias. Para comparar modelos, se redirige a la página **Comparativa ML**.
 
 Requiere `GENAI_API_KEY` en `secrets.toml`. Si la clave no está configurada, el tab muestra un aviso en lugar de fallar.
 
@@ -338,40 +353,45 @@ __pycache__/
 
 ## Changelog
 
+### 2026-03-27 (v8)
+- **feat**: Nueva página **🏆 Comparativa ML** (`pages/3_Comparativa_ML.py`) — reemplaza a Prophet vs SARIMA. Enfrenta hasta 5 modelos (SARIMA, Prophet, Regresión Lineal, Random Forest, XGBoost) sobre el mismo histórico mensual del Tiggo 2. Métricas: MAE, RMSE, MAPE y R². Incluye feature engineering con lag features (1,2,3,6,12 meses), medias móviles y features de calendario. Gráficas de predicciones, errores por mes e importancia de features para modelos ML. Botón de descarga CSV del período de test.
+- **feat**: Landing page (`app_principal.py`) actualizada con tarjeta de acceso a Comparativa ML.
+- **feat**: Asistente IA del Dashboard actualizado — los prompts de admin/analista ahora incluyen SARIMA, Prophet, Random Forest, XGBoost y Regresión Lineal. Se añade orientación hacia Comparativa ML en ambos roles.
+- **chore**: Añadido `xgboost` a `requirements.txt`.
+
 ### 2026-03-25 (v7)
 - **feat**: Búsqueda de hiperparámetros SARIMA migrada de grid search exhaustivo a **Optuna TPE** (80 trials bayesianos vs 384 combinaciones fijas, ~4× más rápido con igual calidad). La función `perform_grid_search` fue reemplazada por `perform_optuna_search`.
 - **feat**: UI de resultados de búsqueda mejorada — expander *📊 Detalle de la búsqueda Optuna* con métricas en 3 columnas (trials evaluados, válidos, descartados) y explicación clara de por qué se descarta cada trial (predicciones negativas, fuera de rango, error numérico).
-- **fix**: Corregido error `MS is not supported as period frequency` en `pages/3_Prophet_vs_SARIMA.py` (`to_timestamp('MS')` → `to_timestamp()`).
+- **fix**: Corregido error `MS is not supported as period frequency` (`to_timestamp('MS')` → `to_timestamp()`).
 - **chore**: Añadido `optuna` a `requirements.txt`.
 
 ### 2026-03-25 (v6)
-- **feat**: Nueva página **⚔️ Prophet vs SARIMA** (`pages/3_Prophet_vs_SARIMA.py`) — compara ambos modelos sobre el mismo histórico de ventas con métricas MAE, RMSE, MAPE y tiempo de entrenamiento. Carga datos desde cualquier run de Supabase o desde un Excel subido manualmente. Incluye gráficas de predicciones, errores por mes, descomposición Prophet (tendencia + estacionalidad anual) y explicación didáctica del resultado.
+- **feat**: Nueva página **⚔️ Prophet vs SARIMA** — comparación de ambos modelos sobre el mismo histórico con métricas MAE, RMSE, MAPE y tiempo de entrenamiento. Gráficas de predicciones, errores por mes y descomposición Prophet.
 - **feat**: Landing page actualizada con tarjeta de acceso a Prophet vs SARIMA.
 - **chore**: Añadido `prophet` a `requirements.txt`.
 
 ### 2026-03-25 (v5)
-- **feat**: Limpieza automática de datos integrada en Tab 1 — elimina duplicados por `CHASIS` (conserva el registro más reciente) y filas con `MODELO3` nulo al cargar el Excel. Muestra conteo de filas eliminadas.
-- **feat**: Grid search ampliado de 45 a 192 combinaciones — incluye `d∈{0,1}` y `P∈{0,1}` (antes fijos a 1).
-- **fix**: Criterio de selección del modelo cambiado de AIC mínimo a **MAPE mínimo** sobre el set de test, alineado con el objetivo predictivo.
-- **fix**: Variables exógenas simplificadas a solo `ventas_otros` — eliminadas `tendencia` y `mes` por redundancia con los componentes internos de SARIMA.
-- **fix**: Dashboard Grid Search actualizado para mostrar y ordenar por MAPE (antes ordenaba por AIC).
-- **chore**: UI Tab 1 actualizada — botón "Procesar" y texto en singular para el caso de un único archivo.
+- **feat**: Limpieza automática de datos integrada en Tab 1 — elimina duplicados por `CHASIS` y filas con `MODELO3` nulo al cargar el Excel.
+- **feat**: Grid search ampliado de 45 a 192 combinaciones — incluye `d∈{0,1}` y `P∈{0,1}`.
+- **fix**: Criterio de selección del modelo cambiado de AIC mínimo a **MAPE mínimo** sobre el set de test.
+- **fix**: Variables exógenas simplificadas a solo `ventas_otros`.
+- **fix**: Dashboard Grid Search actualizado para mostrar y ordenar por MAPE.
 
 ### 2026-03-23 (v4)
-- **feat**: Nueva pestaña **🤖 Asistente IA** en el Dashboard — chat sobre el modelo SARIMA entrenado, powered by Google Gemini (`gemini-2.5-flash`). Disponible para admin, analista y gerente. El prompt se adapta al rol: técnico para admin/analista, accionable para gerente. Las respuestas se cachean en `session_state`. Requiere `GENAI_API_KEY` en `secrets.toml`.
-- **chore**: Añadido `google-genai` a `requirements.txt` y `GENAI_API_KEY` a `secrets.toml.example`.
+- **feat**: Nueva pestaña **🤖 Asistente IA** en el Dashboard — chat sobre el modelo SARIMA entrenado, powered by Google Gemini (`gemini-2.5-flash`). Disponible para admin, analista y gerente. Requiere `GENAI_API_KEY` en `secrets.toml`.
+- **chore**: Añadido `google-genai` a `requirements.txt`.
 
 ### 2026-03-23 (v3)
-- **feat**: Nueva pestaña **🏪 Concesionarios** en el Dashboard — análisis de ventas CHERY por concesionario con KPIs, barras horizontales por ciudad, evolución mensual y ranking ABC. Accesible para admin, analista y gerente. Los datos se cargan desde la barra lateral (expander *📂 Datos de Concesionarios*) y se normalizan automáticamente (columnas de fecha, modelo y concesionario con alias múltiples).
+- **feat**: Nueva pestaña **🏪 Concesionarios** en el Dashboard — análisis de ventas CHERY por concesionario con KPIs, barras horizontales por ciudad, evolución mensual y ranking ABC.
 
 ### 2026-03-23 (v2)
 - **feat**: Nueva pestaña **🎓 Preparar Datos** — pipeline académico paso a paso con descarga del `.xlsx` de entrenamiento.
-- **feat**: Parámetro **Fecha fin de datos** en la pestaña Entrenamiento — permite acotar el histórico por una fecha máxima explícita; se combina con «Eliminar mes actual» tomando el corte más conservador. Se persiste en `metricas` (Supabase).
+- **feat**: Parámetro **Fecha fin de datos** en la pestaña Entrenamiento.
 
 ### 2026-03-23 (v1)
-- **feat**: Detección automática de tipo de hoja al subir archivos — `Hoja1` → ventas, `Stock Actual` → stock. Permite cargar ambos tipos en una misma subida sin configuración adicional.
-- **fix**: Serialización JSON del test ADF corregida (`numpy.bool_` → `Python bool`) para evitar error al guardar métricas en Supabase.
-- **fix**: Modelo `.pkl` comprimido con gzip antes de subir a Supabase Storage, resolviendo el error 413 (payload demasiado grande) en modelos grandes.
+- **feat**: Detección automática de tipo de hoja al subir archivos — `Hoja1` → ventas, `Stock Actual` → stock.
+- **fix**: Serialización JSON del test ADF corregida (`numpy.bool_` → `Python bool`).
+- **fix**: Modelo `.pkl` comprimido con gzip antes de subir a Supabase Storage (resuelve error 413).
 
 ---
 
