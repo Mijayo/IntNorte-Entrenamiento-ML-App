@@ -11,3 +11,4 @@ supabase
 google-genai
 prophet
 optuna
+xgboost

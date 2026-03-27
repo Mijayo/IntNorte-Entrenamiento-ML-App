@@ -55,9 +55,9 @@ with col2:
 
 with col3:
     st.warning("""
-    ### ⚔️ Prophet vs SARIMA
-    Compara el rendimiento de Prophet (Meta) contra SARIMA
-    sobre el mismo histórico de ventas.
+    ### 🏆 Comparativa ML
+    Enfrenta SARIMA, Prophet, Regresión Lineal, Random Forest
+    y XGBoost para encontrar el mejor predictor mensual del Tiggo 2.
 
     > Solo disponible para **Administradores** y **Analistas**.
     """)

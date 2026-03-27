@@ -314,8 +314,9 @@ if st.session_state.role == 'manager':
     with tabs[3]:
         st.header("🤖 Asistente IA", divider='violet')
         st.markdown(
-            "Consulta al asistente sobre las predicciones, el modelo o las recomendaciones de compra. "
-            "Las respuestas se basan únicamente en los datos del modelo SARIMA entrenado."
+            "Consulta al asistente sobre las predicciones, el modelo activo o las recomendaciones de compra. "
+            "Las respuestas se basan en los datos del modelo SARIMA entrenado. "
+            "Para comparar con otros modelos (Prophet, XGBoost, Random Forest), usa la página **Comparativa ML**."
         )
 
         if gemini is None:
@@ -470,7 +471,8 @@ if st.session_state.role in ['admin', 'analyst']:
         st.header("🤖 Asistente IA", divider='violet')
         st.markdown(
             "Consulta al asistente sobre las predicciones, el modelo SARIMA o las métricas de validación. "
-            "Las respuestas se basan únicamente en los datos del modelo entrenado."
+            "Las respuestas se basan en los datos del modelo activo. "
+            "Para comparar SARIMA con Prophet, XGBoost y Random Forest, usa la página **Comparativa ML**."
         )
 
         if gemini is None:
@@ -488,7 +490,8 @@ if st.session_state.role in ['admin', 'analyst']:
                     try:
                         prompt_tiggo_a = (
                             'Actúa como un Senior Data Scientist experto en series temporales '
-                            'y modelos SARIMA aplicados a predicción de demanda automotriz.\n\n'
+                            'y modelos de predicción de demanda automotriz (SARIMA, Prophet, '
+                            'Random Forest, XGBoost, Regresión Lineal).\n\n'
                             '## OBJETIVO:\n'
                             'Responder de forma técnica y precisa a la consulta del analista '
                             'sobre el modelo o sus métricas de validación.\n\n'
