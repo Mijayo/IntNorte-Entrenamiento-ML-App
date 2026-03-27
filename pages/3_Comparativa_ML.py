@@ -367,12 +367,11 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
 
     progress = st.progress(0)
     status   = st.empty()
-    paso     = 0
+    paso     = [0]
 
     def avanzar(nombre):
-        nonlocal paso
-        paso += 1
-        progress.progress(paso / n_activos)
+        paso[0] += 1
+        progress.progress(paso[0] / n_activos)
         status.text(f"✔ {nombre} completado")
 
     # ── SARIMA ────────────────────────────────────────────────────────────────
