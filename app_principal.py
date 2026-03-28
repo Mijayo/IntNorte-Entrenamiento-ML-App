@@ -31,33 +31,37 @@ show_header("Sistema de Predicción TIGGO 2", "Selecciona una aplicación en el 
 
 show_user_info()
 
-st.markdown("---")
-
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.info("""
-    ### 🤖 Entrenamiento
-    Carga datos de ventas, entrena un nuevo modelo SARIMA
-    y publícalo en el Dashboard con un clic.
-
-    > Solo disponible para **Administradores** y **Analistas**.
-    """)
+    st.markdown("""
+<div class="feature-card blue">
+  <span class="feature-card-icon">🤖</span>
+  <h3>Entrenamiento</h3>
+  <p>Carga datos de ventas, entrena un nuevo modelo SARIMA con búsqueda bayesiana
+     (Optuna) y publícalo en el Dashboard con un clic.</p>
+  <span class="feature-card-badge badge-tech">Admin · Analista</span>
+</div>
+""", unsafe_allow_html=True)
 
 with col2:
-    st.success("""
-    ### 🚗 Dashboard
-    Visualiza predicciones, KPIs y métricas del modelo activo.
-    Cambia entre versiones históricas desde el panel lateral.
-
-    > Disponible para **todos los roles**.
-    """)
+    st.markdown("""
+<div class="feature-card green">
+  <span class="feature-card-icon">📊</span>
+  <h3>Dashboard</h3>
+  <p>Visualiza predicciones, KPIs y métricas del modelo activo.
+     Cambia entre versiones históricas desde el panel lateral.</p>
+  <span class="feature-card-badge badge-all">Todos los roles</span>
+</div>
+""", unsafe_allow_html=True)
 
 with col3:
-    st.warning("""
-    ### 🏆 Comparativa ML
-    Enfrenta SARIMA, Prophet, Regresión Lineal, Random Forest
-    y XGBoost para encontrar el mejor predictor mensual del Tiggo 2.
-
-    > Solo disponible para **Administradores** y **Analistas**.
-    """)
+    st.markdown("""
+<div class="feature-card amber">
+  <span class="feature-card-icon">🏆</span>
+  <h3>Comparativa ML</h3>
+  <p>Enfrenta SARIMA, Prophet, Regresión Lineal, Random Forest y XGBoost
+     para encontrar el mejor predictor mensual del Tiggo 2.</p>
+  <span class="feature-card-badge badge-tech">Admin · Analista</span>
+</div>
+""", unsafe_allow_html=True)

@@ -33,14 +33,11 @@ from utils_validacion import (validate_dataframe, show_validation_results,
 
 st.set_page_config(page_title="Entrenamiento SARIMA", page_icon="🤖", layout="wide")
 
+# CSS global inyectado por show_header() — estilos extra de progreso
 st.markdown("""
-    <style>
-    .main {background-color: #f5f7fa;}
-    .stProgress > div > div > div > div {background-color: #1C7293;}
-    .success-box {background-color:#d4edda;border-left:4px solid #28a745;padding:15px;border-radius:5px;margin:10px 0;}
-    .warning-box {background-color:#fff3cd;border-left:4px solid #ffc107;padding:15px;border-radius:5px;margin:10px 0;}
-    .comparison-worse {background-color:#f8d7da;padding:10px;border-radius:5px;}
-    </style>
+<style>
+.stProgress > div > div > div > div { background-color: #20C997 !important; }
+</style>
 """, unsafe_allow_html=True)
 
 # ── Auth ─────────────────────────────────────────────────────────────────────

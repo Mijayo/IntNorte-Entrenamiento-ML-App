@@ -10,6 +10,8 @@ import hashlib
 import time
 from datetime import datetime, timedelta
 
+from styles import get_global_css, get_login_css
+
 LOGO_URL = "https://cdn.brandfetch.io/idbC6t7DJN/w/904/h/196/theme/light/logo.png?c=1bxid64Mup7aczewSAYMX&t=1766585238441"
 
 # ============================================================================
@@ -101,83 +103,72 @@ def logout():
     st.session_state.permissions = {}
 
 def show_login_page(app_title="Sistema TIGGO 2"):
-    """Mostrar página de login corporativa"""
-    
-    st.markdown("""
-        <style>
-        .login-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 40px;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .login-logo {
-            width: 200px;
-            margin-bottom: 20px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        st.markdown('<div class="login-container">', unsafe_allow_html=True)
-        
-        # Logo
+    """Mostrar página de login corporativa — dark premium."""
+    st.markdown(get_login_css(), unsafe_allow_html=True)
+
+    _, col, _ = st.columns([1, 1.4, 1])
+
+    with col:
         st.markdown(f"""
-            <div class="login-header">
-                <img src="{LOGO_URL}"
-                     class="login-logo">
-                <h2 style="color: #003B5C;">{app_title}</h2>
-            </div>
+        <div class="login-card">
+          <img src="{LOGO_URL}" class="login-logo">
+          <div class="login-title">{app_title}</div>
+          <div class="login-subtitle">Sistema de Predicción de Demanda</div>
+        </div>
         """, unsafe_allow_html=True)
-        
-        # Formulario
+
         with st.form("login_form"):
-            username = st.text_input("👤 Usuario", placeholder="Ingrese su usuario")
-            password = st.text_input("🔒 Contraseña", type="password", placeholder="Ingrese su contraseña")
-            submit = st.form_submit_button("🚀 Ingresar", use_container_width=True)
-            
+            username = st.text_input("Usuario", placeholder="Ingresa tu usuario")
+            password = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
+            submit   = st.form_submit_button("Ingresar →", use_container_width=True)
+
             if submit:
                 if username and password:
                     success, message = login(username, password)
-                    
                     if success:
-                        st.success(message)
-                        time.sleep(1)
+                        st.success("Acceso concedido")
+                        time.sleep(0.8)
                         st.rerun()
                     else:
                         st.error(message)
                 else:
-                    st.warning("Por favor complete todos los campos")
-        
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+                    st.warning("Por favor completa todos los campos")
+
+        st.markdown(
+            '<p class="login-footer-txt">Acceso restringido · Sistema TIGGO 2 · ISDI</p>',
+            unsafe_allow_html=True,
+        )
 
 def show_user_info():
-    """Mostrar info del usuario logueado en sidebar"""
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(f"""
-        ### {st.session_state.user_icon} Usuario
-        **{st.session_state.user_name}**  
-        `{st.session_state.username}`
-        
-        **Rol:** {st.session_state.role}
-    """)
-    
-    # Tiempo de sesión
+    """Mostrar info del usuario logueado en el sidebar — diseño premium."""
+    remaining = SESSION_TIMEOUT
     if st.session_state.login_time:
-        elapsed = datetime.now() - st.session_state.login_time
-        remaining = SESSION_TIMEOUT - int(elapsed.total_seconds() / 60)
-        st.sidebar.info(f"⏱️ Sesión expira en: {remaining} min")
-    
-    if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
+        elapsed   = datetime.now() - st.session_state.login_time
+        remaining = max(0, SESSION_TIMEOUT - int(elapsed.total_seconds() / 60))
+
+    role_badges = {
+        'admin':   '<span class="role-badge admin-badge">👑 Admin</span>',
+        'manager': '<span class="role-badge manager-badge">💼 Gerente</span>',
+        'analyst': '<span class="role-badge analyst-badge">📊 Analista</span>',
+        'viewer':  '<span class="role-badge viewer-badge">👁 Viewer</span>',
+    }
+    badge = role_badges.get(st.session_state.role, '')
+
+    st.sidebar.markdown(f"""
+<div class="user-info-card">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+    <span style="font-size:1.55rem;line-height:1">{st.session_state.user_icon}</span>
+    <div>
+      <div class="user-name">{st.session_state.user_name}</div>
+      <div class="user-handle">@{st.session_state.username}</div>
+    </div>
+  </div>
+  {badge}
+  <div class="session-timer">⏱ Sesión expira en {remaining} min</div>
+</div>
+""", unsafe_allow_html=True)
+
+    if st.sidebar.button("Cerrar Sesión", use_container_width=True):
         logout()
         st.rerun()
 
@@ -204,15 +195,16 @@ def has_permission(permission_name):
     return st.session_state.permissions.get(permission_name, False)
 
 def show_header(title, subtitle=""):
-    """Mostrar header corporativo con logo y título"""
-    col_logo, col_title = st.columns([1, 4])
-    with col_logo:
-        st.markdown(
-            f'<img src="{LOGO_URL}" style="width:180px; margin-top:8px;">',
-            unsafe_allow_html=True
-        )
-    with col_title:
-        st.markdown(f"## {title}")
-        if subtitle:
-            st.markdown(f"_{subtitle}_")
-    st.markdown("---")
+    """Header corporativo premium — inyecta el CSS global y muestra logo + título."""
+    st.markdown(get_global_css(), unsafe_allow_html=True)
+    sub_html = f'<div class="header-sub">{subtitle}</div>' if subtitle else ''
+    st.markdown(f"""
+<div class="page-header">
+  <img src="{LOGO_URL}">
+  <div class="header-divider"></div>
+  <div class="header-text">
+    <h1>{title}</h1>
+    {sub_html}
+  </div>
+</div>
+""", unsafe_allow_html=True)

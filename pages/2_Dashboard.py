@@ -19,6 +19,7 @@ from google import genai
 import supabase_io as sio
 from auth_system import (init_session_state, show_login_page, show_user_info,
                          check_session_timeout, has_permission, show_header)
+from styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Config ───────────────────────────────────────────────────────────────────
 
@@ -27,18 +28,7 @@ st.set_page_config(
     layout="wide", initial_sidebar_state="expanded"
 )
 
-st.markdown("""
-    <style>
-    .main {background-color: #f5f7fa;}
-    .stMetric {background-color:white;padding:15px;border-radius:10px;box-shadow:0 2px 4px rgba(0,0,0,0.1);}
-    h1 {color: #065A82;} h2 {color: #1C7293;}
-    .role-badge {display:inline-block;padding:5px 15px;border-radius:15px;font-weight:bold;margin:5px 0;}
-    .admin-badge   {background-color:#ffd700;color:#000;}
-    .manager-badge {background-color:#4CAF50;color:white;}
-    .analyst-badge {background-color:#2196F3;color:white;}
-    .viewer-badge  {background-color:#9E9E9E;color:white;}
-    </style>
-""", unsafe_allow_html=True)
+# CSS inyectado por show_header() vía styles.get_global_css()
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -177,28 +167,32 @@ else:
 # ── Tab 1: Dashboard ──────────────────────────────────────────────────────────
 
 with tabs[0]:
-    st.header("📊 Dashboard General", divider='blue')
+    st.markdown(section_header("Dashboard General", "📊"), unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Ventas", f"{metricas['datos_limpios']['total_ventas']:,}")
-    col2.metric("Meses de Datos", metricas['datos_limpios']['meses_datos'])
     mape = metricas['walk_forward_validation']['mape']
-    col3.metric("MAPE", f"{mape:.2f}%")
-    col4.metric("Próximo Mes", f"{int(metricas['predicciones_futuras']['proximo_mes'])}")
+    col1.markdown(kpi_card("Total Ventas",    f"{metricas['datos_limpios']['total_ventas']:,}", "📦"), unsafe_allow_html=True)
+    col2.markdown(kpi_card("Meses de Datos",  metricas['datos_limpios']['meses_datos'],         "📅", "blue"), unsafe_allow_html=True)
+    col3.markdown(kpi_card("MAPE",            f"{mape:.2f}%",                                   "🎯", "amber"), unsafe_allow_html=True)
+    col4.markdown(kpi_card("Próximo Mes",     f"{int(metricas['predicciones_futuras']['proximo_mes'])} uds", "🔮"), unsafe_allow_html=True)
 
-    st.subheader("Serie Temporal Histórica")
+    st.markdown(section_header("Serie Temporal Histórica"), unsafe_allow_html=True)
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Scatter(
         x=hist_total.index, y=hist_total.values,
         mode='lines+markers', name='Ventas Mensuales',
-        line=dict(color='#065A82', width=3), marker=dict(size=6)
+        line=dict(color=COLORS['primary'], width=2.5),
+        marker=dict(size=5, color=COLORS['primary']),
+        fill='tozeroy', fillcolor='rgba(32,201,151,0.06)',
     ))
-    fig_hist.add_hline(y=hist_total.mean(), line_dash="dash", line_color="red",
-                       annotation_text=f"Media: {hist_total.mean():.1f}",
-                       annotation_position="right")
-    fig_hist.update_layout(title='Ventas Mensuales TIGGO 2',
-                           xaxis_title='Fecha', yaxis_title='Ventas',
-                           template='plotly_white', height=500, hovermode='x unified')
+    fig_hist.add_hline(
+        y=hist_total.mean(), line_dash="dot", line_color=COLORS['accent'],
+        annotation_text=f"Media: {hist_total.mean():.1f}",
+        annotation_position="top right",
+        annotation_font_color=COLORS['accent'],
+    )
+    apply_chart_theme(fig_hist, height=480, title='Ventas Mensuales — TIGGO 2')
+    fig_hist.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
     st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
 
     if st.session_state.role in ['admin', 'analyst']:
@@ -222,34 +216,40 @@ with tabs[0]:
 # ── Tab 2: Predicciones ───────────────────────────────────────────────────────
 
 with tabs[1]:
-    st.header("🔮 Predicciones Futuras", divider='green')
+    st.markdown(section_header("Predicciones Futuras", "🔮"), unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Próximo Mes", f"{pred_total['Predicción'].iloc[0]:.0f} ventas")
-    col2.metric("Total Horizonte", f"{pred_total['Predicción'].sum():.0f} ventas")
-    col3.metric("Promedio Mensual", f"{pred_total['Predicción'].mean():.1f} ventas")
+    col1.markdown(kpi_card("Próximo Mes",     f"{pred_total['Predicción'].iloc[0]:.0f} uds", "🔮"), unsafe_allow_html=True)
+    col2.markdown(kpi_card("Total Horizonte", f"{pred_total['Predicción'].sum():.0f} uds",   "📦", "blue"), unsafe_allow_html=True)
+    col3.markdown(kpi_card("Promedio Mensual",f"{pred_total['Predicción'].mean():.1f} uds",  "📊", "amber"), unsafe_allow_html=True)
 
     fig_pred = go.Figure()
-    fig_pred.add_trace(go.Scatter(x=hist_total.index, y=hist_total.values,
-                                   mode='lines', name='Histórico',
-                                   line=dict(color='#065A82', width=2)))
-    fig_pred.add_trace(go.Scatter(x=pred_total['Fecha'], y=pred_total['Predicción'],
-                                   mode='lines+markers', name='Predicción',
-                                   line=dict(color='red', width=3),
-                                   marker=dict(size=10, symbol='star')))
+    fig_pred.add_trace(go.Scatter(
+        x=hist_total.index, y=hist_total.values,
+        mode='lines', name='Histórico',
+        line=dict(color=COLORS['primary'], width=2),
+    ))
+    fig_pred.add_trace(go.Scatter(
+        x=pred_total['Fecha'], y=pred_total['Predicción'],
+        mode='lines+markers', name='Predicción',
+        line=dict(color=COLORS['accent'], width=2.5),
+        marker=dict(size=9, symbol='circle', color=COLORS['accent'],
+                    line=dict(color='#080D18', width=1.5)),
+    ))
     fig_pred.add_trace(go.Scatter(
         x=pred_total['Fecha'].tolist() + pred_total['Fecha'].tolist()[::-1],
         y=pred_total['IC_Superior'].tolist() + pred_total['IC_Inferior'].tolist()[::-1],
-        fill='toself', fillcolor='rgba(255,0,0,0.15)',
-        line=dict(color='rgba(255,0,0,0)'), name='IC 95%'
+        fill='toself', fillcolor='rgba(245,158,11,0.1)',
+        line=dict(color='rgba(0,0,0,0)'), name='IC 95%',
     ))
-    fig_pred.add_shape(type="line",
-                       x0=hist_total.index[-1], x1=hist_total.index[-1],
-                       y0=0, y1=1, yref="paper",
-                       line=dict(color="gray", width=2, dash="dash"))
-    fig_pred.update_layout(title='Histórico + Predicción',
-                           xaxis_title='Fecha', yaxis_title='Ventas',
-                           template='plotly_white', height=600, hovermode='x unified')
+    fig_pred.add_shape(
+        type="line",
+        x0=hist_total.index[-1], x1=hist_total.index[-1],
+        y0=0, y1=1, yref="paper",
+        line=dict(color='rgba(100,116,139,0.6)', width=1.5, dash="dot"),
+    )
+    apply_chart_theme(fig_pred, height=560, title='Histórico + Predicción — TIGGO 2')
+    fig_pred.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
     st.plotly_chart(fig_pred, use_container_width=True, config={'displayModeBar': False})
 
     st.subheader("📋 Tabla de Predicciones")
@@ -383,11 +383,11 @@ if st.session_state.role in ['admin', 'analyst']:
 
     # Grid Search
     with tabs[3]:
-        st.header("🔍 Grid Search de Parámetros", divider='blue')
+        st.markdown(section_header("Grid Search de Parámetros", "🔍"), unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
-        col1.metric("Combinaciones Evaluadas", len(grid_search))
-        col2.metric("Mejor MAPE", f"{grid_search['mape'].min():.2f}%")
-        col3.metric("AIC del modelo seleccionado", f"{grid_search.loc[grid_search['mape'].idxmin(), 'aic']:.2f}")
+        col1.markdown(kpi_card("Combinaciones", len(grid_search), "🔢"), unsafe_allow_html=True)
+        col2.markdown(kpi_card("Mejor MAPE", f"{grid_search['mape'].min():.2f}%", "🎯", "amber"), unsafe_allow_html=True)
+        col3.markdown(kpi_card("AIC seleccionado", f"{grid_search.loc[grid_search['mape'].idxmin(), 'aic']:.0f}", "📐", "blue"), unsafe_allow_html=True)
 
         st.subheader("Top 10 Modelos por MAPE")
         top10 = grid_search.nsmallest(10, 'mape')[
@@ -404,29 +404,34 @@ if st.session_state.role in ['admin', 'analyst']:
 
         fig_grid = px.scatter(grid_search, x='aic', y='mape', color='p', size='mae',
                               hover_data=['p', 'd', 'q', 'P', 'D', 'Q'],
-                              title='Grid Search: AIC vs MAPE')
-        fig_grid.update_layout(height=500, template='plotly_white')
+                              color_continuous_scale='Teal')
+        apply_chart_theme(fig_grid, height=480, title='Grid Search — AIC vs MAPE')
         st.plotly_chart(fig_grid, use_container_width=True, config={'displayModeBar': False})
 
     # Walk-Forward
     with tabs[4]:
-        st.header("🔄 Walk-Forward Validation", divider='blue')
+        st.markdown(section_header("Walk-Forward Validation", "🔄"), unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("MAPE Promedio", f"{walk_forward['error_pct'].mean():.2f}%")
-        col2.metric("Mejor Mes", f"{walk_forward['error_pct'].min():.2f}%")
-        col3.metric("Peor Mes", f"{walk_forward['error_pct'].max():.2f}%")
-        col4.metric("Meses Evaluados", len(walk_forward))
+        col1.markdown(kpi_card("MAPE Promedio",   f"{walk_forward['error_pct'].mean():.2f}%", "📊", "amber"), unsafe_allow_html=True)
+        col2.markdown(kpi_card("Mejor Mes",       f"{walk_forward['error_pct'].min():.2f}%",  "✅"), unsafe_allow_html=True)
+        col3.markdown(kpi_card("Peor Mes",        f"{walk_forward['error_pct'].max():.2f}%",  "⚠️", "red"), unsafe_allow_html=True)
+        col4.markdown(kpi_card("Meses Evaluados", len(walk_forward),                           "📅", "blue"), unsafe_allow_html=True)
 
         fig_wf = go.Figure()
-        fig_wf.add_trace(go.Scatter(x=walk_forward['fecha'], y=walk_forward['real'],
-                                     mode='lines+markers', name='Real',
-                                     line=dict(color='green', width=3)))
-        fig_wf.add_trace(go.Scatter(x=walk_forward['fecha'], y=walk_forward['prediccion'],
-                                     mode='lines+markers', name='Predicción',
-                                     line=dict(color='red', width=3, dash='dash')))
-        fig_wf.update_layout(title='Walk-Forward: Real vs Predicción',
-                              xaxis_title='Fecha', yaxis_title='Ventas',
-                              template='plotly_white', height=500)
+        fig_wf.add_trace(go.Scatter(
+            x=walk_forward['fecha'], y=walk_forward['real'],
+            mode='lines+markers', name='Real',
+            line=dict(color=COLORS['primary'], width=2.5),
+            marker=dict(size=7, color=COLORS['primary']),
+        ))
+        fig_wf.add_trace(go.Scatter(
+            x=walk_forward['fecha'], y=walk_forward['prediccion'],
+            mode='lines+markers', name='Predicción',
+            line=dict(color=COLORS['accent'], width=2.5, dash='dot'),
+            marker=dict(size=7, color=COLORS['accent'], symbol='diamond'),
+        ))
+        apply_chart_theme(fig_wf, height=480, title='Walk-Forward — Real vs Predicción')
+        fig_wf.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
         st.plotly_chart(fig_wf, use_container_width=True, config={'displayModeBar': False})
 
         wf_display = walk_forward.copy()
@@ -612,15 +617,14 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
                         fig_bar = px.bar(
                             df_bar, x='Ventas', y='Concesionario',
                             orientation='h', text='Ventas',
-                            color_discrete_sequence=['#1C7293']
+                            color_discrete_sequence=[COLORS['primary']]
                         )
-                    fig_bar.update_traces(textposition='outside')
-                    fig_bar.update_layout(
-                        template='plotly_white',
-                        height=max(350, 60 + len(df_bar) * 35),
-                        yaxis={'categoryorder': 'total ascending'},
-                        margin=dict(r=80), showlegend=True
-                    )
+                    fig_bar.update_traces(textposition='outside',
+                                          textfont=dict(color='#94A3B8', size=11))
+                    apply_chart_theme(fig_bar, height=max(350, 60 + len(df_bar) * 35),
+                                      title='Ventas por Concesionario')
+                    fig_bar.update_layout(yaxis={'categoryorder': 'total ascending'},
+                                          margin=dict(r=100), showlegend=True)
                     st.plotly_chart(fig_bar, use_container_width=True,
                                     config={'displayModeBar': False})
 
@@ -642,14 +646,14 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
                             )
                             fig_ts = px.line(
                                 df_ts, x=fecha_col, y='Ventas', color=conc_col,
-                                markers=True, template='plotly_white',
-                                color_discrete_sequence=px.colors.qualitative.Plotly
+                                markers=True,
+                                color_discrete_sequence=COLORS['series'],
                             )
-                            fig_ts.update_layout(
-                                height=420, hovermode='x unified',
-                                xaxis_title='Mes', yaxis_title='Unidades',
-                                legend_title='Concesionario'
-                            )
+                            apply_chart_theme(fig_ts, height=420,
+                                              title='Evolución Mensual por Concesionario')
+                            fig_ts.update_layout(hovermode='x unified',
+                                                 xaxis_title='Mes', yaxis_title='Unidades',
+                                                 legend_title='Concesionario')
                             st.plotly_chart(fig_ts, use_container_width=True,
                                             config={'displayModeBar': False})
 
@@ -660,13 +664,14 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
                                   .size().reset_index(name='Ventas'))
                         fig_mod = px.bar(
                             df_mod, x=conc_col, y='Ventas', color=modelo_col,
-                            barmode='stack', template='plotly_white',
-                            color_discrete_sequence=px.colors.qualitative.Pastel
+                            barmode='stack',
+                            color_discrete_sequence=COLORS['series'],
                         )
+                        apply_chart_theme(fig_mod, height=450,
+                                          title='Distribución de Modelos por Concesionario')
                         fig_mod.update_layout(
-                            height=450, xaxis_tickangle=-30,
-                            xaxis_title='', yaxis_title='Unidades',
-                            legend_title='Modelo'
+                            xaxis_tickangle=-30, xaxis_title='', yaxis_title='Unidades',
+                            legend_title='Modelo',
                         )
                         st.plotly_chart(fig_mod, use_container_width=True,
                                         config={'displayModeBar': False})
@@ -690,6 +695,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 
-st.markdown("---")
-st.markdown("<div style='text-align:center;color:#666;'><strong>Dashboard TIGGO 2</strong></div>",
-            unsafe_allow_html=True)
+st.markdown(
+    '<div class="app-footer">Sistema TIGGO 2 &nbsp;·&nbsp; ISDI &nbsp;·&nbsp; Predicción de Demanda</div>',
+    unsafe_allow_html=True,
+)

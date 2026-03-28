@@ -37,13 +37,7 @@ from auth_system import (init_session_state, show_login_page, show_user_info,
 
 st.set_page_config(page_title="Comparativa ML", page_icon="🏆", layout="wide")
 
-st.markdown("""
-    <style>
-    .main {background-color: #f5f7fa;}
-    .winner-box {background-color:#fff3cd;border-left:4px solid #ffc107;
-                 padding:15px;border-radius:5px;margin:10px 0;font-size:1.1em;}
-    </style>
-""", unsafe_allow_html=True)
+# CSS global inyectado por show_header(); .winner-box definido en styles.py
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 

@@ -353,6 +353,15 @@ __pycache__/
 
 ## Changelog
 
+### 2026-03-28 (v9)
+- **feat**: Dark premium UI aplicada a toda la aplicación — tema oscuro consistente (`#080D18` bg, `#20C997` teal, `#F59E0B` amber) en las cuatro páginas.
+- **feat**: Nuevo módulo `styles.py` — CSS global centralizado con helpers `kpi_card()`, `section_header()` y `apply_chart_theme()`. Evita duplicar estilos en cada página; se inyecta una sola vez vía `show_header()`.
+- **feat**: `.streamlit/config.toml` añadido — establece el tema base de Streamlit para que widgets nativos (botones, sliders, tabs) hereden el dark theme sin CSS extra.
+- **feat**: `auth_system.py` rediseñado — login premium con tarjeta oscura y borde tricolor, header con logo invertido y divider, sidebar user-card con badge de rol y countdown de sesión.
+- **feat**: `app_principal.py` — tarjetas de funcionalidades migradas de `st.info/success/warning` a componentes HTML `feature-card` (blue / green / amber) con tipografía Exo 2 + Barlow (Google Fonts).
+- **feat**: `pages/2_Dashboard.py` — KPIs migrados a `kpi_card()` custom, todos los charts a `apply_chart_theme()` con paleta teal/amber; footer HTML premium.
+- **feat**: `pages/1_Entrenamiento.py` y `pages/3_Comparativa_ML.py` — CSS legacy eliminado, heredan el global; `.winner-box` y demás clases movidas a `styles.py`.
+
 ### 2026-03-27 (v8)
 - **feat**: Nueva página **🏆 Comparativa ML** (`pages/3_Comparativa_ML.py`) — reemplaza a Prophet vs SARIMA. Enfrenta hasta 5 modelos (SARIMA, Prophet, Regresión Lineal, Random Forest, XGBoost) sobre el mismo histórico mensual del Tiggo 2. Métricas: MAE, RMSE, MAPE y R². Incluye feature engineering con lag features (1,2,3,6,12 meses), medias móviles y features de calendario. Gráficas de predicciones, errores por mes e importancia de features para modelos ML. Botón de descarga CSV del período de test.
 - **feat**: Landing page (`app_principal.py`) actualizada con tarjeta de acceso a Comparativa ML.
