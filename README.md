@@ -39,6 +39,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     modelo_total_mejorado.pkl.gz
     acf_plot.png
     pacf_plot.png
+    llm_cache.json                  ← Caché de respuestas Gemini (persistente por run)
 ```
 
 ---
@@ -203,9 +204,10 @@ Al final de la pestaña hay un **botón de descarga** del `.xlsx` resultante con
 - **Algoritmo**: SARIMAX con variable exógena (ventas de otros modelos de la misma marca)
 - **Búsqueda de hiperparámetros**: [Optuna](https://optuna.org/) con sampler **TPE (Tree-structured Parzen Estimator)** — 80 trials bayesianos sobre el espacio `p ∈ {0–3}`, `d ∈ {0–1}`, `q ∈ {0–3}`, `P ∈ {0–1}`, `D ∈ {0–1}`, `Q ∈ {0–2}`, `m=12` (~4× más rápido que el grid search exhaustivo de 384 combinaciones, con igual o mejor calidad)
 - **Criterio**: MAPE mínimo sobre el conjunto de test; se descartan predicciones fuera del rango `[0, max_ventas]`
-- **Trials descartados**: combinaciones con predicciones negativas, superiores al límite configurado o con errores numéricos de convergencia
-- **Variable exógena**: ventas mensuales de los demás modelos de la misma marca (`ventas_otros`)
+- **Trials descartados**: combinaciones con predicciones negativas, superiores al límite configurado, errores numéricos de convergencia, o combinaciones `d=1 AND D=1` (sobre-diferenciación que inestabiliza el modelo)
+- **Variable exógena**: ventas mensuales de los demás modelos de la misma marca (`ventas_otros`). En el horizonte de predicción se usa la media móvil de los últimos 6 meses como valor asumido; el usuario ve un aviso informativo antes del forecast.
 - **Intervalos de confianza**: 95% en todos los puntos del forecast
+- **Walk-forward**: valida hasta los últimos **12 meses** (antes 6), con mínimo igual al horizonte de predicción
 
 ### Flujo de aprobación
 
@@ -272,6 +274,14 @@ La tabla de resultados resalta en verde las mejores celdas de cada métrica. El 
 
 Botón de descarga del período de test como **CSV**, con columnas `Real`, predicción y error absoluto de cada modelo.
 
+### Publicar modelo ganador en producción
+
+Al finalizar la comparativa aparece una sección **Publicar en producción** que:
+- Muestra el modelo ganador y su MAPE
+- Lanza una advertencia si el MAPE supera el 20%
+- Si la fuente de datos fue un run de Supabase, permite activarlo como modelo de producción con un clic (actualiza `latest.txt`)
+- Si la fuente fue un Excel manual, informa al usuario que debe entrenar un modelo desde la pestaña Entrenamiento
+
 ---
 
 ## App 2 — Dashboard (`pages/2_Dashboard.py`)
@@ -280,9 +290,23 @@ Botón de descarga del período de test como **CSV**, con columnas `Real`, predi
 
 La barra lateral lista todos los runs disponibles ordenados por fecha. El run activo (apuntado por `latest.txt`) aparece con 🟢. Los históricos con 🔵 pueden seleccionarse sin alterar producción.
 
-### Carga de datos de concesionarios (sidebar)
+### Alertas de calidad del modelo
 
-El expander **📂 Datos de Concesionarios** en la barra lateral acepta un Excel con el histórico de ventas del mercado. El archivo se normaliza automáticamente:
+El KPI de MAPE en los tabs **Dashboard** y **Predicciones** cambia de color según el umbral:
+
+| MAPE | Color | Mensaje |
+|------|-------|---------|
+| ≤ 10% | verde (por defecto) | Sin alerta — modelo de alta precisión |
+| 10–20% | ámbar | Advertencia — precisión aceptable, monitorear |
+| > 20% | rojo | Error — modelo de baja fiabilidad, reentrenar |
+
+### Selector de versión y barra lateral
+
+La barra lateral muestra el selector de runs y el estado de la carga de concesionarios (`🏪 N registros cargados` / `sin datos — carga en la pestaña 🏪`). El uploader completo de concesionarios se encuentra dentro del tab **🏪 Concesionarios** (expander auto-abierto cuando no hay datos cargados).
+
+### Tab 🏪 Concesionarios (admin / analista / gerente)
+
+Contiene el uploader de Excel con validación robusta: columnas requeridas marcadas como ❌ (bloqueante) o ⚠️ (advertencia no bloqueante), mensaje de error específico por columna ausente, normalización automática de nombres de columna y descarte de filas de cabecera extra.
 
 - Columnas de fecha aceptadas: `FECHA_VENTA`, `FECHA-VENTA`, `FECHA VENTA`
 - Columnas de modelo aceptadas: `MODELO2`, `MODELO3`, `MODELO`
@@ -290,9 +314,7 @@ El expander **📂 Datos de Concesionarios** en la barra lateral acepta un Excel
 - Columna de ciudad: `AGE` o `CIUDAD`/`REGION`
 - Si la primera fila contiene descripciones (todo texto), se descarta automáticamente
 
-### Tab 🏪 Concesionarios (admin / analista / gerente)
-
-Disponible una vez cargado el Excel desde el sidebar. Muestra análisis de ventas CHERY filtradas por año, modelo y ciudad:
+Disponible una vez cargado el Excel. Muestra análisis de ventas CHERY filtradas por año, modelo y ciudad:
 
 | Elemento | Descripción |
 |----------|-------------|
@@ -318,7 +340,7 @@ Disponible una vez cargado el Excel desde el sidebar. Muestra análisis de venta
 
 ### Tab 🤖 Asistente IA (admin / analista / gerente)
 
-Chat sobre el modelo entrenado, alimentado con Gemini (`gemini-2.5-flash`). El contexto que recibe el LLM incluye parámetros SARIMA, AIC/BIC, MAPE, predicciones con intervalos de confianza y tendencia de los últimos 3 meses. Las respuestas se cachean en `session_state` para evitar llamadas repetidas.
+Chat sobre el modelo entrenado, alimentado con Gemini (`gemini-2.5-flash`). El contexto que recibe el LLM incluye parámetros SARIMA, AIC/BIC, MAPE, predicciones con intervalos de confianza y tendencia de los últimos 3 meses. Las respuestas se cachean en `session_state` y se **persisten en Supabase** (`<run>/llm_cache.json`) para sobrevivir recargas de página. El caché se invalida automáticamente al cambiar de run en la barra lateral.
 
 El prompt está adaptado al rol:
 - **Admin / Analista** — tono técnico; acepta preguntas sobre AIC, MAPE, walk-forward, parámetros del modelo o comparativa de algoritmos. El asistente conoce SARIMA, Prophet, Random Forest, XGBoost y Regresión Lineal.
@@ -352,6 +374,17 @@ __pycache__/
 ---
 
 ## Changelog
+
+### 2026-04-04 (v10)
+- **fix**: Restricción de sobre-diferenciación en Optuna — las combinaciones `d=1 AND D=1` se descartan automáticamente durante la búsqueda, evitando la inestabilidad que causaba un MAPE del 27.9% en la primera iteración.
+- **feat**: Walk-forward validation extendido a **12 meses** (antes 6) con mínimo igual al horizonte de predicción configurado.
+- **feat**: Aviso informativo de asunción de variable exógena antes del forecast — muestra el valor medio móvil de 6 meses usado para `ventas_otros` en el horizonte de predicción.
+- **feat**: Alertas dinámicas de MAPE en Dashboard y Predicciones — KPI en rojo (>20%), ámbar (10–20%) o verde (≤10%), con banner de error o advertencia explicativo.
+- **feat**: Nueva sección **Publicar modelo ganador en producción** en Comparativa ML — permite activar el run ganador en Supabase con un clic, con advertencia si el MAPE supera el 20%.
+- **feat**: Caché de respuestas Gemini persistido en Supabase (`<run>/llm_cache.json`) — sobrevive recargas de página e invalidación automática al cambiar de run.
+- **feat**: Uploader de concesionarios movido del sidebar al tab 🏪 — validación robusta con mensajes de error por columna (❌ bloqueante / ⚠️ advertencia), expander auto-abierto cuando no hay datos.
+- **fix**: Sidebar aligerado — muestra solo el estado de carga de concesionarios (N registros o aviso de ausencia).
+- **feat**: `supabase_io.py` — nuevas funciones `save_llm_cache()` y `load_llm_cache()` para persistencia de respuestas Gemini por run.
 
 ### 2026-03-28 (v9)
 - **feat**: Dark premium UI aplicada a toda la aplicación — tema oscuro consistente (`#080D18` bg, `#20C997` teal, `#F59E0B` amber) en las cuatro páginas.

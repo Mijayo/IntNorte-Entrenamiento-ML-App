@@ -210,3 +210,25 @@ def load_training_log() -> list:
         return json.loads(_download("training_log.json"))
     except Exception:
         return []
+
+
+# ── Caché LLM persistente por run ───────────────────────────────────────────
+
+def save_llm_cache(run_name: str, cache: dict):
+    """Persiste el caché de respuestas Gemini de un run en Supabase."""
+    try:
+        _upload(
+            f"{run_name}/llm_cache.json",
+            json.dumps(cache, indent=2, ensure_ascii=False).encode(),
+            "application/json"
+        )
+    except Exception:
+        pass
+
+
+def load_llm_cache(run_name: str) -> dict:
+    """Descarga el caché de respuestas Gemini de un run. Devuelve {} si no existe."""
+    try:
+        return json.loads(_download(f"{run_name}/llm_cache.json"))
+    except Exception:
+        return {}

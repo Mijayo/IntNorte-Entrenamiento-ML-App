@@ -94,6 +94,11 @@ def perform_optuna_search(train, test, train_exog, test_exog,
         P = trial.suggest_int("P", 0, 1)
         D = trial.suggest_int("D", 0, 1)
         Q = trial.suggest_int("Q", 0, 2)
+        # Evitar doble diferenciación: d=1 y D=1 simultáneos sobrediferencian
+        # la serie y producen modelos inestables con series cortas (<80 obs).
+        if d == 1 and D == 1:
+            failures[0] += 1
+            return np.inf
         try:
             model = SARIMAX(train, exog=train_exog, order=(p, d, q),
                             seasonal_order=(P, D, Q, 12),
@@ -605,9 +610,13 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                 progress_bar.progress(0.60)
 
                 # Paso 5: Walk-Forward
-                status_text.text("🔄 Walk-forward validation...")
+                # Se validan hasta 12 meses para una estimación robusta del MAPE
+                # (mínimo: el horizonte configurado; requiere al menos 2 meses de entrenamiento)
+                status_text.text("🔄 Walk-forward validation (12 meses)...")
+                n_wf = min(12, len(ventas_modelo) - 2)
+                n_wf = max(n_wf, horizonte)
                 wf_results = perform_walk_forward(ventas_modelo, exog_data, best_params,
-                                                   horizonte, max_ventas)
+                                                   n_wf, max_ventas)
                 df_wf = pd.DataFrame(wf_results)
 
                 if df_wf.empty:
@@ -615,7 +624,7 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                     st.stop()
 
                 mape_wf = df_wf['error_pct'].mean()
-                st.success(f"✅ MAPE walk-forward: {mape_wf:.2f}% · {len(df_wf)}/{horizonte} meses")
+                st.success(f"✅ MAPE walk-forward: {mape_wf:.2f}% · {len(df_wf)}/{n_wf} meses validados")
                 progress_bar.progress(0.80)
 
                 # Paso 6: Modelo final
@@ -623,9 +632,18 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                 model_final = train_sarima_model(ventas_modelo, exog_data,
                                                   best_params[0], best_params[1])
 
+                exog_future_val = exog_data['ventas_otros'].rolling(6).mean().iloc[-1]
                 exog_future = pd.DataFrame({
-                    'ventas_otros': [exog_data['ventas_otros'].rolling(6).mean().iloc[-1]] * horizonte
+                    'ventas_otros': [exog_future_val] * horizonte
                 })
+                st.info(
+                    f"ℹ️ **Variable exógena en el horizonte de predicción:** "
+                    f"se usa la media móvil de los últimos 6 meses "
+                    f"(`ventas_otros` = {exog_future_val:.0f} uds/mes) como estimación "
+                    "para los {horizonte} meses futuros. Si dispones de un pronóstico "
+                    "más preciso de ventas de otros modelos CHERY, puedes ajustar "
+                    "esta cifra manualmente reentrenando."
+                )
                 forecast = model_final.forecast(steps=horizonte, exog=exog_future)
                 conf_int = model_final.get_forecast(steps=horizonte, exog=exog_future).conf_int()
                 fechas_futuras = pd.date_range(

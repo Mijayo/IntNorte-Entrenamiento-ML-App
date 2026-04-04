@@ -233,6 +233,7 @@ fuente = st.radio(
 )
 
 ventas_series = None
+run_sel = None
 
 if fuente == "Cargar desde un run guardado en Supabase":
     runs = sio.get_available_runs()
@@ -619,4 +620,77 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         "test":        test,
         "train":       train,
         "ganador":     mejor,
+        "fuente_run":  run_sel if fuente == "Cargar desde un run guardado en Supabase" else None,
     }
+
+# ── 5. Publicar en producción ─────────────────────────────────────────────────
+
+st.header("5. Publicar modelo ganador en producción", divider="green")
+
+if "cml_resultados" not in st.session_state:
+    st.info("Ejecuta primero la comparación para ver las opciones de publicación.")
+else:
+    res      = st.session_state["cml_resultados"]
+    ganador  = res["ganador"]
+    mape_gan = res["metricas"].loc[ganador, "MAPE (%)"]
+    fuente_run = res.get("fuente_run")
+
+    st.markdown(
+        f"**Modelo ganador:** {ganador} — MAPE {mape_gan:.1f}%"
+    )
+
+    if mape_gan > 20:
+        st.warning(
+            f"⚠️ El modelo ganador ({ganador}) tiene MAPE > 20%. "
+            "Considera reentrenar con más datos antes de publicar."
+        )
+
+    # Mostrar parámetros recomendados si SARIMA es el ganador o está entre los evaluados
+    if "SARIMA" in res["metricas"].index:
+        mape_sarima_cml = res["metricas"].loc["SARIMA", "MAPE (%)"]
+        sarima_order_str = (
+            f"`order=({p},{d},{q})` `seasonal_order=({P},{D},{Q},12)`"
+            if usar_sarima else "parámetros definidos en la configuración de esta sesión"
+        )
+        with st.expander("⚙️ Configuración SARIMA evaluada en esta comparativa"):
+            st.info(
+                f"SARIMA MAPE: **{mape_sarima_cml:.1f}%**  \n"
+                f"Parámetros usados: {sarima_order_str}  \n\n"
+                "Si SARIMA es el modelo que quieres publicar, ve a la página **Entrenamiento** "
+                "y configura estos mismos parámetros. El proceso de entrenamiento generará "
+                "el modelo completo con intervalos de confianza y lo guardará en Supabase."
+            )
+
+    # Si la fuente es un run de Supabase, ofrecer activarlo
+    if fuente_run:
+        st.markdown("---")
+        st.subheader("🚀 Activar run de Supabase como producción")
+
+        available_runs = sio.get_available_runs()
+        current_latest = sio.get_default_run(available_runs)
+        already_active = current_latest == fuente_run
+
+        if already_active:
+            st.success(f"✅ El run `{sio.format_run_label(fuente_run)}` ya es el modelo activo en el Dashboard.")
+        else:
+            if current_latest:
+                st.info(
+                    f"Dashboard usa actualmente: **{sio.format_run_label(current_latest)}**  \n"
+                    f"Activar: **{sio.format_run_label(fuente_run)}** (fuente de esta comparativa)"
+                )
+            if st.button(
+                f"✅ Activar '{sio.format_run_label(fuente_run)}' en el Dashboard",
+                type="primary", use_container_width=True
+            ):
+                sio.approve_model(fuente_run)
+                st.success(
+                    f"✅ Run `{fuente_run}` activado como modelo de producción. "
+                    "El Dashboard ya lo refleja."
+                )
+    else:
+        st.info(
+            "ℹ️ Para publicar en producción desde aquí, carga los datos "
+            "desde un **run guardado en Supabase** (opción 1 de la fuente de datos). "
+            "Si subiste un Excel manual, entrena primero el modelo en la página "
+            "**Entrenamiento** y después actívalo desde allí o desde esta sección."
+        )

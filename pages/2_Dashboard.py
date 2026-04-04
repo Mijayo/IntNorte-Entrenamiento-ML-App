@@ -36,6 +36,8 @@ init_session_state()
 
 if 'cache_llm_tiggo' not in st.session_state:
     st.session_state.cache_llm_tiggo = {}
+if 'cache_llm_run' not in st.session_state:
+    st.session_state.cache_llm_run = None
 
 if check_session_timeout():
     st.warning("⏱️ Tu sesión ha expirado.")
@@ -65,37 +67,20 @@ selected_run = st.sidebar.selectbox(
 is_latest = sio.get_default_run(available_runs) == selected_run
 st.sidebar.caption("🟢 Activo en producción" if is_latest else "🔵 Versión histórica")
 
-# ── Datos de concesionarios (sidebar) ────────────────────────────────────────
+# ── Sidebar: indicador de datos de concesionarios ────────────────────────────
 
 st.sidebar.markdown("---")
-with st.sidebar.expander("📂 Datos de Concesionarios", expanded=False):
-    con_file = st.file_uploader(
-        "Excel histórico de ventas", type=['xlsx', 'xls'], key="con_uploader",
-        help="Archivo con columnas MARCA, MODELO2/MODELO3, FECHA_VENTA/FECHA-VENTA, DET_CC, AGE"
-    )
-    if con_file:
-        with st.spinner("Procesando..."):
-            df_con_raw = pd.read_excel(con_file, engine='openpyxl')
-            df_con_raw.columns = [str(c).strip() for c in df_con_raw.columns]
-            # Saltar fila de descripciones si la primera fila es todo texto
-            if df_con_raw.iloc[0].apply(lambda x: isinstance(x, str)).all():
-                df_con_raw = df_con_raw.iloc[1:].reset_index(drop=True)
-            # Normalizar columna de fecha
-            for _fc in ['FECHA_VENTA', 'FECHA-VENTA', 'FECHA VENTA']:
-                if _fc in df_con_raw.columns:
-                    df_con_raw[_fc] = pd.to_datetime(df_con_raw[_fc], errors='coerce')
-                    if _fc != 'FECHA_VENTA':
-                        df_con_raw = df_con_raw.rename(columns={_fc: 'FECHA_VENTA'})
-                    break
-            # Normalizar columna de modelo
-            for _mc in ['MODELO2', 'MODELO3', 'MODELO']:
-                if _mc in df_con_raw.columns:
-                    if _mc != 'MODELO_NORM':
-                        df_con_raw = df_con_raw.rename(columns={_mc: 'MODELO_NORM'})
-                    break
-            st.session_state['df_concesionarios'] = df_con_raw
-            n_chery = len(df_con_raw[df_con_raw['MARCA'] == 'CHERY']) if 'MARCA' in df_con_raw.columns else len(df_con_raw)
-            st.success(f"✅ {len(df_con_raw):,} registros · {n_chery:,} CHERY")
+if 'df_concesionarios' in st.session_state:
+    n_con = len(st.session_state['df_concesionarios'])
+    st.sidebar.caption(f"🏪 Concesionarios: {n_con:,} registros cargados")
+else:
+    st.sidebar.caption("🏪 Concesionarios: sin datos — carga en la pestaña 🏪")
+
+# ── Caché LLM: cargar desde Supabase si cambia el run seleccionado ───────────
+
+if st.session_state.cache_llm_run != selected_run:
+    st.session_state.cache_llm_tiggo = sio.load_llm_cache(selected_run)
+    st.session_state.cache_llm_run = selected_run
 
 # ── Cargar datos ──────────────────────────────────────────────────────────────
 
@@ -171,10 +156,24 @@ with tabs[0]:
 
     col1, col2, col3, col4 = st.columns(4)
     mape = metricas['walk_forward_validation']['mape']
+    mape_color = "red" if mape > 20 else ("amber" if mape > 10 else "")
     col1.markdown(kpi_card("Total Ventas",    f"{metricas['datos_limpios']['total_ventas']:,}", "📦"), unsafe_allow_html=True)
     col2.markdown(kpi_card("Meses de Datos",  metricas['datos_limpios']['meses_datos'],         "📅", "blue"), unsafe_allow_html=True)
-    col3.markdown(kpi_card("MAPE",            f"{mape:.2f}%",                                   "🎯", "amber"), unsafe_allow_html=True)
+    col3.markdown(kpi_card("MAPE",            f"{mape:.2f}%",                                   "🎯", mape_color), unsafe_allow_html=True)
     col4.markdown(kpi_card("Próximo Mes",     f"{int(metricas['predicciones_futuras']['proximo_mes'])} uds", "🔮"), unsafe_allow_html=True)
+
+    if mape > 20:
+        st.error(
+            f"⚠️ **MAPE {mape:.1f}% — Modelo de baja fiabilidad (umbral: 20%).** "
+            "Las predicciones tienen un error medio superior al 20% sobre el valor real. "
+            "Usa los valores del intervalo de confianza con precaución y considera "
+            "reentrenar el modelo con datos más recientes o ampliar el histórico."
+        )
+    elif mape > 10:
+        st.warning(
+            f"ℹ️ **MAPE {mape:.1f}% — Precisión aceptable (10–20%).** "
+            "Adecuado para planificación de rango, menos fiable para compromisos exactos."
+        )
 
     st.markdown(section_header("Serie Temporal Histórica"), unsafe_allow_html=True)
     fig_hist = go.Figure()
@@ -251,6 +250,12 @@ with tabs[1]:
     apply_chart_theme(fig_pred, height=560, title='Histórico + Predicción — TIGGO 2')
     fig_pred.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
     st.plotly_chart(fig_pred, use_container_width=True, config={'displayModeBar': False})
+
+    if mape > 20:
+        st.error(
+            f"⚠️ **Atención:** MAPE walk-forward = {mape:.1f}%. "
+            "Para decisiones de compra, usa el **IC inferior** como referencia conservadora."
+        )
 
     st.subheader("📋 Tabla de Predicciones")
     st.dataframe(pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']],
@@ -352,6 +357,7 @@ if st.session_state.role == 'manager':
                                 model=GEMINI_MODEL, contents=prompt_tiggo
                             )
                             st.session_state.cache_llm_tiggo[question_m] = response_m.text
+                            sio.save_llm_cache(selected_run, st.session_state.cache_llm_tiggo)
                     except Exception as e:
                         st.error(f'Error al consultar el asistente: {e}')
 
@@ -514,6 +520,7 @@ if st.session_state.role in ['admin', 'analyst']:
                                 model=GEMINI_MODEL, contents=prompt_tiggo_a
                             )
                             st.session_state.cache_llm_tiggo[question_a] = response_a.text
+                            sio.save_llm_cache(selected_run, st.session_state.cache_llm_tiggo)
                     except Exception as e:
                         st.error(f'Error al consultar el asistente: {e}')
 
@@ -529,11 +536,71 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
     with tabs[con_idx]:
         st.header("🏪 Ventas CHERY por Concesionario", divider='violet')
 
-        if 'df_concesionarios' not in st.session_state:
-            st.info(
-                "👈 Carga el Excel histórico de ventas desde el panel lateral "
-                "(**📂 Datos de Concesionarios**) para ver este análisis."
+        # ── Uploader de datos ─────────────────────────────────────────────────
+        with st.expander("📂 Cargar datos de concesionarios", expanded='df_concesionarios' not in st.session_state):
+            st.caption("Columnas mínimas: MARCA · MODELO2/MODELO3 · FECHA_VENTA/FECHA-VENTA · DET_CC")
+            con_file = st.file_uploader(
+                "Excel histórico de ventas", type=['xlsx', 'xls'], key="con_uploader_tab",
             )
+            if con_file:
+                with st.spinner("Validando y procesando..."):
+                    try:
+                        df_con_raw = pd.read_excel(con_file, engine='openpyxl')
+                        df_con_raw.columns = [str(c).strip() for c in df_con_raw.columns]
+                        if len(df_con_raw) > 0 and df_con_raw.iloc[0].apply(lambda x: isinstance(x, str)).all():
+                            df_con_raw = df_con_raw.iloc[1:].reset_index(drop=True)
+
+                        cols_raw = df_con_raw.columns.tolist()
+                        errores_val = []
+
+                        # Fecha
+                        _fecha_ok = False
+                        for _fc in ['FECHA_VENTA', 'FECHA-VENTA', 'FECHA VENTA']:
+                            if _fc in cols_raw:
+                                df_con_raw[_fc] = pd.to_datetime(df_con_raw[_fc], errors='coerce')
+                                n_nf = df_con_raw[_fc].isna().sum()
+                                if n_nf > 0:
+                                    errores_val.append(f"⚠️ {n_nf} fechas no parseables en `{_fc}`.")
+                                if _fc != 'FECHA_VENTA':
+                                    df_con_raw = df_con_raw.rename(columns={_fc: 'FECHA_VENTA'})
+                                _fecha_ok = True
+                                break
+                        if not _fecha_ok:
+                            errores_val.append("❌ Columna de fecha no encontrada (FECHA_VENTA / FECHA-VENTA / FECHA VENTA).")
+
+                        # Modelo
+                        _modelo_ok = False
+                        for _mc in ['MODELO2', 'MODELO3', 'MODELO']:
+                            if _mc in cols_raw:
+                                if _mc != 'MODELO_NORM':
+                                    df_con_raw = df_con_raw.rename(columns={_mc: 'MODELO_NORM'})
+                                _modelo_ok = True
+                                break
+                        if not _modelo_ok:
+                            errores_val.append("❌ Columna de modelo no encontrada (MODELO2 / MODELO3 / MODELO).")
+
+                        # MARCA
+                        if 'MARCA' not in df_con_raw.columns:
+                            errores_val.append("⚠️ Columna MARCA no encontrada — se usarán todos los registros.")
+
+                        # Concesionario
+                        if not any(c in df_con_raw.columns for c in ['DET_CC', 'AGE', 'SUCURSAL']):
+                            errores_val.append("⚠️ Columna de concesionario no encontrada (DET_CC / AGE / SUCURSAL).")
+
+                        for msg in errores_val:
+                            (st.error if msg.startswith("❌") else st.warning)(msg)
+
+                        if not any(m.startswith("❌") for m in errores_val):
+                            st.session_state['df_concesionarios'] = df_con_raw
+                            n_ch = (len(df_con_raw[df_con_raw['MARCA'] == 'CHERY'])
+                                    if 'MARCA' in df_con_raw.columns else len(df_con_raw))
+                            st.success(f"✅ {len(df_con_raw):,} registros cargados · {n_ch:,} CHERY")
+                            st.rerun()
+                    except Exception as _e:
+                        st.error(f"❌ Error al leer el archivo: {_e}")
+
+        if 'df_concesionarios' not in st.session_state:
+            st.info("Carga el Excel de concesionarios usando el expander de arriba.")
         else:
             df_c = st.session_state['df_concesionarios'].copy()
 
