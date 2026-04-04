@@ -111,7 +111,7 @@ def entrenar_prophet(train, test_len, usar_holidays):
     m = Prophet(yearly_seasonality=True, weekly_seasonality=False,
                 daily_seasonality=False, seasonality_mode='multiplicative')
     if usar_holidays:
-        m.add_country_holidays(country_name='MX')
+        m.add_country_holidays(country_name='PE')
     m.fit(df_p)
     future_dates = pd.date_range(
         start=train.index[-1] + pd.offsets.MonthBegin(1),
@@ -329,7 +329,7 @@ with col_cfg2:
     usar_holidays = False
     if usar_prophet:
         st.subheader("Opciones Prophet")
-        usar_holidays = st.checkbox("Festivos de México (MX)", value=True)
+        usar_holidays = st.checkbox("Festivos de Perú (PE)", value=True)
 
 # Validación mínima de datos para modelos ML
 min_obs_ml = 12 + n_test + 5   # lag_12 + test + 5 muestras de train
@@ -582,8 +582,8 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         1. **Estacionalidad multiplicativa** — si las ventas del Tiggo 2 suben en ciertos
            meses, Prophet escala el efecto proporcionalmente a la tendencia.
            SARIMA usa diferenciación, que asume efectos aditivos.
-        2. **Festivos de México** — Prophet añade automáticamente el impacto de días como
-           Navidad, Año Nuevo, Semana Santa sobre el comportamiento de compra.
+        2. **Festivos de Perú** — Prophet añade automáticamente el impacto de días como
+           Navidad, Año Nuevo, Fiestas Patrias y Semana Santa sobre el comportamiento de compra.
         3. **Changepoints** — si hubo un cambio de producto, crisis (ej. COVID) o
            ajuste de precio, Prophet detecta y adapta la tendencia. SARIMA no lo hace
            de forma automática.
