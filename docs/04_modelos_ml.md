@@ -229,7 +229,7 @@ Prophet(
     seasonality_mode='multiplicative'  # Adecuado cuando la amplitud
                                        # estacional crece con la tendencia
 )
-m.add_country_holidays(country_name='MX')  # Festivos mexicanos
+m.add_country_holidays(country_name='PE')  # Festivos peruanos
 ```
 
 La **estacionalidad multiplicativa** es apropiada cuando los picos y valles estacionales son proporcionalmente más grandes en períodos de mayor demanda (por ejemplo, si diciembre es siempre un 30% mejor que la media, no un +10 unidades fijo).

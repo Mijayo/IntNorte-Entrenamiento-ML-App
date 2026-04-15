@@ -43,8 +43,9 @@ def _upload(path: str, data: bytes, content_type: str = "application/octet-strea
     sb = get_client()
     try:
         sb.storage.from_(_bucket()).remove([path])
-    except Exception:
-        pass
+    except Exception as e:
+        # El fichero puede no existir aún (primera subida); no es un error fatal.
+        log.debug("Pre-remove skipped for '%s': %s", path, e)
     sb.storage.from_(_bucket()).upload(
         path, data, {"content-type": content_type}
     )
@@ -70,7 +71,8 @@ def get_available_runs() -> list[str]:
             if rn and rn not in seen:
                 seen[rn] = True
         return list(seen.keys())
-    except Exception:
+    except Exception as e:
+        log.debug("training_log.json no disponible, devolviendo lista vacía: %s", e)
         return []
 
 
@@ -80,8 +82,8 @@ def get_default_run(runs: list[str]) -> str | None:
         candidate = _download("latest.txt").decode().strip()
         if candidate in runs:
             return candidate
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("latest.txt no disponible, usando run más reciente: %s", e)
     return runs[0] if runs else None
 
 
@@ -191,7 +193,8 @@ def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:
         acf = _download(f"{run_name}/acf_plot.png")
         pacf = _download(f"{run_name}/pacf_plot.png")
         return acf, pacf
-    except Exception:
+    except Exception as e:
+        log.debug("ACF/PACF no disponibles para run='%s': %s", run_name, e)
         return None, None
 
 
@@ -202,7 +205,8 @@ def load_current_model() -> dict | None:
     try:
         run_name = _download("latest.txt").decode().strip()
         return json.loads(_download(f"{run_name}/metricas_mejoradas.json"))
-    except Exception:
+    except Exception as e:
+        log.debug("No se pudo cargar el modelo actual (puede ser el primer run): %s", e)
         return None
 
 
@@ -213,7 +217,8 @@ def save_training_log(entry: dict) -> None:
     try:
         try:
             existing = json.loads(_download("training_log.json"))
-        except Exception:
+        except Exception as e:
+            log.debug("training_log.json no existe aún, creando nuevo: %s", e)
             existing = []
         existing.append(entry)
         _upload(
@@ -231,7 +236,8 @@ def load_training_log() -> list[dict]:
     """Carga el historial completo de entrenamientos."""
     try:
         return json.loads(_download("training_log.json"))
-    except Exception:
+    except Exception as e:
+        log.debug("training_log.json no disponible: %s", e)
         return []
 
 
@@ -253,5 +259,6 @@ def load_llm_cache(run_name: str) -> dict:
     """Descarga el caché de respuestas Gemini de un run. Devuelve {} si no existe."""
     try:
         return json.loads(_download(f"{run_name}/llm_cache.json"))
-    except Exception:
+    except Exception as e:
+        log.debug("llm_cache no disponible para run='%s': %s", run_name, e)
         return {}

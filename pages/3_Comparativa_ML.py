@@ -11,7 +11,18 @@ Los modelos ML usan lag features + features de calendario.
 import io
 import time
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings('ignore', category=UserWarning, module='statsmodels')
+warnings.filterwarnings('ignore', category=FutureWarning, module='statsmodels')
+
+# ── Constantes de configuración ───────────────────────────────────────────────
+RF_N_ESTIMATORS: int = 300
+RF_RANDOM_STATE: int = 42
+XGB_N_ESTIMATORS: int = 300
+XGB_LEARNING_RATE: float = 0.05
+XGB_MAX_DEPTH: int = 4
+XGB_RANDOM_STATE: int = 42
+MIN_OBS_ML_BUFFER: int = 5   # Meses de margen sobre lag_12 + n_test para modelos ML
 
 import numpy as np
 import pandas as pd
@@ -332,7 +343,7 @@ with col_cfg2:
         usar_holidays = st.checkbox("Festivos de Perú (PE)", value=True)
 
 # Validación mínima de datos para modelos ML
-min_obs_ml = 12 + n_test + 5   # lag_12 + test + 5 muestras de train
+min_obs_ml = 12 + n_test + MIN_OBS_ML_BUFFER   # lag_12 + test + buffer mínimo de train
 hay_suficientes = len(ventas_series) >= min_obs_ml
 if (usar_lr or usar_rf or (usar_xgb and XGBOOST_OK)) and not hay_suficientes:
     st.warning(
@@ -420,7 +431,7 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         try:
             pred, imps = entrenar_ml(
                 ventas_series, n_test, RandomForestRegressor,
-                n_estimators=300, random_state=42, n_jobs=-1
+                n_estimators=RF_N_ESTIMATORS, random_state=RF_RANDOM_STATE, n_jobs=-1
             )
             met = calc_metrics(test.values, pred, "Random Forest")
             met["Tiempo (s)"] = round(time.time() - t0, 2)
@@ -439,8 +450,8 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         try:
             pred, imps = entrenar_ml(
                 ventas_series, n_test, XGBRegressor,
-                n_estimators=300, learning_rate=0.05, max_depth=4,
-                random_state=42, verbosity=0
+                n_estimators=XGB_N_ESTIMATORS, learning_rate=XGB_LEARNING_RATE,
+                max_depth=XGB_MAX_DEPTH, random_state=XGB_RANDOM_STATE, verbosity=0
             )
             met = calc_metrics(test.values, pred, "XGBoost")
             met["Tiempo (s)"] = round(time.time() - t0, 2)

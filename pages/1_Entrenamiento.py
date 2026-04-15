@@ -20,7 +20,20 @@ from datetime import datetime, date, timedelta
 import io
 import optuna
 import warnings
-warnings.filterwarnings('ignore')
+
+# Suprimir solo las advertencias de convergencia propias de statsmodels/scipy;
+# las de NumPy y el resto del runtime permanecen visibles.
+warnings.filterwarnings('ignore', category=UserWarning, module='statsmodels')
+warnings.filterwarnings('ignore', category=FutureWarning, module='statsmodels')
+
+from logger import get_logger
+log = get_logger("entrenamiento")
+
+# ── Constantes de configuración del modelo ────────────────────────────────────
+OPTUNA_N_TRIALS: int = 80        # Trials bayesianos TPE (≈ 4× más rápido que el grid exhaustivo de 384)
+SARIMA_SEASONAL_PERIOD: int = 12 # Período estacional mensual
+WALK_FORWARD_MONTHS: int = 12    # Ventana máxima de validación walk-forward
+EXOG_ROLLING_WINDOW: int = 6     # Meses para proyectar ventas_otros en el horizonte
 
 import supabase_io as sio
 from auth_system import (init_session_state, show_login_page, show_user_info,
@@ -58,7 +71,16 @@ show_user_info()
 
 # ── Funciones de modelo (sin I/O) ────────────────────────────────────────────
 
-def run_adf_test(series):
+def run_adf_test(series: pd.Series) -> dict:
+    """
+    Test de Dickey-Fuller Aumentado para estacionariedad.
+
+    Returns
+    -------
+    dict
+        statistic, p_value, lags_used, critical_1/5/10pct, is_stationary
+        (is_stationary=True cuando p_value < 0.05).
+    """
     result = adfuller(series.dropna(), autolag='AIC')
     return {
         'statistic': round(result[0], 4), 'p_value': round(result[1], 4),
@@ -69,19 +91,63 @@ def run_adf_test(series):
     }
 
 
-def train_sarima_model(ventas, exog_data, order, seasonal_order):
+def train_sarima_model(ventas: pd.Series, exog_data: pd.DataFrame,
+                       order: tuple, seasonal_order: tuple):
+    """
+    Entrena un modelo SARIMAX con variable exógena.
+
+    Parameters
+    ----------
+    ventas : pd.Series
+        Serie temporal mensual de ventas.
+    exog_data : pd.DataFrame
+        Variable exógena (ventas_otros) alineada con ventas.
+    order : tuple
+        (p, d, q) del componente ARIMA.
+    seasonal_order : tuple
+        (P, D, Q, m) del componente estacional.
+
+    Returns
+    -------
+    SARIMAXResultsWrapper
+        Modelo ajustado listo para forecast.
+    """
     model = SARIMAX(ventas, exog=exog_data, order=order,
                     seasonal_order=seasonal_order,
                     enforce_stationarity=False, enforce_invertibility=False)
     return model.fit(disp=False, maxiter=200, method='lbfgs')
 
 
-def perform_optuna_search(train, test, train_exog, test_exog,
-                          progress_bar, status_text, max_ventas, n_trials=80):
+def perform_optuna_search(train: pd.Series, test: pd.Series,
+                          train_exog: pd.DataFrame, test_exog: pd.DataFrame,
+                          progress_bar, status_text,
+                          max_ventas: int,
+                          n_trials: int = OPTUNA_N_TRIALS) -> tuple:
     """
     Búsqueda inteligente de hiperparámetros SARIMA usando Optuna (TPE Bayesiano).
-    - Válidos: trials donde el modelo ajustó y las predicciones están en [0, max_ventas]
-    - Descartados: trials con errores numéricos, predicciones negativas o fuera de rango
+
+    Espacio de búsqueda: p∈{0-3}, d∈{0-1}, q∈{0-3}, P∈{0-1}, D∈{0-1}, Q∈{0-2}.
+    Se descarta automáticamente d=1∧D=1 (sobre-diferenciación en series cortas).
+    Criterio de optimización: MAPE mínimo sobre el conjunto de test.
+
+    Parameters
+    ----------
+    train, test : pd.Series
+        Conjuntos de entrenamiento y test de la serie temporal.
+    train_exog, test_exog : pd.DataFrame
+        Variable exógena (ventas_otros) para cada split.
+    progress_bar, status_text : Streamlit widgets
+        Para actualizar la barra de progreso y el texto de estado.
+    max_ventas : int
+        Límite superior de predicciones válidas (unidades/mes).
+    n_trials : int
+        Número de trials bayesianos (por defecto: OPTUNA_N_TRIALS).
+
+    Returns
+    -------
+    tuple
+        (best_params, best_aic, best_mape, trial_results, n_discarded)
+        best_params es None si ningún trial fue válido.
     """
     trial_results = []
     best_state = {'mape': np.inf, 'aic': np.inf, 'params': None}
@@ -101,7 +167,7 @@ def perform_optuna_search(train, test, train_exog, test_exog,
             return np.inf
         try:
             model = SARIMAX(train, exog=train_exog, order=(p, d, q),
-                            seasonal_order=(P, D, Q, 12),
+                            seasonal_order=(P, D, Q, SARIMA_SEASONAL_PERIOD),
                             enforce_stationarity=False, enforce_invertibility=False)
             results = model.fit(disp=False, maxiter=200, method='lbfgs')
             predictions = results.forecast(steps=len(test), exog=test_exog)
@@ -110,7 +176,7 @@ def perform_optuna_search(train, test, train_exog, test_exog,
                 return np.inf  # penaliza predicciones fuera del rango lógico
             mape = np.mean(np.abs((test - predictions) / (test + 0.1))) * 100
             trial_results.append({
-                'p': p, 'd': d, 'q': q, 'P': P, 'D': D, 'Q': Q, 'm': 12,
+                'p': p, 'd': d, 'q': q, 'P': P, 'D': D, 'Q': Q, 'm': SARIMA_SEASONAL_PERIOD,
                 'mae': mean_absolute_error(test, predictions),
                 'rmse': np.sqrt(mean_squared_error(test, predictions)),
                 'mape': mape, 'aic': results.aic, 'bic': results.bic
@@ -118,7 +184,7 @@ def perform_optuna_search(train, test, train_exog, test_exog,
             if mape < best_state['mape']:
                 best_state['mape'] = mape
                 best_state['aic'] = results.aic
-                best_state['params'] = ((p, d, q), (P, D, Q, 12))
+                best_state['params'] = ((p, d, q), (P, D, Q, SARIMA_SEASONAL_PERIOD))
             return mape
         except Exception:
             failures[0] += 1
@@ -146,7 +212,21 @@ def perform_optuna_search(train, test, train_exog, test_exog,
     return best_state['params'], best_state['aic'], best_state['mape'], trial_results, failures[0]
 
 
-def perform_walk_forward(ventas, exog_data, best_params, n_months, max_ventas):
+def perform_walk_forward(ventas: pd.Series, exog_data: pd.DataFrame,
+                         best_params: tuple, n_months: int,
+                         max_ventas: int) -> list[dict]:
+    """
+    Validación walk-forward (rolling origin) sobre los últimos n_months meses.
+
+    Por cada mes del período de validación, reentrena el modelo con todos los
+    datos anteriores y predice un paso adelante. Solo se registran predicciones
+    en el rango [0, max_ventas].
+
+    Returns
+    -------
+    list[dict]
+        Lista de registros con fecha, real, prediccion, error y error_pct.
+    """
     results = []
     for i in range(len(ventas) - n_months, len(ventas)):
         try:
@@ -499,6 +579,31 @@ with tabs[3]:
             status_text = st.empty()
 
             try:
+                # Paso 0: Validación anticipada de configuración
+                # Necesitamos preparar la serie primero para poder validar max_ventas.
+                # Esta comprobación rápida usa los datos ya validados en session_state.
+                _df_check = st.session_state['df_validated']
+                _df_check['FECHA-VENTA'] = pd.to_datetime(_df_check['FECHA-VENTA'], errors='coerce')
+                _ventas_check = (
+                    _df_check[
+                        (_df_check['MARCA'] == marca_filtro) &
+                        (_df_check['MODELO3'] == modelo_filtro)
+                    ]
+                    .set_index('FECHA-VENTA')
+                    .resample('ME')
+                    .size()
+                )
+                if len(_ventas_check) > 0:
+                    pico_historico = int(_ventas_check.max())
+                    if max_ventas < pico_historico:
+                        st.error(
+                            f"❌ El límite máximo de ventas configurado ({max_ventas} uds/mes) "
+                            f"es menor que el pico histórico del modelo ({pico_historico} uds/mes). "
+                            "Todos los trials de Optuna serán rechazados. "
+                            f"Aumenta el límite a al menos **{pico_historico + 10}** antes de entrenar."
+                        )
+                        st.stop()
+
                 # Paso 1: Preparar datos
                 status_text.text("📊 Preparando datos...")
                 progress_bar.progress(0.05)
@@ -612,8 +717,8 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                 # Paso 5: Walk-Forward
                 # Se validan hasta 12 meses para una estimación robusta del MAPE
                 # (mínimo: el horizonte configurado; requiere al menos 2 meses de entrenamiento)
-                status_text.text("🔄 Walk-forward validation (12 meses)...")
-                n_wf = min(12, len(ventas_modelo) - 2)
+                status_text.text(f"🔄 Walk-forward validation ({WALK_FORWARD_MONTHS} meses)...")
+                n_wf = min(WALK_FORWARD_MONTHS, len(ventas_modelo) - 2)
                 n_wf = max(n_wf, horizonte)
                 wf_results = perform_walk_forward(ventas_modelo, exog_data, best_params,
                                                    n_wf, max_ventas)
@@ -667,15 +772,15 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                 model_final = train_sarima_model(ventas_modelo, exog_data,
                                                   best_params[0], best_params[1])
 
-                exog_future_val = exog_data['ventas_otros'].rolling(6).mean().iloc[-1]
+                exog_future_val = exog_data['ventas_otros'].rolling(EXOG_ROLLING_WINDOW).mean().iloc[-1]
                 exog_future = pd.DataFrame({
                     'ventas_otros': [exog_future_val] * horizonte
                 })
                 st.info(
                     f"ℹ️ **Variable exógena en el horizonte de predicción:** "
-                    f"se usa la media móvil de los últimos 6 meses "
+                    f"se usa la media móvil de los últimos {EXOG_ROLLING_WINDOW} meses "
                     f"(`ventas_otros` = {exog_future_val:.0f} uds/mes) como estimación "
-                    "para los {horizonte} meses futuros. Si dispones de un pronóstico "
+                    f"para los {horizonte} meses futuros. Si dispones de un pronóstico "
                     "más preciso de ventas de otros modelos CHERY, puedes ajustar "
                     "esta cifra manualmente reentrenando."
                 )
@@ -755,9 +860,14 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                            "Ve a **Comparación** para activarlo.")
 
             except Exception as e:
-                st.error(f"❌ Error: {e}")
-                import traceback
-                st.code(traceback.format_exc())
+                log.exception("Error inesperado durante el entrenamiento")
+                st.error(
+                    "❌ Se produjo un error durante el entrenamiento. "
+                    "Comprueba la configuración (marca, modelo, fechas y límite de ventas) "
+                    "y vuelve a intentarlo. Si el error persiste, revisa los logs de la aplicación."
+                )
+                with st.expander("Detalle del error (para soporte técnico)"):
+                    st.code(str(e))
 
 # ── Tab 5: Comparación ────────────────────────────────────────────────────────
 

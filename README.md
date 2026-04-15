@@ -416,6 +416,17 @@ logs/
 
 ## Changelog
 
+### 2026-04-15 (v12)
+- **fix**: Inconsistencia documentación/código — `docs/04_modelos_ml.md` corregido a `country_name='PE'` (festivos peruanos) alineando con la implementación real de Prophet.
+- **refactor**: Magic numbers extraídos a constantes nombradas en `1_Entrenamiento.py` (`OPTUNA_N_TRIALS`, `SARIMA_SEASONAL_PERIOD`, `WALK_FORWARD_MONTHS`, `EXOG_ROLLING_WINDOW`) y en `3_Comparativa_ML.py` (`RF_N_ESTIMATORS`, `XGB_LEARNING_RATE`, `XGB_MAX_DEPTH`, etc.).
+- **fix**: `warnings.filterwarnings('ignore')` global reemplazado en ambas páginas por supresión acotada solo a módulos `statsmodels` — el resto del runtime mantiene sus advertencias visibles.
+- **fix**: Todos los `except Exception: pass` en `supabase_io.py` ahora registran al menos `log.debug(...)` con contexto; ningún error se pierde en silencio.
+- **feat**: Validación anticipada de `max_ventas` antes de lanzar el entrenamiento — si el límite configurado es menor que el pico histórico del modelo, se muestra error bloqueante antes de gastar tiempo en Optuna.
+- **fix**: Traceback raw en la UI de Entrenamiento reemplazado por mensaje amigable + `log.exception()`; el detalle técnico queda disponible en un expander colapsado.
+- **feat**: Límite de 500 caracteres (`max_chars=500`) en ambos inputs del Asistente IA (manager y analyst) para prevenir prompts excesivamente largos hacia Gemini.
+- **docs**: Docstrings completos añadidos a `run_adf_test`, `train_sarima_model`, `perform_optuna_search` y `perform_walk_forward` con parámetros y tipos de retorno.
+- **chore**: Módulo `logger.py` importado en `1_Entrenamiento.py` y usado en el manejador de excepciones de entrenamiento.
+
 ### 2026-04-15 (v11)
 - **feat**: Nuevo módulo `logger.py` — logging centralizado a consola + archivo rotativo (`logs/app.log`, 2 MB × 3 backups). `auth_system.py` y `supabase_io.py` integran el logger para registrar logins, fallos de sesión, aprobaciones de modelo y errores de I/O.
 - **feat**: Nueva suite de tests unitarios `tests/test_validacion.py` — 17 tests en 6 clases que validan la lógica pura de `validate_dataframe` y `get_dataset_summary` sin dependencia de Streamlit. Ejecutar con `pytest tests/ -v`.

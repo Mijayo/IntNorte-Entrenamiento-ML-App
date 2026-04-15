@@ -330,7 +330,8 @@ if st.session_state.role == 'manager':
             with st.form(key='form_llm_tiggo_manager', border=False):
                 question_m = st.text_input(
                     placeholder='Ej: ¿Cuántas unidades debería pedir para el próximo trimestre?',
-                    key='input_llm_tiggo_manager', label='', label_visibility='collapsed'
+                    key='input_llm_tiggo_manager', label='', label_visibility='collapsed',
+                    max_chars=500
                 )
                 btn_m = st.form_submit_button('Consultar al asistente')
 
@@ -492,7 +493,8 @@ if st.session_state.role in ['admin', 'analyst']:
             with st.form(key='form_llm_tiggo_analyst', border=False):
                 question_a = st.text_input(
                     placeholder='Ej: ¿Qué significa el MAPE obtenido? ¿Es fiable la predicción?',
-                    key='input_llm_tiggo_analyst', label='', label_visibility='collapsed'
+                    key='input_llm_tiggo_analyst', label='', label_visibility='collapsed',
+                    max_chars=500
                 )
                 btn_a = st.form_submit_button('Consultar al asistente')
 
