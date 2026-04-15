@@ -15,7 +15,13 @@ pages/
 auth_system.py                ← Autenticación, sesiones y show_header()
 supabase_io.py                ← Capa de I/O centralizada (Supabase Storage)
 utils_validacion.py           ← Validación de datos de entrada
+logger.py                     ← Logging centralizado (consola + archivo rotativo)
+styles.py                     ← CSS global y helpers de componentes
+tests/
+└── test_validacion.py        ← 17 tests unitarios de utils_validacion
 requirements.txt
+docs/
+└── 04_modelos_ml.md          ← Documentación técnica de modelos ML
 .streamlit/
 ├── secrets.toml              ← Credenciales reales (NO en el repo)
 └── secrets.toml.example      ← Plantilla (sí en el repo)
@@ -359,6 +365,36 @@ Requiere `GENAI_API_KEY` en `secrets.toml`. Si la clave no está configurada, el
 
 ---
 
+## Tests
+
+```bash
+# Ejecutar la suite de tests unitarios
+pytest tests/ -v
+```
+
+Los tests de `test_validacion.py` no dependen de Streamlit; validan la lógica pura de `validate_dataframe` y `get_dataset_summary` en 6 clases / 17 casos:
+
+| Clase | Qué cubre |
+|-------|-----------|
+| `TestColumnas` | Columnas requeridas presentes / ausentes |
+| `TestPeriodoTemporal` | Umbral mínimo de 36 meses |
+| `TestFechasInvalidas` | Fechas inválidas por encima/debajo del umbral |
+| `TestDatosFaltantes` | Warnings de nulos |
+| `TestGetDatasetSummary` | Claves y conteos del resumen |
+| `TestCasosFrontera` | 1 fila, constantes de configuración |
+
+---
+
+## Logging
+
+El módulo `logger.py` expone `get_logger(name)` que configura un logger con:
+- **Consola** — nivel `INFO`, formato compacto.
+- **Archivo rotativo** — `logs/app.log`, 2 MB × 3 backups, nivel `DEBUG`.
+
+Los módulos `auth_system.py` y `supabase_io.py` usan `get_logger()` para registrar eventos de login, aprobaciones de modelo y errores de I/O con Supabase.
+
+---
+
 ## .gitignore (entradas clave)
 
 ```
@@ -369,11 +405,24 @@ Requiere `GENAI_API_KEY` en `secrets.toml`. Si la clave no está configurada, el
 *.csv
 __pycache__/
 .env
+mockup_*.py
+_dev/
+_sandbox/
+logs/
+*.log
 ```
 
 ---
 
 ## Changelog
+
+### 2026-04-15 (v11)
+- **feat**: Nuevo módulo `logger.py` — logging centralizado a consola + archivo rotativo (`logs/app.log`, 2 MB × 3 backups). `auth_system.py` y `supabase_io.py` integran el logger para registrar logins, fallos de sesión, aprobaciones de modelo y errores de I/O.
+- **feat**: Nueva suite de tests unitarios `tests/test_validacion.py` — 17 tests en 6 clases que validan la lógica pura de `validate_dataframe` y `get_dataset_summary` sin dependencia de Streamlit. Ejecutar con `pytest tests/ -v`.
+- **refactor**: Type hints completos en `auth_system.py`, `supabase_io.py` y `utils_validacion.py` — todas las funciones públicas y constantes tienen anotaciones PEP 484 explícitas.
+- **feat**: Diagnóstico de MAPE > 20% en pestaña Entrenamiento — expander expandido automáticamente con tabla de 5 causas probables (señal de alerta + solución) y pasos recomendados. Soft warning para MAPE entre 10% y 20%.
+- **docs**: `docs/04_modelos_ml.md` ampliado con dos nuevas secciones: (1) justificación de restricciones del espacio de búsqueda Optuna (`p ≤ 3`, prohibición de `d=1 AND D=1`); (2) limitación de la proyección de variable exógena con media móvil, cuándo falla y diagnóstico de correlación de Pearson.
+- **chore**: `mockup_sprint7.py` eliminado; `.gitignore` actualizado con `mockup_*.py`, `_dev/`, `_sandbox/`, `logs/` y `*.log`.
 
 ### 2026-04-04 (v10)
 - **fix**: Restricción de sobre-diferenciación en Optuna — las combinaciones `d=1 AND D=1` se descartan automáticamente durante la búsqueda, evitando la inestabilidad que causaba un MAPE del 27.9% en la primera iteración.

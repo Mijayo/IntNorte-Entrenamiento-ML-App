@@ -5,12 +5,16 @@ Para App Entrenamiento y Dashboard Negocio
 ============================================================================
 """
 
-import streamlit as st
 import hashlib
 import time
 from datetime import datetime, timedelta
 
+import streamlit as st
+
+from logger import get_logger
 from styles import get_global_css, get_login_css
+
+log = get_logger("auth")
 
 LOGO_URL = "https://cdn.brandfetch.io/idbC6t7DJN/w/904/h/196/theme/light/logo.png?c=1bxid64Mup7aczewSAYMX&t=1766585238441"
 
@@ -29,56 +33,59 @@ MAX_LOGIN_ATTEMPTS = 3
 # FUNCIONES DE AUTENTICACIÓN
 # ============================================================================
 
-def hash_password(password):
-    """Hash SHA256 de contraseña"""
+def hash_password(password: str) -> str:
+    """Hash SHA256 de contraseña."""
     return hashlib.sha256(password.encode()).hexdigest()
 
-def verify_credentials(username, password):
-    """Verificar credenciales (texto plano o hash)"""
+
+def verify_credentials(username: str, password: str) -> bool:
+    """Verificar credenciales (texto plano o hash SHA256)."""
     if username not in USERS_CONFIG:
         return False
-    
+
     stored_pass = USERS_CONFIG[username]['password']
-    
-    # Verificar texto plano
+
     if password == stored_pass:
         return True
-    
-    # Verificar hash SHA256
+
     if hash_password(password) == stored_pass:
         return True
-    
+
     return False
 
-def init_session_state():
-    """Inicializar session state"""
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    if 'username' not in st.session_state:
-        st.session_state.username = None
-    if 'role' not in st.session_state:
-        st.session_state.role = None
-    if 'login_time' not in st.session_state:
-        st.session_state.login_time = None
-    if 'login_attempts' not in st.session_state:
-        st.session_state.login_attempts = 0
-    if 'permissions' not in st.session_state:
-        st.session_state.permissions = {}
 
-def check_session_timeout():
-    """Verificar si la sesión ha expirado"""
+def init_session_state() -> None:
+    """Inicializar session state con valores por defecto."""
+    defaults: dict = {
+        'authenticated': False,
+        'username': None,
+        'role': None,
+        'login_time': None,
+        'login_attempts': 0,
+        'permissions': {},
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+def check_session_timeout() -> bool:
+    """Verificar si la sesión ha expirado. Devuelve True si expiró."""
     if st.session_state.authenticated and st.session_state.login_time:
         elapsed = datetime.now() - st.session_state.login_time
         if elapsed > timedelta(minutes=SESSION_TIMEOUT):
+            log.info("Sesión expirada para usuario '%s'", st.session_state.username)
             logout()
             return True
     return False
 
-def login(username, password):
-    """Intentar login"""
+
+def login(username: str, password: str) -> tuple[bool, str]:
+    """Intentar login. Devuelve (éxito, mensaje)."""
     if st.session_state.login_attempts >= MAX_LOGIN_ATTEMPTS:
+        log.warning("Login bloqueado para '%s': demasiados intentos fallidos", username)
         return False, "Demasiados intentos fallidos. Espera 5 minutos."
-    
+
     if verify_credentials(username, password):
         st.session_state.authenticated = True
         st.session_state.username = username
@@ -88,21 +95,27 @@ def login(username, password):
         st.session_state.permissions = USERS_CONFIG[username]['permissions']
         st.session_state.user_name = USERS_CONFIG[username]['name']
         st.session_state.user_icon = USERS_CONFIG[username]['icon']
+        log.info("Login exitoso: usuario='%s' rol='%s'", username, st.session_state.role)
         return True, "Login exitoso"
     else:
         st.session_state.login_attempts += 1
         remaining = MAX_LOGIN_ATTEMPTS - st.session_state.login_attempts
+        log.warning("Credenciales incorrectas para '%s' (intentos restantes: %d)",
+                    username, remaining)
         return False, f"Credenciales incorrectas. Intentos restantes: {remaining}"
 
-def logout():
-    """Cerrar sesión"""
+
+def logout() -> None:
+    """Cerrar sesión y limpiar el estado."""
+    log.info("Logout: usuario='%s'", st.session_state.get('username'))
     st.session_state.authenticated = False
     st.session_state.username = None
     st.session_state.role = None
     st.session_state.login_time = None
     st.session_state.permissions = {}
 
-def show_login_page(app_title="Sistema TIGGO 2"):
+
+def show_login_page(app_title: str = "Sistema TIGGO 2") -> None:
     """Mostrar página de login corporativa — dark premium."""
     st.markdown(get_login_css(), unsafe_allow_html=True)
 
@@ -139,7 +152,8 @@ def show_login_page(app_title="Sistema TIGGO 2"):
             unsafe_allow_html=True,
         )
 
-def show_user_info():
+
+def show_user_info() -> None:
     """Mostrar info del usuario logueado en el sidebar — diseño premium."""
     remaining = SESSION_TIMEOUT
     if st.session_state.login_time:
@@ -172,29 +186,32 @@ def show_user_info():
         logout()
         st.rerun()
 
-def require_permission(permission_name):
-    """Decorator para requerir permisos específicos"""
+
+def require_permission(permission_name: str):
+    """Decorator para requerir permisos específicos en una función."""
     def decorator(func):
         def wrapper(*args, **kwargs):
             if not st.session_state.get('authenticated', False):
                 st.error("❌ No estás autenticado")
                 return None
-            
+
             if not st.session_state.permissions.get(permission_name, False):
                 st.error(f"❌ No tienes permiso para: {permission_name}")
                 return None
-            
+
             return func(*args, **kwargs)
         return wrapper
     return decorator
 
-def has_permission(permission_name):
-    """Verificar si el usuario tiene un permiso"""
+
+def has_permission(permission_name: str) -> bool:
+    """Verificar si el usuario autenticado tiene un permiso."""
     if not st.session_state.get('authenticated', False):
         return False
     return st.session_state.permissions.get(permission_name, False)
 
-def show_header(title, subtitle=""):
+
+def show_header(title: str, subtitle: str = "") -> None:
     """Header corporativo premium — inyecta el CSS global y muestra logo + título."""
     st.markdown(get_global_css(), unsafe_allow_html=True)
     sub_html = f'<div class="header-sub">{subtitle}</div>' if subtitle else ''

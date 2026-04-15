@@ -12,9 +12,14 @@ import json
 import pickle
 from datetime import datetime
 
+import matplotlib.figure
 import pandas as pd
 import streamlit as st
 from supabase import create_client
+
+from logger import get_logger
+
+log = get_logger("supabase_io")
 
 
 # ── Cliente ─────────────────────────────────────────────────────────────────
@@ -27,14 +32,14 @@ def get_client():
     )
 
 
-def _bucket():
+def _bucket() -> str:
     return st.secrets["supabase"]["bucket"]
 
 
 # ── Primitivas de I/O ────────────────────────────────────────────────────────
 
-def _upload(path: str, data: bytes, content_type: str = "application/octet-stream"):
-    """Sube bytes a Supabase Storage (sobreescribe si existe)"""
+def _upload(path: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+    """Sube bytes a Supabase Storage (sobreescribe si existe)."""
     sb = get_client()
     try:
         sb.storage.from_(_bucket()).remove([path])
@@ -43,21 +48,24 @@ def _upload(path: str, data: bytes, content_type: str = "application/octet-strea
     sb.storage.from_(_bucket()).upload(
         path, data, {"content-type": content_type}
     )
+    log.debug("Upload OK: %s (%d bytes)", path, len(data))
 
 
 def _download(path: str) -> bytes:
-    """Descarga bytes de Supabase Storage"""
-    return get_client().storage.from_(_bucket()).download(path)
+    """Descarga bytes de Supabase Storage."""
+    data = get_client().storage.from_(_bucket()).download(path)
+    log.debug("Download OK: %s (%d bytes)", path, len(data))
+    return data
 
 
 # ── Gestión de runs ──────────────────────────────────────────────────────────
 
-def get_available_runs() -> list:
-    """Lista de runs disponibles (más reciente primero) desde training_log"""
+def get_available_runs() -> list[str]:
+    """Lista de runs disponibles (más reciente primero) desde training_log."""
     try:
-        log = json.loads(_download("training_log.json"))
-        seen = {}
-        for entry in reversed(log):
+        log_data = json.loads(_download("training_log.json"))
+        seen: dict[str, bool] = {}
+        for entry in reversed(log_data):
             rn = entry.get("run_name")
             if rn and rn not in seen:
                 seen[rn] = True
@@ -66,8 +74,8 @@ def get_available_runs() -> list:
         return []
 
 
-def get_default_run(runs: list) -> str | None:
-    """Run activo según latest.txt, o el más reciente si no existe"""
+def get_default_run(runs: list[str]) -> str | None:
+    """Run activo según latest.txt, o el más reciente si no existe."""
     try:
         candidate = _download("latest.txt").decode().strip()
         if candidate in runs:
@@ -77,13 +85,14 @@ def get_default_run(runs: list) -> str | None:
     return runs[0] if runs else None
 
 
-def approve_model(run_name: str):
-    """Activa un run como modelo de producción (actualiza latest.txt)"""
+def approve_model(run_name: str) -> None:
+    """Activa un run como modelo de producción (actualiza latest.txt)."""
     _upload("latest.txt", run_name.encode(), "text/plain")
+    log.info("Modelo activado en producción: run='%s'", run_name)
 
 
 def format_run_label(run_name: str) -> str:
-    """Formatea 20260322_143000 → 22/03/2026  14:30"""
+    """Formatea 20260322_143000 → 22/03/2026  14:30."""
     try:
         dt = datetime.strptime(run_name, "%Y%m%d_%H%M%S")
         return dt.strftime("%d/%m/%Y  %H:%M")
@@ -93,10 +102,20 @@ def format_run_label(run_name: str) -> str:
 
 # ── Guardar artefactos ───────────────────────────────────────────────────────
 
-def save_to_dashboard(run_name, modelo, predicciones, grid_results,
-                      walk_forward, historico, metricas, acf_fig, pacf_fig):
-    """Sube todos los artefactos del run a Supabase Storage"""
+def save_to_dashboard(
+    run_name: str,
+    modelo,
+    predicciones: pd.DataFrame,
+    grid_results: pd.DataFrame,
+    walk_forward: pd.DataFrame,
+    historico: pd.Series,
+    metricas: dict,
+    acf_fig: matplotlib.figure.Figure,
+    pacf_fig: matplotlib.figure.Figure,
+) -> None:
+    """Sube todos los artefactos del run a Supabase Storage."""
     p = f"{run_name}/"
+    log.info("Guardando artefactos del run '%s' en Supabase", run_name)
 
     # Modelo PKL (comprimido con gzip para reducir tamaño)
     buf = io.BytesIO()
@@ -130,15 +149,17 @@ def save_to_dashboard(run_name, modelo, predicciones, grid_results,
         fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         _upload(p + name, buf.getvalue(), "image/png")
 
+    log.info("Run '%s' guardado correctamente (%d artefactos)", run_name, 8)
+
 
 # ── Cargar datos del dashboard ───────────────────────────────────────────────
 
 @st.cache_data(ttl=600)
-def load_precargados(run_name: str):
-    """Descarga y parsea todos los artefactos de un run (cacheado 10 min)"""
+def load_precargados(run_name: str) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series]:
+    """Descarga y parsea todos los artefactos de un run (cacheado 10 min)."""
     p = f"{run_name}/"
 
-    metricas = json.loads(_download(p + "metricas_mejoradas.json"))
+    metricas: dict = json.loads(_download(p + "metricas_mejoradas.json"))
 
     pred_total = pd.read_excel(
         io.BytesIO(_download(p + "prediccion_total_mejorada.xlsx")), engine="openpyxl"
@@ -164,8 +185,8 @@ def load_precargados(run_name: str):
     return metricas, pred_total, grid_search, walk_forward, hist_total
 
 
-def load_acf_pacf_images(run_name: str):
-    """Descarga imágenes ACF/PACF como bytes para st.image"""
+def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:
+    """Descarga imágenes ACF/PACF como bytes para st.image."""
     try:
         acf = _download(f"{run_name}/acf_plot.png")
         pacf = _download(f"{run_name}/pacf_plot.png")
@@ -176,8 +197,8 @@ def load_acf_pacf_images(run_name: str):
 
 # ── Modelo actual (para comparación) ────────────────────────────────────────
 
-def load_current_model():
-    """Carga métricas del modelo activo (latest.txt)"""
+def load_current_model() -> dict | None:
+    """Carga métricas del modelo activo (latest.txt). Devuelve None si no existe."""
     try:
         run_name = _download("latest.txt").decode().strip()
         return json.loads(_download(f"{run_name}/metricas_mejoradas.json"))
@@ -187,25 +208,27 @@ def load_current_model():
 
 # ── Historial de entrenamientos ──────────────────────────────────────────────
 
-def save_training_log(entry: dict):
-    """Añade una entrada al historial en Supabase"""
+def save_training_log(entry: dict) -> None:
+    """Añade una entrada al historial en Supabase."""
     try:
         try:
-            log = json.loads(_download("training_log.json"))
+            existing = json.loads(_download("training_log.json"))
         except Exception:
-            log = []
-        log.append(entry)
+            existing = []
+        existing.append(entry)
         _upload(
             "training_log.json",
-            json.dumps(log, indent=2, ensure_ascii=False).encode(),
+            json.dumps(existing, indent=2, ensure_ascii=False).encode(),
             "application/json"
         )
+        log.info("Training log actualizado: run='%s'", entry.get("run_name"))
     except Exception as e:
+        log.error("No se pudo guardar el historial: %s", e)
         st.warning(f"No se pudo guardar el historial: {e}")
 
 
-def load_training_log() -> list:
-    """Carga el historial completo de entrenamientos"""
+def load_training_log() -> list[dict]:
+    """Carga el historial completo de entrenamientos."""
     try:
         return json.loads(_download("training_log.json"))
     except Exception:
@@ -214,7 +237,7 @@ def load_training_log() -> list:
 
 # ── Caché LLM persistente por run ───────────────────────────────────────────
 
-def save_llm_cache(run_name: str, cache: dict):
+def save_llm_cache(run_name: str, cache: dict) -> None:
     """Persiste el caché de respuestas Gemini de un run en Supabase."""
     try:
         _upload(
@@ -222,8 +245,8 @@ def save_llm_cache(run_name: str, cache: dict):
             json.dumps(cache, indent=2, ensure_ascii=False).encode(),
             "application/json"
         )
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("No se pudo guardar llm_cache para run='%s': %s", run_name, e)
 
 
 def load_llm_cache(run_name: str) -> dict:

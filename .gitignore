@@ -2,6 +2,11 @@
 .streamlit/secrets.toml
 .env
 
+# Archivos de desarrollo / mockups — no forman parte de la entrega
+mockup_*.py
+_dev/
+_sandbox/
+
 # Datos de negocio — NUNCA subir
 data dashboard/
 *.xlsx
@@ -13,6 +18,10 @@ data dashboard/
 
 # Métricas generadas
 metricas_mejoradas.json
+
+# Logs generados en runtime
+logs/
+*.log
 
 # Python
 __pycache__/

@@ -625,6 +625,41 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
 
                 mape_wf = df_wf['error_pct'].mean()
                 st.success(f"✅ MAPE walk-forward: {mape_wf:.2f}% · {len(df_wf)}/{n_wf} meses validados")
+
+                # ── Diagnóstico automático cuando MAPE > 20% ─────────────────
+                if mape_wf > 20:
+                    with st.expander("⚠️ MAPE elevado: causas probables y acciones recomendadas",
+                                     expanded=True):
+                        st.warning(
+                            f"El MAPE walk-forward es **{mape_wf:.1f}%** (umbral aceptable: ≤ 20%). "
+                            "Esto indica que, en promedio, las predicciones se desvían más de un "
+                            "20% del valor real. Antes de activar este modelo en producción, "
+                            "revisa las siguientes causas:"
+                        )
+                        st.markdown("""
+**Causas más frecuentes y su solución:**
+
+| # | Causa probable | Señal de alerta | Solución |
+|---|---------------|-----------------|----------|
+| 1 | **Serie demasiado corta** — SARIMA necesita al menos 3 ciclos estacionales completos | < 48 meses en el histórico | Ampliar el rango de fechas de entrenamiento |
+| 2 | **Alta variabilidad intrínseca** — meses con ventas cero o picos extremos distorsionan el modelo | `max/mean > 4` en la serie mensual | Aplicar suavizado o considerar Prophet, más robusto ante quiebres |
+| 3 | **Mes actual incluido** — datos incompletos inflan el error del último mes | Opción "Eliminar mes actual" desactivada | Activar "Eliminar mes actual" en la configuración |
+| 4 | **Variable exógena poco informativa** — si `ventas_otros` tiene baja correlación con `ventas_tiggo2`, puede añadir ruido | Correlación < 0.3 entre las dos series | Entrenar sin variable exógena (SARIMA puro) y comparar MAPE |
+| 5 | **Quiebre estructural** — cambio de tendencia no capturado (p. ej., lanzamiento de nuevo modelo CHERY) | Residuos con tendencia sistemática | Recortar el histórico a partir del quiebre o usar Prophet con changepoints |
+""")
+                        st.info(
+                            "**Próximos pasos recomendados:**  \n"
+                            "1. Ve a la pestaña **Comparativa ML** y compara con Prophet y Random Forest.  \n"
+                            "2. Si Prophet obtiene MAPE < 20%, considera usarlo como modelo de producción.  \n"
+                            "3. Si ningún modelo logra MAPE < 20%, documenta la limitación de los datos "
+                            "antes de presentar el sistema."
+                        )
+                elif mape_wf > 10:
+                    st.warning(
+                        f"⚠️ MAPE walk-forward: **{mape_wf:.1f}%** — aceptable pero mejorable. "
+                        "Considera comparar con Prophet en la pestaña **Comparativa ML**."
+                    )
+
                 progress_bar.progress(0.80)
 
                 # Paso 6: Modelo final

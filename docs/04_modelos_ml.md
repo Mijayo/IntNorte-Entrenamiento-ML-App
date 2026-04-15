@@ -59,6 +59,23 @@ En este sistema se usa la variante **SARIMAX** (la X es de e**X**ógena), que a�
 
 La intuición es que si en un mes se venden muchas unidades de otros modelos CHERY, es probable que el contexto de mercado (campañas, eventos) también favorezca las ventas del TIGGO 2. Esta señal ayuda al modelo a capturar efectos que la propia serie del TIGGO 2 no tiene suficiente historia para detectar.
 
+#### Limitación: proyección de la variable exógena en el horizonte
+
+SARIMAX necesita valores de `ventas_otros` también para los meses futuros que se predicen. Como esos datos no existen en el momento de la predicción, el sistema usa una **aproximación**: la media móvil de los últimos 6 meses históricos.
+
+```python
+exog_future_val = exog_data['ventas_otros'].rolling(6).mean().iloc[-1]
+# Se aplica el mismo valor constante a todos los meses del horizonte
+```
+
+**Implicaciones prácticas:**
+
+- Si las ventas del resto de modelos CHERY cambian significativamente (lanzamiento de un nuevo modelo, discontinuación de una línea, crisis de suministro), la proyección constante introduce un sesgo sistemático.
+- Esta aproximación es razonable cuando el horizonte es corto (≤ 6 meses) y el portfolio de la marca es estable.
+- Si se dispone de un pronóstico más preciso de ventas de otros modelos (p. ej., objetivos comerciales del trimestre), reentrenar con ese valor mejora la calidad del forecast.
+
+**Diagnóstico recomendado:** antes de activar el modelo, verificar que la correlación entre `ventas_otros` y `ventas_tiggo2` sea positiva (Pearson > 0.3). Si la correlación es baja o negativa, la variable exógena está añadiendo ruido y es mejor entrenar un SARIMA puro (sin exog).
+
 ### Estacionariedad y test ADF
 
 Antes de entrenar, el sistema verifica si la serie es estacionaria con el **test de Dickey-Fuller Aumentado (ADF)**:
@@ -111,6 +128,25 @@ Con 80 trials, Optuna típicamente encuentra un modelo con MAPE igual o mejor qu
 
 El criterio de optimización es **minimizar el MAPE** (error porcentual medio) sobre el conjunto de test. No se usa el AIC como criterio principal porque el AIC mide el ajuste sobre los datos de entrenamiento (in-sample), mientras que el MAPE sobre el test mide la capacidad predictiva real (out-of-sample), que es lo que nos interesa en producción.
 
+### Espacio de búsqueda y restricciones de estabilidad
+
+El espacio de búsqueda está acotado intencionalmente:
+
+```
+p ∈ {0, 1, 2, 3}   ← AR máximo 3 lags
+d ∈ {0, 1}
+q ∈ {0, 1, 2, 3}
+P ∈ {0, 1}
+D ∈ {0, 1}
+Q ∈ {0, 1, 2}
+```
+
+**¿Por qué limitar p a 3?**  
+Con series de 48–72 observaciones mensuales, un orden AR de p > 3 supone estimar demasiados parámetros con pocos datos. Esto conduce a sobreajuste: el modelo memoriza el ruido histórico en lugar de los patrones, y su MAPE out-of-sample empeora. Empíricamente, para series de ventas mensuales de automóviles, los valores de p ∈ {0, 1, 2} suelen dominar en los mejores modelos.
+
+**Restricción adicional: d=1 y D=1 simultáneos están prohibidos.**  
+Aplicar diferenciación regular y estacional a la vez en una serie corta equivale a diferenciar dos veces. En series de < 80 observaciones, esto elimina tanta señal que el modelo queda con ruido puro. Optuna rechaza automáticamente estos trials.
+
 ### Trials descartados
 
 Un trial se descarta (y no cuenta como válido) si ocurre cualquiera de estas condiciones:
@@ -118,6 +154,7 @@ Un trial se descarta (y no cuenta como válido) si ocurre cualquiera de estas co
 1. **Predicciones negativas:** el modelo predice ventas < 0, lo que es imposible en la realidad.
 2. **Predicciones fuera de rango:** el modelo predice ventas > `max_ventas` configurado.
 3. **Error numérico:** el modelo no converge o produce valores infinitos o NaN.
+4. **Doble diferenciación:** d=1 y D=1 simultáneos (rechazado antes de entrenar).
 
 Los trials descartados **son normales** y esperables — indican que esa combinación de parámetros no es adecuada para esta serie. Un porcentaje de descarte del 15–30% es completamente normal.
 
