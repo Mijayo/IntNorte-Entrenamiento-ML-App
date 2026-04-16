@@ -40,9 +40,9 @@ try:
 except ImportError:
     XGBOOST_OK = False
 
-import supabase_io as sio
-from auth_system import (init_session_state, show_login_page, show_user_info,
-                         check_session_timeout, has_permission, show_header)
+import core.supabase_io as sio
+from core.auth_system import (init_session_state, show_login_page, show_user_info,
+                              check_session_timeout, has_permission, show_header)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 

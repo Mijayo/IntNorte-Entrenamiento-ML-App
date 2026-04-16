@@ -6,7 +6,7 @@ Gestiona la autenticación compartida y muestra la página de inicio.
 """
 
 import streamlit as st
-from auth_system import init_session_state, show_login_page, check_session_timeout, show_user_info, show_header
+from core.auth_system import init_session_state, show_login_page, check_session_timeout, show_user_info, show_header
 
 st.set_page_config(
     page_title="Sistema TIGGO 2",

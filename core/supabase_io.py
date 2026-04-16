@@ -17,7 +17,7 @@ import pandas as pd
 import streamlit as st
 from supabase import create_client
 
-from logger import get_logger
+from .logger import get_logger
 
 log = get_logger("supabase_io")
 

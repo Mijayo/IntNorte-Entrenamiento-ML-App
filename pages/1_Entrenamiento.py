@@ -26,7 +26,7 @@ import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='statsmodels')
 warnings.filterwarnings('ignore', category=FutureWarning, module='statsmodels')
 
-from logger import get_logger
+from core.logger import get_logger
 log = get_logger("entrenamiento")
 
 # ── Constantes de configuración del modelo ────────────────────────────────────
@@ -52,12 +52,12 @@ EXOG_ROLLING_WINDOW: int = 6     # Meses para proyectar ventas_otros en el horiz
 # que los datos pre-boom arrastren la predicción hacia abajo.
 TRAINING_DEFAULT_START: date = date(2024, 1, 1)
 
-import supabase_io as sio
-from auth_system import (init_session_state, show_login_page, show_user_info,
-                         check_session_timeout, has_permission, show_header)
-from utils_validacion import (validate_dataframe, show_validation_results,
-                              preview_data, plot_temporal_distribution,
-                              plot_missing_data)
+import core.supabase_io as sio
+from core.auth_system import (init_session_state, show_login_page, show_user_info,
+                              check_session_timeout, has_permission, show_header)
+from core.utils_validacion import (validate_dataframe, show_validation_results,
+                                   preview_data, plot_temporal_distribution,
+                                   plot_missing_data)
 
 # ── Config ───────────────────────────────────────────────────────────────────
 

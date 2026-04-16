@@ -11,7 +11,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-_LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
+_LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
 _LOG_FILE = os.path.join(_LOGS_DIR, "app.log")
 _MAX_BYTES = 2 * 1024 * 1024   # 2 MB por fichero
 _BACKUP_COUNT = 3               # conservar los 3 últimos

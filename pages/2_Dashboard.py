@@ -16,10 +16,10 @@ warnings.filterwarnings('ignore')
 
 from google import genai
 
-import supabase_io as sio
-from auth_system import (init_session_state, show_login_page, show_user_info,
-                         check_session_timeout, has_permission, show_header)
-from styles import kpi_card, section_header, apply_chart_theme, COLORS
+import core.supabase_io as sio
+from core.auth_system import (init_session_state, show_login_page, show_user_info,
+                              check_session_timeout, has_permission, show_header)
+from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Config ───────────────────────────────────────────────────────────────────
 

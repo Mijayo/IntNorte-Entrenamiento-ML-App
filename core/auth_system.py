@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 
 import streamlit as st
 
-from logger import get_logger
-from styles import get_global_css, get_login_css
+from .logger import get_logger
+from .styles import get_global_css, get_login_css
 
 log = get_logger("auth")
 

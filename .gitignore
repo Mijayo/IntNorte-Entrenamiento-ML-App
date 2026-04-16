@@ -4,11 +4,13 @@
 
 # Archivos de desarrollo / mockups — no forman parte de la entrega
 mockup_*.py
+mockup_*.png
+docs/assets/
 _dev/
 _sandbox/
 
 # Datos de negocio — NUNCA subir
-data dashboard/
+data/
 *.xlsx
 *.xls
 *.csv

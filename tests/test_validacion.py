@@ -17,7 +17,7 @@ import pytest
 
 # Las funciones de validación no dependen de Streamlit en su lógica pura;
 # se importan directamente y se testean las rutas de validación.
-from utils_validacion import (
+from core.utils_validacion import (
     REQUIRED_COLUMNS,
     MIN_MONTHS_DATA,
     MAX_MISSING_PCT,
