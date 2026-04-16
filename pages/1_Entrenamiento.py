@@ -35,6 +35,23 @@ SARIMA_SEASONAL_PERIOD: int = 12 # Período estacional mensual
 WALK_FORWARD_MONTHS: int = 12    # Ventana máxima de validación walk-forward
 EXOG_ROLLING_WINDOW: int = 6     # Meses para proyectar ventas_otros en el horizonte
 
+# ── Ventana de entrenamiento por defecto ──────────────────────────────────────
+# SARIMAX aprende los patrones del período que le muestras. Si el mercado ha
+# cambiado de régimen (ej.: nuevo nivel de demanda post-2024), entrenar con
+# datos históricos lejanos ancla el modelo en ese nivel antiguo y produce
+# predicciones sistemáticamente bajas.
+#
+# Regla práctica:
+#   · Usa al menos 3 ciclos estacionales completos (36 meses) para que SARIMA
+#     aprenda los coeficientes estacionales con fiabilidad estadística.
+#   · Excluye períodos que no representen el comportamiento actual del mercado
+#     (pandemia 2020, quiebres estructurales, lanzamientos de producto).
+#
+# Para TIGGO 2 (caso 2026): el nivel de demanda pasó de ~31 uds/mes (2021-2024)
+# a ~65 uds/mes (2026). Arrancar en 2024-01-01 da 27+ meses recientes y evita
+# que los datos pre-boom arrastren la predicción hacia abajo.
+TRAINING_DEFAULT_START: date = date(2024, 1, 1)
+
 import supabase_io as sio
 from auth_system import (init_session_state, show_login_page, show_user_info,
                          check_session_timeout, has_permission, show_header)
@@ -384,7 +401,7 @@ with tabs[2]:
             ac_marca  = st.text_input("Marca",  value="CHERY",   key="ac_marca")
             ac_modelo = st.text_input("Modelo", value="TIGGO 2", key="ac_modelo")
         with col2:
-            ac_fecha_ini = st.date_input("Fecha inicio", value=date(2021, 1, 1), key="ac_fi")
+            ac_fecha_ini = st.date_input("Fecha inicio", value=TRAINING_DEFAULT_START, key="ac_fi")
             ac_fecha_fin = st.date_input("Fecha fin",    value=date.today(),      key="ac_ff")
 
         # Cálculo del límite superior exclusivo
@@ -432,9 +449,14 @@ with tabs[2]:
         ]
         with st.expander(f"📅 Paso 4 — Filtrar rango de fechas: {ac_fecha_ini} → {ac_fecha_fin}"):
             st.markdown(
-                "Se recorta el histórico al rango seleccionado para evitar datos "
-                "demasiado antiguos (que podrían distorsionar la tendencia) o meses "
-                "incompletos al final de la serie."
+                "Se recorta el histórico al rango seleccionado. Esto define la "
+                "**ventana de entrenamiento**: el período cuyos patrones de nivel, "
+                "tendencia y estacionalidad aprenderá el modelo.\n\n"
+                "**Principio clave:** incluir únicamente los meses que representen "
+                "el comportamiento *actual* del mercado. Datos de un régimen de demanda "
+                "anterior (pre-pandemia, pre-lanzamiento, pre-cambio de precio) "
+                "sesgan el modelo hacia ese nivel histórico y producen predicciones "
+                "sistemáticamente alejadas de la realidad presente."
             )
             st.dataframe(df_p4.head(10), use_container_width=True, hide_index=True)
             if len(df_p4) > 0:
@@ -557,11 +579,31 @@ with tabs[3]:
             modelo_filtro = st.text_input("Filtro Modelo (MODELO3)", value="TIGGO 2")
             marca_filtro = st.text_input("Filtro Marca", value="CHERY")
         with col2:
-            fecha_inicio = st.date_input("Fecha de inicio", value=date(2021, 1, 1))
-            fecha_fin = st.date_input("Fecha fin de datos", value=date.today(),
-                                      help="Límite superior del histórico usado para entrenar. "
-                                           "Si 'Eliminar mes actual' también está marcado, "
-                                           "se aplica el corte más conservador de los dos.")
+            fecha_inicio = st.date_input(
+                "Fecha de inicio del entrenamiento",
+                value=TRAINING_DEFAULT_START,
+                help=(
+                    "**Ventana de entrenamiento** — el modelo aprende exclusivamente "
+                    "del período comprendido entre esta fecha y la fecha fin.\n\n"
+                    "**¿Por qué importa?** SARIMA ajusta sus coeficientes al nivel "
+                    "medio y la estacionalidad del período que ve. Si el mercado cambió "
+                    "de régimen (nuevo precio, nueva competencia, post-pandemia), incluir "
+                    "datos del régimen anterior introduce sesgo sistemático y el modelo "
+                    "subestima o sobreestima de forma persistente.\n\n"
+                    "**Regla práctica:** usa al menos 36 meses (3 ciclos estacionales) "
+                    "del período que mejor represente el comportamiento actual. "
+                    f"Valor por defecto: {TRAINING_DEFAULT_START.strftime('%d/%m/%Y')}."
+                )
+            )
+            fecha_fin = st.date_input(
+                "Fecha fin de datos",
+                value=date.today(),
+                help=(
+                    "Límite superior del histórico usado para entrenar. "
+                    "Si 'Eliminar mes actual' también está marcado, "
+                    "se aplica el corte más conservador de los dos."
+                )
+            )
 
         col3, col4, col5 = st.columns(3)
         with col3:
@@ -571,6 +613,61 @@ with tabs[3]:
                                          min_value=10, max_value=10000, value=100, step=10)
         with col5:
             eliminar_mes_actual = st.checkbox("Eliminar mes actual", value=True)
+
+        # ── Documentación funcional: ventana de entrenamiento ─────────────────
+        n_meses_ventana = (
+            (fecha_fin.year - fecha_inicio.year) * 12
+            + (fecha_fin.month - fecha_inicio.month)
+        )
+        with st.expander("📅 ¿Cómo elegir la ventana de entrenamiento?", expanded=False):
+            st.markdown(f"""
+**Ventana seleccionada:** `{fecha_inicio.strftime('%d/%m/%Y')}` → `{fecha_fin.strftime('%d/%m/%Y')}`
+({n_meses_ventana} meses aprox.)
+
+---
+
+#### Concepto — Quiebre estructural (*structural break*)
+
+Un quiebre estructural ocurre cuando las condiciones de mercado cambian de forma
+permanente y la serie adopta un **nuevo nivel base, tendencia o patrón estacional**.
+Incluir datos anteriores al quiebre introduce un sesgo sistemático porque el modelo
+intenta reconciliar dos comportamientos incompatibles.
+
+**Indicadores de quiebre estructural:**
+- El modelo predice consistentemente **por debajo** de los valores reales durante
+  varios meses seguidos (sesgo negativo persistente).
+- La media de los últimos 12 meses es **más del 30% superior** a la media de los
+  3 años anteriores.
+- Ocurrió un evento conocido: cambio de precio, nuevo modelo, apertura de concesionario,
+  crisis o recuperación de demanda.
+
+#### Guía de configuración
+
+| Situación | Fecha inicio recomendada |
+|-----------|--------------------------|
+| Mercado estable, sin cambios de tendencia | Máximo histórico disponible (2017+) |
+| Recuperación post-pandemia capturada | 2021-01-01 |
+| Nuevo nivel de demanda desde 2024 | **2024-01-01** ← caso actual TIGGO 2 |
+| Lanzamiento de versión nueva del modelo | Fecha del lanzamiento |
+
+#### Mínimo estadístico
+
+SARIMA necesita al menos **36 meses** (3 ciclos estacionales completos) para
+estimar los coeficientes estacionales con fiabilidad. Con menos datos, los
+intervalos de confianza son muy amplios y el modelo tiende a sobreajustarse.
+            """)
+            if n_meses_ventana < 36:
+                st.warning(
+                    f"⚠️ La ventana actual tiene ~{n_meses_ventana} meses — por debajo del "
+                    "mínimo recomendado de 36. Considera ampliar la fecha de inicio."
+                )
+            elif n_meses_ventana < 48:
+                st.info(
+                    f"ℹ️ Ventana de ~{n_meses_ventana} meses — funcional, aunque con "
+                    "48+ meses los coeficientes estacionales serán más robustos."
+                )
+            else:
+                st.success(f"✅ Ventana de ~{n_meses_ventana} meses — tamaño adecuado.")
 
         st.markdown("---")
 
@@ -750,7 +847,7 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
 | 2 | **Alta variabilidad intrínseca** — meses con ventas cero o picos extremos distorsionan el modelo | `max/mean > 4` en la serie mensual | Aplicar suavizado o considerar Prophet, más robusto ante quiebres |
 | 3 | **Mes actual incluido** — datos incompletos inflan el error del último mes | Opción "Eliminar mes actual" desactivada | Activar "Eliminar mes actual" en la configuración |
 | 4 | **Variable exógena poco informativa** — si `ventas_otros` tiene baja correlación con `ventas_tiggo2`, puede añadir ruido | Correlación < 0.3 entre las dos series | Entrenar sin variable exógena (SARIMA puro) y comparar MAPE |
-| 5 | **Quiebre estructural** — cambio de tendencia no capturado (p. ej., lanzamiento de nuevo modelo CHERY) | Residuos con tendencia sistemática | Recortar el histórico a partir del quiebre o usar Prophet con changepoints |
+| 5 | **Quiebre estructural** — el mercado adoptó un nuevo nivel base que el modelo no vio (ej.: demanda TIGGO 2 pasó de ~31 uds/mes en 2021-2024 a ~65 uds/mes en 2026, produciendo MAPE = 42%) | Sesgo negativo persistente varios meses seguidos; media últimos 12m > 30% superior a la media histórica | Cambiar «Fecha de inicio» a la fecha del quiebre (ej.: 2024-01-01) y reentrenar — ver expander «¿Cómo elegir la ventana de entrenamiento?» |
 """)
                         st.info(
                             "**Próximos pasos recomendados:**  \n"
@@ -806,7 +903,10 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                         'fecha_inicio': fecha_inicio_str,
                         'fecha_fin': fecha_fin.strftime('%Y-%m-%d'),
                         'horizonte': horizonte,
-                        'max_ventas': int(max_ventas)
+                        'max_ventas': int(max_ventas),
+                        # Meses incluidos en el entrenamiento: permite auditar
+                        # qué ventana temporal aprendió el modelo y reproducirlo.
+                        'meses_ventana': n_meses_ventana
                     },
                     'datos_limpios': {
                         'total_ventas': len(df_modelo), 'meses_datos': len(ventas_modelo),
