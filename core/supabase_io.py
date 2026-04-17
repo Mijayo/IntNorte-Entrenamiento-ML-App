@@ -1,8 +1,8 @@
 """
 ============================================================================
-MÓDULO: I/O CON SUPABASE STORAGE
-Reemplaza todas las operaciones de filesystem local.
-Bucket: configurado en st.secrets["supabase"]["bucket"]
+MÓDULO: I/O CON SUPABASE STORAGE + DATABASE
+Bucket : configurado en st.secrets["supabase"]["bucket"]
+DB     : tabla training_runs en Supabase PostgreSQL
 ============================================================================
 """
 
@@ -21,6 +21,8 @@ from .logger import get_logger
 
 log = get_logger("supabase_io")
 
+_TABLE = "training_runs"
+
 
 # ── Cliente ─────────────────────────────────────────────────────────────────
 
@@ -36,7 +38,12 @@ def _bucket() -> str:
     return st.secrets["supabase"]["bucket"]
 
 
-# ── Primitivas de I/O ────────────────────────────────────────────────────────
+def _db():
+    """Acceso directo a la tabla training_runs."""
+    return get_client().table(_TABLE)
+
+
+# ── Primitivas de I/O (Storage) ──────────────────────────────────────────────
 
 def _upload(path: str, data: bytes, content_type: str = "application/octet-stream") -> None:
     """Sube bytes a Supabase Storage (sobreescribe si existe)."""
@@ -44,7 +51,6 @@ def _upload(path: str, data: bytes, content_type: str = "application/octet-strea
     try:
         sb.storage.from_(_bucket()).remove([path])
     except Exception as e:
-        # El fichero puede no existir aún (primera subida); no es un error fatal.
         log.debug("Pre-remove skipped for '%s': %s", path, e)
     sb.storage.from_(_bucket()).upload(
         path, data, {"content-type": content_type}
@@ -71,37 +77,95 @@ def _run_exists(run_name: str) -> bool:
 
 
 def get_available_runs() -> list[str]:
-    """Lista de runs disponibles (más reciente primero) desde training_log.
-    Filtra runs cuyos artefactos ya no existen en Supabase Storage."""
+    """Lista de runs disponibles (más reciente primero).
+    Fuente primaria: tabla DB. Fallback: training_log.json.
+    En ambos casos filtra runs sin artefactos en Storage."""
     try:
-        log_data = json.loads(_download("training_log.json"))
-        seen: dict[str, bool] = {}
-        for entry in reversed(log_data):
-            rn = entry.get("run_name")
-            if rn and rn not in seen:
-                seen[rn] = True
-        # Solo devolver runs que realmente existen en el bucket
-        return [rn for rn in seen.keys() if _run_exists(rn)]
+        rows = (
+            _db()
+            .select("run_name")
+            .order("created_at", desc=True)
+            .execute()
+            .data
+        )
+        runs = [r["run_name"] for r in rows]
+        return [rn for rn in runs if _run_exists(rn)]
     except Exception as e:
-        log.debug("training_log.json no disponible, devolviendo lista vacía: %s", e)
-        return []
+        log.warning("DB no disponible, usando training_log.json: %s", e)
+        try:
+            log_data = json.loads(_download("training_log.json"))
+            seen: dict[str, bool] = {}
+            for entry in reversed(log_data):
+                rn = entry.get("run_name")
+                if rn and rn not in seen:
+                    seen[rn] = True
+            return [rn for rn in seen.keys() if _run_exists(rn)]
+        except Exception as e2:
+            log.debug("training_log.json tampoco disponible: %s", e2)
+            return []
 
 
 def get_default_run(runs: list[str]) -> str | None:
-    """Run activo según latest.txt, o el más reciente si no existe."""
+    """Run activo: primero busca activo=TRUE en DB, luego latest.txt, luego el más reciente."""
+    try:
+        rows = _db().select("run_name").eq("activo", True).limit(1).execute().data
+        if rows:
+            candidate = rows[0]["run_name"]
+            if candidate in runs:
+                return candidate
+    except Exception as e:
+        log.debug("No se pudo consultar activo en DB: %s", e)
     try:
         candidate = _download("latest.txt").decode().strip()
         if candidate in runs:
             return candidate
     except Exception as e:
-        log.debug("latest.txt no disponible, usando run más reciente: %s", e)
+        log.debug("latest.txt no disponible: %s", e)
     return runs[0] if runs else None
 
 
 def approve_model(run_name: str) -> None:
-    """Activa un run como modelo de producción (actualiza latest.txt)."""
+    """Activa un run como modelo de producción.
+    Marca activo=TRUE en DB y actualiza latest.txt en Storage."""
+    try:
+        _db().update({"activo": False}).neq("run_name", run_name).execute()
+        _db().update({"activo": True}).eq("run_name", run_name).execute()
+        log.info("Modelo activado en DB: run='%s'", run_name)
+    except Exception as e:
+        log.warning("No se pudo actualizar activo en DB: %s", e)
     _upload("latest.txt", run_name.encode(), "text/plain")
     log.info("Modelo activado en producción: run='%s'", run_name)
+
+
+def delete_run(run_name: str) -> None:
+    """Elimina un run de la tabla DB (los artefactos en Storage se borran manualmente)."""
+    try:
+        _db().delete().eq("run_name", run_name).execute()
+        log.info("Run '%s' eliminado de DB", run_name)
+    except Exception as e:
+        log.error("No se pudo eliminar run '%s' de DB: %s", run_name, e)
+
+
+def get_runs_df() -> pd.DataFrame:
+    """DataFrame con todos los runs y sus métricas para análisis comparativo."""
+    try:
+        rows = (
+            _db()
+            .select("*")
+            .order("created_at", desc=True)
+            .execute()
+            .data
+        )
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows)
+        df["created_at"] = pd.to_datetime(df["created_at"])
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+        return df
+    except Exception as e:
+        log.warning("No se pudo cargar runs de DB: %s", e)
+        return pd.DataFrame()
 
 
 def format_run_label(run_name: str) -> str:
@@ -113,7 +177,7 @@ def format_run_label(run_name: str) -> str:
         return run_name
 
 
-# ── Guardar artefactos ───────────────────────────────────────────────────────
+# ── Guardar artefactos (Storage) ─────────────────────────────────────────────
 
 def save_to_dashboard(
     run_name: str,
@@ -130,33 +194,29 @@ def save_to_dashboard(
     p = f"{run_name}/"
     log.info("Guardando artefactos del run '%s' en Supabase", run_name)
 
-    # Modelo PKL (comprimido con gzip para reducir tamaño)
     buf = io.BytesIO()
     with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
         pickle.dump(modelo, gz)
     _upload(p + "modelo_total_mejorado.pkl.gz", buf.getvalue())
 
-    # Excel
     excel_ct = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     for df, name, with_index in [
-        (predicciones,                                          "prediccion_total_mejorada.xlsx",  False),
-        (grid_results,                                          "grid_search_results.xlsx",        False),
-        (walk_forward,                                          "walk_forward_validation.xlsx",    False),
+        (predicciones,  "prediccion_total_mejorada.xlsx",  False),
+        (grid_results,  "grid_search_results.xlsx",        False),
+        (walk_forward,  "walk_forward_validation.xlsx",    False),
         (historico.to_frame() if hasattr(historico, "to_frame") else historico,
-                                                                "historico_total_mejorado.xlsx",   True),
+                        "historico_total_mejorado.xlsx",   True),
     ]:
         buf = io.BytesIO()
         df.to_excel(buf, index=with_index, engine="openpyxl")
         _upload(p + name, buf.getvalue(), excel_ct)
 
-    # JSON métricas
     _upload(
         p + "metricas_mejoradas.json",
         json.dumps(metricas, indent=2, ensure_ascii=False).encode(),
         "application/json"
     )
 
-    # PNG plots
     for fig, name in [(acf_fig, "acf_plot.png"), (pacf_fig, "pacf_plot.png")]:
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
@@ -201,7 +261,7 @@ def load_precargados(run_name: str) -> tuple[dict, pd.DataFrame, pd.DataFrame, p
 def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:
     """Descarga imágenes ACF/PACF como bytes para st.image."""
     try:
-        acf = _download(f"{run_name}/acf_plot.png")
+        acf  = _download(f"{run_name}/acf_plot.png")
         pacf = _download(f"{run_name}/pacf_plot.png")
         return acf, pacf
     except Exception as e:
@@ -209,27 +269,52 @@ def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:
         return None, None
 
 
-# ── Modelo actual (para comparación) ────────────────────────────────────────
+# ── Modelo actual (para comparación ML) ─────────────────────────────────────
 
 def load_current_model() -> dict | None:
-    """Carga métricas del modelo activo (latest.txt). Devuelve None si no existe."""
+    """Carga métricas del modelo activo. Devuelve None si no existe."""
     try:
         run_name = _download("latest.txt").decode().strip()
         return json.loads(_download(f"{run_name}/metricas_mejoradas.json"))
     except Exception as e:
-        log.debug("No se pudo cargar el modelo actual (puede ser el primer run): %s", e)
+        log.debug("No se pudo cargar el modelo actual: %s", e)
         return None
 
 
 # ── Historial de entrenamientos ──────────────────────────────────────────────
 
 def save_training_log(entry: dict) -> None:
-    """Añade una entrada al historial en Supabase."""
+    """Persiste una entrada de entrenamiento en DB (primario) y training_log.json (backup)."""
+    # 1. Upsert en PostgreSQL
+    try:
+        row = {
+            "run_name":                   entry.get("run_name"),
+            "timestamp":                  entry.get("timestamp"),
+            "usuario":                    entry.get("usuario"),
+            "modelo":                     entry.get("modelo"),
+            "marca":                      entry.get("marca"),
+            "fecha_inicio":               entry.get("fecha_inicio"),
+            "horizonte":                  entry.get("horizonte"),
+            "max_ventas":                 entry.get("max_ventas"),
+            "sarima_order":               json.dumps(entry.get("sarima_order")),
+            "sarima_seasonal":            json.dumps(entry.get("sarima_seasonal")),
+            "aic":                        entry.get("aic"),
+            "mape_wf":                    entry.get("mape_wf"),
+            "meses_datos":                entry.get("meses_datos"),
+            "combinaciones_validas":      entry.get("combinaciones_validas"),
+            "combinaciones_descartadas":  entry.get("combinaciones_descartadas"),
+        }
+        _db().upsert(row, on_conflict="run_name").execute()
+        log.info("Training log guardado en DB: run='%s'", entry.get("run_name"))
+    except Exception as e:
+        log.error("No se pudo guardar en DB: %s", e)
+        st.warning(f"No se pudo guardar en base de datos: {e}")
+
+    # 2. Backup en training_log.json (fallback)
     try:
         try:
             existing = json.loads(_download("training_log.json"))
-        except Exception as e:
-            log.debug("training_log.json no existe aún, creando nuevo: %s", e)
+        except Exception:
             existing = []
         existing.append(entry)
         _upload(
@@ -237,14 +322,18 @@ def save_training_log(entry: dict) -> None:
             json.dumps(existing, indent=2, ensure_ascii=False).encode(),
             "application/json"
         )
-        log.info("Training log actualizado: run='%s'", entry.get("run_name"))
     except Exception as e:
-        log.error("No se pudo guardar el historial: %s", e)
-        st.warning(f"No se pudo guardar el historial: {e}")
+        log.warning("No se pudo actualizar training_log.json: %s", e)
 
 
 def load_training_log() -> list[dict]:
-    """Carga el historial completo de entrenamientos."""
+    """Carga el historial completo. Fuente primaria: DB. Fallback: training_log.json."""
+    try:
+        rows = _db().select("*").order("created_at", desc=True).execute().data
+        if rows:
+            return rows
+    except Exception as e:
+        log.warning("DB no disponible en load_training_log: %s", e)
     try:
         return json.loads(_download("training_log.json"))
     except Exception as e:
@@ -255,7 +344,7 @@ def load_training_log() -> list[dict]:
 # ── Caché LLM persistente por run ───────────────────────────────────────────
 
 def save_llm_cache(run_name: str, cache: dict) -> None:
-    """Persiste el caché de respuestas Gemini de un run en Supabase."""
+    """Persiste el caché de respuestas Gemini de un run en Supabase Storage."""
     try:
         _upload(
             f"{run_name}/llm_cache.json",
