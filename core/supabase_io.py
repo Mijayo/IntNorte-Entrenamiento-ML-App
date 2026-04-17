@@ -61,8 +61,18 @@ def _download(path: str) -> bytes:
 
 # ── Gestión de runs ──────────────────────────────────────────────────────────
 
+def _run_exists(run_name: str) -> bool:
+    """Comprueba si un run tiene artefactos en Supabase Storage."""
+    try:
+        files = get_client().storage.from_(_bucket()).list(run_name)
+        return len(files) > 0
+    except Exception:
+        return False
+
+
 def get_available_runs() -> list[str]:
-    """Lista de runs disponibles (más reciente primero) desde training_log."""
+    """Lista de runs disponibles (más reciente primero) desde training_log.
+    Filtra runs cuyos artefactos ya no existen en Supabase Storage."""
     try:
         log_data = json.loads(_download("training_log.json"))
         seen: dict[str, bool] = {}
@@ -70,7 +80,8 @@ def get_available_runs() -> list[str]:
             rn = entry.get("run_name")
             if rn and rn not in seen:
                 seen[rn] = True
-        return list(seen.keys())
+        # Solo devolver runs que realmente existen en el bucket
+        return [rn for rn in seen.keys() if _run_exists(rn)]
     except Exception as e:
         log.debug("training_log.json no disponible, devolviendo lista vacía: %s", e)
         return []
