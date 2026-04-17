@@ -1067,15 +1067,15 @@ with tabs[4]:
 with tabs[5]:
     st.header("📋 Historial de Entrenamientos", divider='gray')
 
-    log = sio.load_training_log()
+    historial = sio.load_training_log()
 
-    if not log:
+    if not historial:
         st.info("No hay entrenamientos registrados todavía.")
     else:
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total ejecuciones", len(log))
-        col2.metric("Último MAPE", f"{log[-1]['mape_wf']:.2f}%")
-        col3.metric("Mejor MAPE", f"{min(e['mape_wf'] for e in log):.2f}%")
+        col1.metric("Total ejecuciones", len(historial))
+        col2.metric("Último MAPE", f"{historial[-1]['mape_wf']:.2f}%")
+        col3.metric("Mejor MAPE", f"{min(e['mape_wf'] for e in historial):.2f}%")
 
         st.markdown("---")
 
@@ -1086,16 +1086,16 @@ with tabs[5]:
             'AIC': round(e['aic'], 2), 'MAPE WF': f"{e['mape_wf']:.2f}%",
             'Horizonte': e.get('horizonte', 6),
             'Trials válidos/total': f"{e['combinaciones_validas']}/{e['combinaciones_validas'] + e['combinaciones_descartadas']}"
-        } for e in reversed(log)])
+        } for e in reversed(historial)])
 
         st.dataframe(df_log, use_container_width=True, hide_index=True)
 
-        if len(log) > 1:
+        if len(historial) > 1:
             st.subheader("📈 Evolución del MAPE")
             fig_log = go.Figure()
             fig_log.add_trace(go.Scatter(
-                x=[e['timestamp'][:16].replace('T', ' ') for e in log],
-                y=[e['mape_wf'] for e in log],
+                x=[e['timestamp'][:16].replace('T', ' ') for e in historial],
+                y=[e['mape_wf'] for e in historial],
                 mode='lines+markers', line=dict(color='#1C7293', width=2),
                 marker=dict(size=8)
             ))
