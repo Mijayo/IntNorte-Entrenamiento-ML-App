@@ -25,14 +25,24 @@ _TABLE       = "training_runs"
 _AUDIT_TABLE = "audit_log"
 
 
-# ── Cliente ─────────────────────────────────────────────────────────────────
+# ── Clientes ─────────────────────────────────────────────────────────────────
 
 @st.cache_resource
 def get_client():
+    """Cliente con anon key — usado para Supabase Auth (login/logout)."""
     return create_client(
         st.secrets["supabase"]["url"],
         st.secrets["supabase"]["key"]
     )
+
+
+@st.cache_resource
+def _get_service_client():
+    """Cliente con service role key — bypasea RLS para Storage y DB.
+    Seguro en Streamlit porque es server-side y nunca llega al navegador."""
+    cfg = st.secrets["supabase"]
+    service_key = cfg.get("service_key") or cfg.get("key")
+    return create_client(cfg["url"], service_key)
 
 
 def _bucket() -> str:
@@ -40,20 +50,20 @@ def _bucket() -> str:
 
 
 def _db():
-    """Acceso directo a la tabla training_runs."""
-    return get_client().table(_TABLE)
+    """Acceso directo a la tabla training_runs (service role — sin RLS)."""
+    return _get_service_client().table(_TABLE)
 
 
 def _audit():
-    """Acceso directo a la tabla audit_log."""
-    return get_client().table(_AUDIT_TABLE)
+    """Acceso directo a la tabla audit_log (service role — sin RLS)."""
+    return _get_service_client().table(_AUDIT_TABLE)
 
 
 # ── Primitivas de I/O (Storage) ──────────────────────────────────────────────
 
 def _upload(path: str, data: bytes, content_type: str = "application/octet-stream") -> None:
     """Sube bytes a Supabase Storage (sobreescribe si existe)."""
-    sb = get_client()
+    sb = _get_service_client()
     try:
         sb.storage.from_(_bucket()).remove([path])
     except Exception as e:
@@ -66,7 +76,7 @@ def _upload(path: str, data: bytes, content_type: str = "application/octet-strea
 
 def _download(path: str) -> bytes:
     """Descarga bytes de Supabase Storage."""
-    data = get_client().storage.from_(_bucket()).download(path)
+    data = _get_service_client().storage.from_(_bucket()).download(path)
     log.debug("Download OK: %s (%d bytes)", path, len(data))
     return data
 
@@ -76,7 +86,7 @@ def _download(path: str) -> bytes:
 def _run_exists(run_name: str) -> bool:
     """Comprueba si un run tiene artefactos en Supabase Storage."""
     try:
-        files = get_client().storage.from_(_bucket()).list(run_name)
+        files = _get_service_client().storage.from_(_bucket()).list(run_name)
         return len(files) > 0
     except Exception:
         return False
