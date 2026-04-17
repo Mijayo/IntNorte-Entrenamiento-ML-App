@@ -21,7 +21,8 @@ from .logger import get_logger
 
 log = get_logger("supabase_io")
 
-_TABLE = "training_runs"
+_TABLE       = "training_runs"
+_AUDIT_TABLE = "audit_log"
 
 
 # ── Cliente ─────────────────────────────────────────────────────────────────
@@ -41,6 +42,11 @@ def _bucket() -> str:
 def _db():
     """Acceso directo a la tabla training_runs."""
     return get_client().table(_TABLE)
+
+
+def _audit():
+    """Acceso directo a la tabla audit_log."""
+    return get_client().table(_AUDIT_TABLE)
 
 
 # ── Primitivas de I/O (Storage) ──────────────────────────────────────────────
@@ -124,7 +130,7 @@ def get_default_run(runs: list[str]) -> str | None:
     return runs[0] if runs else None
 
 
-def approve_model(run_name: str) -> None:
+def approve_model(run_name: str, usuario: str | None = None) -> None:
     """Activa un run como modelo de producción.
     Marca activo=TRUE en DB y actualiza latest.txt en Storage."""
     try:
@@ -134,13 +140,15 @@ def approve_model(run_name: str) -> None:
     except Exception as e:
         log.warning("No se pudo actualizar activo en DB: %s", e)
     _upload("latest.txt", run_name.encode(), "text/plain")
+    log_audit(usuario, "APPROVE_MODEL", run_name=run_name)
     log.info("Modelo activado en producción: run='%s'", run_name)
 
 
-def delete_run(run_name: str) -> None:
+def delete_run(run_name: str, usuario: str | None = None) -> None:
     """Elimina un run de la tabla DB (los artefactos en Storage se borran manualmente)."""
     try:
         _db().delete().eq("run_name", run_name).execute()
+        log_audit(usuario, "DELETE_RUN", run_name=run_name)
         log.info("Run '%s' eliminado de DB", run_name)
     except Exception as e:
         log.error("No se pudo eliminar run '%s' de DB: %s", run_name, e)
@@ -362,3 +370,36 @@ def load_llm_cache(run_name: str) -> dict:
     except Exception as e:
         log.debug("llm_cache no disponible para run='%s': %s", run_name, e)
         return {}
+
+
+# ── Audit Log ────────────────────────────────────────────────────────────────
+
+def log_audit(usuario: str | None, accion: str, run_name: str | None = None, detalle: dict | None = None) -> None:
+    """Registra una acción de usuario en la tabla audit_log.
+    Falla silenciosamente si la tabla no existe o hay error de red."""
+    try:
+        _audit().insert({
+            "usuario":  usuario,
+            "accion":   accion,
+            "run_name": run_name,
+            "detalle":  detalle or {},
+        }).execute()
+        log.debug("Audit log: usuario='%s' accion='%s' run='%s'", usuario, accion, run_name)
+    except Exception as e:
+        log.warning("No se pudo escribir audit_log: %s", e)
+
+
+def get_audit_log(limit: int = 100) -> list[dict]:
+    """Devuelve las últimas `limit` entradas del audit_log ordenadas por timestamp desc."""
+    try:
+        return (
+            _audit()
+            .select("*")
+            .order("timestamp", desc=True)
+            .limit(limit)
+            .execute()
+            .data
+        )
+    except Exception as e:
+        log.warning("No se pudo leer audit_log: %s", e)
+        return []

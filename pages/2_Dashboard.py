@@ -54,6 +54,10 @@ if not available_runs:
     st.error("❌ No hay modelos entrenados. Ejecuta primero la app de **Entrenamiento**.")
     st.stop()
 
+# Inicializar referencia de runs conocidos para el watcher realtime
+if '_known_runs' not in st.session_state:
+    st.session_state['_known_runs'] = list(available_runs)
+
 default_run = sio.get_default_run(available_runs)
 
 selected_run = st.sidebar.selectbox(
@@ -66,6 +70,22 @@ selected_run = st.sidebar.selectbox(
 
 is_latest = sio.get_default_run(available_runs) == selected_run
 st.sidebar.caption("🟢 Activo en producción" if is_latest else "🔵 Versión histórica")
+
+# ── Realtime: watcher de nuevos entrenamientos (polling cada 30 s) ────────────
+
+@st.fragment(run_every=30)
+def _live_watcher() -> None:
+    """Comprueba cada 30 s si hay un nuevo run en Supabase y notifica con toast."""
+    current = sio.get_available_runs()
+    prev    = st.session_state.get('_known_runs', [])
+    new     = [r for r in current if r not in prev]
+    if new:
+        for r in new:
+            st.toast(f"Nuevo modelo entrenado: {sio.format_run_label(r)}", icon="🔔")
+        st.session_state['_known_runs'] = current
+        st.rerun()
+
+_live_watcher()
 
 # ── Sidebar: indicador de datos de concesionarios ────────────────────────────
 

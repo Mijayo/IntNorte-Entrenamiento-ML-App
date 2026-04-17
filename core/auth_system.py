@@ -13,6 +13,7 @@ import streamlit as st
 
 from .logger import get_logger
 from .styles import get_global_css, get_login_css
+from .supabase_io import get_client, log_audit
 
 log = get_logger("auth")
 
@@ -80,39 +81,81 @@ def check_session_timeout() -> bool:
     return False
 
 
+def _set_session(username: str, user_cfg: dict) -> None:
+    """Vuelca la config de usuario al session_state tras autenticación exitosa."""
+    st.session_state.authenticated  = True
+    st.session_state.username        = username
+    st.session_state.role            = user_cfg['role']
+    st.session_state.login_time      = datetime.now()
+    st.session_state.login_attempts  = 0
+    st.session_state.permissions     = user_cfg['permissions']
+    st.session_state.user_name       = user_cfg['name']
+    st.session_state.user_icon       = user_cfg['icon']
+    log.info("Login exitoso: usuario='%s' rol='%s'", username, user_cfg['role'])
+
+
 def login(username: str, password: str) -> tuple[bool, str]:
-    """Intentar login. Devuelve (éxito, mensaje)."""
+    """Autenticación via Supabase Auth (primario) con fallback a credenciales locales.
+    Devuelve (éxito, mensaje)."""
     if st.session_state.login_attempts >= MAX_LOGIN_ATTEMPTS:
         log.warning("Login bloqueado para '%s': demasiados intentos fallidos", username)
         return False, "Demasiados intentos fallidos. Espera 5 minutos."
 
-    if verify_credentials(username, password):
-        st.session_state.authenticated = True
-        st.session_state.username = username
-        st.session_state.role = USERS_CONFIG[username]['role']
-        st.session_state.login_time = datetime.now()
-        st.session_state.login_attempts = 0
-        st.session_state.permissions = USERS_CONFIG[username]['permissions']
-        st.session_state.user_name = USERS_CONFIG[username]['name']
-        st.session_state.user_icon = USERS_CONFIG[username]['icon']
-        log.info("Login exitoso: usuario='%s' rol='%s'", username, st.session_state.role)
-        return True, "Login exitoso"
-    else:
+    if username not in USERS_CONFIG:
         st.session_state.login_attempts += 1
         remaining = MAX_LOGIN_ATTEMPTS - st.session_state.login_attempts
-        log.warning("Credenciales incorrectas para '%s' (intentos restantes: %d)",
-                    username, remaining)
+        log.warning("Usuario no encontrado: '%s'", username)
         return False, f"Credenciales incorrectas. Intentos restantes: {remaining}"
+
+    user_cfg  = USERS_CONFIG[username]
+    email     = user_cfg.get('email')
+    authed    = False
+
+    # 1. Supabase Auth (primario) — requiere campo 'email' en secrets.toml
+    if email:
+        try:
+            resp = get_client().auth.sign_in_with_password({"email": email, "password": password})
+            if resp.user:
+                authed = True
+                if resp.session:
+                    st.session_state.supabase_access_token = resp.session.access_token
+                log.info("Autenticado via Supabase Auth: '%s'", username)
+        except Exception as e:
+            log.warning("Supabase Auth no disponible, usando fallback local: %s", e)
+
+    # 2. Fallback local — hash SHA256 o texto plano (secreto en secrets.toml)
+    if not authed:
+        stored = user_cfg.get('password', '')
+        if stored and (password == stored or hash_password(password) == stored):
+            authed = True
+            log.info("Autenticado via credenciales locales: '%s'", username)
+
+    if authed:
+        _set_session(username, user_cfg)
+        log_audit(username, "LOGIN", detalle={"metodo": "supabase_auth" if email else "local"})
+        return True, "Login exitoso"
+
+    st.session_state.login_attempts += 1
+    remaining = MAX_LOGIN_ATTEMPTS - st.session_state.login_attempts
+    log.warning("Credenciales incorrectas para '%s' (intentos restantes: %d)", username, remaining)
+    return False, f"Credenciales incorrectas. Intentos restantes: {remaining}"
 
 
 def logout() -> None:
-    """Cerrar sesión y limpiar el estado."""
-    log.info("Logout: usuario='%s'", st.session_state.get('username'))
-    st.session_state.authenticated = False
-    st.session_state.username = None
-    st.session_state.role = None
-    st.session_state.login_time = None
-    st.session_state.permissions = {}
+    """Cerrar sesión: cierra la sesión Supabase Auth (si existe) y limpia el estado."""
+    usuario = st.session_state.get('username')
+    log.info("Logout: usuario='%s'", usuario)
+    log_audit(usuario, "LOGOUT")
+    try:
+        get_client().auth.sign_out()
+    except Exception as e:
+        log.debug("Supabase sign_out: %s", e)
+    st.session_state.authenticated  = False
+    st.session_state.username        = None
+    st.session_state.role            = None
+    st.session_state.login_time      = None
+    st.session_state.permissions     = {}
+    st.session_state.pop('supabase_access_token', None)
 
 
 def show_login_page(app_title: str = "Sistema TIGGO 2") -> None:
