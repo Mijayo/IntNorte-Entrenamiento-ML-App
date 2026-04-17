@@ -160,8 +160,8 @@ h3 { font-family:'Exo 2',sans-serif !important; font-weight:500 !important; }
 [data-testid="stSidebar"] .material-icons {
   font-family:'Material Symbols Rounded','Material Icons',sans-serif !important;
 }
-/* Ocultar etiqueta interna "streamlitApp" del sidebar header */
-[data-testid="stSidebarHeader"] { display:none !important; }
+/* Ocultar label de sección "streamlitApp" en el nav del sidebar */
+[data-testid="stSidebarNavSeparatorHeader"] { display:none !important; }
 
 /* ════════════════════════════════════════════════════════
    COMPONENTES PERSONALIZADOS
