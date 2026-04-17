@@ -36,6 +36,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown("""
 <div class="feature-card blue">
+  <span class="fc-number">01 / ENTRENAMIENTO</span>
   <span class="feature-card-icon">🤖</span>
   <h3>Entrenamiento</h3>
   <p>Carga datos de ventas, entrena un nuevo modelo SARIMA con búsqueda bayesiana
@@ -47,6 +48,7 @@ with col1:
 with col2:
     st.markdown("""
 <div class="feature-card green">
+  <span class="fc-number">02 / DASHBOARD</span>
   <span class="feature-card-icon">📊</span>
   <h3>Dashboard</h3>
   <p>Visualiza predicciones, KPIs y métricas del modelo activo.
@@ -58,6 +60,7 @@ with col2:
 with col3:
     st.markdown("""
 <div class="feature-card amber">
+  <span class="fc-number">03 / COMPARATIVA</span>
   <span class="feature-card-icon">🏆</span>
   <h3>Comparativa ML</h3>
   <p>Enfrenta SARIMA, Prophet, Regresión Lineal, Random Forest y XGBoost
