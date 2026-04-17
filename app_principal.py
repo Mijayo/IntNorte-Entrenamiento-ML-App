@@ -39,7 +39,7 @@ with col1:
   <span class="feature-card-icon">🤖</span>
   <h3>Entrenamiento</h3>
   <p>Carga datos de ventas, entrena un nuevo modelo SARIMA con búsqueda bayesiana
-     (Optuna) y publícalo en el Dashboard con un clic.</p>
+     (Optuna) y publícalo en el Dashboard.</p>
   <span class="feature-card-badge badge-tech">Admin · Analista</span>
 </div>
 """, unsafe_allow_html=True)
