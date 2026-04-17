@@ -153,6 +153,15 @@ h3 { font-family:'Exo 2',sans-serif !important; font-weight:500 !important; }
 [data-testid="stSidebar"] * {
   font-family:'Barlow',sans-serif !important;
 }
+/* Restaurar fuente de iconos Material (colapso, flechas nav) */
+[data-testid="stSidebar"] [data-testid="stIconMaterial"],
+[data-testid="stSidebar"] span[aria-hidden="true"],
+[data-testid="stSidebar"] .material-symbols-rounded,
+[data-testid="stSidebar"] .material-icons {
+  font-family:'Material Symbols Rounded','Material Icons',sans-serif !important;
+}
+/* Ocultar etiqueta interna "streamlitApp" del sidebar header */
+[data-testid="stSidebarHeader"] { display:none !important; }
 
 /* ════════════════════════════════════════════════════════
    COMPONENTES PERSONALIZADOS
