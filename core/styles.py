@@ -267,11 +267,25 @@ h3 { font-family:'Exo 2',sans-serif !important; font-weight:500 !important; }
 }
 
 /* ── Feature cards (home page) ────────────────────────── */
+/* Columnas Streamlit en modo flex para igualar altura */
+[data-testid="stHorizontalBlock"] {
+  align-items:stretch !important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="column"] {
+  display:flex !important;
+  flex-direction:column !important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="column"] > div:first-child {
+  flex:1 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
 .feature-card {
   background:linear-gradient(135deg,#0F1724 0%,#162030 100%);
   border:1px solid rgba(32,201,151,.12);
   border-radius:16px; padding:30px 24px;
-  height:100%; position:relative; overflow:hidden;
+  flex:1 !important; min-height:260px;
+  position:relative; overflow:hidden;
 }
 .feature-card::before {
   content:''; position:absolute; top:0; left:0; right:0; height:2px;
