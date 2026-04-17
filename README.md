@@ -12,22 +12,34 @@ pages/
 ├── 1_Entrenamiento.py        ← Entrenamiento SARIMA (Admin / Analista)
 ├── 2_Dashboard.py            ← Dashboard de negocio (todos los roles)
 └── 3_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
-auth_system.py                ← Autenticación, sesiones y show_header()
-supabase_io.py                ← Capa de I/O centralizada (Supabase Storage)
-utils_validacion.py           ← Validación de datos de entrada
-logger.py                     ← Logging centralizado (consola + archivo rotativo)
-styles.py                     ← CSS global y helpers de componentes
+core/                         ← Paquete Python de utilidades
+├── __init__.py
+├── auth_system.py            ← Autenticación, sesiones y show_header()
+├── supabase_io.py            ← Capa de I/O centralizada (Supabase Storage)
+├── utils_validacion.py       ← Validación de datos de entrada
+├── logger.py                 ← Logging centralizado (consola + archivo rotativo)
+└── styles.py                 ← CSS global y helpers de componentes
 tests/
 └── test_validacion.py        ← 17 tests unitarios de utils_validacion
-requirements.txt
+data/                         ← Datos locales — gitignored, nunca en el repo
+├── raw/                      ← Excel histórico de ventas (fuente)
+├── processed/                ← Datasets transformados (veh_ml_features.xlsx)
+├── monthly/                  ← Ventas mensuales reales para actualización
+└── artifacts/                ← Artefactos del modelo generados localmente
 docs/
-└── 04_modelos_ml.md          ← Documentación técnica de modelos ML
+├── assets/                   ← Mockups e imágenes de desarrollo (gitignored)
+├── 01_introduccion.md
+├── 02_arquitectura.md
+├── 03_guia_usuario.md
+├── 04_modelos_ml.md          ← Documentación técnica de modelos ML
+└── 05_despliegue.md
+requirements.txt
 .streamlit/
 ├── secrets.toml              ← Credenciales reales (NO en el repo)
 └── secrets.toml.example      ← Plantilla (sí en el repo)
 ```
 
-> No hay carpetas locales de datos. Todos los artefactos del modelo se guardan y leen desde **Supabase Storage** (`bucket: modelos-ml`).
+> No hay carpetas locales de datos persistentes en producción. Todos los artefactos del modelo se guardan y leen desde **Supabase Storage** (`bucket: modelos-ml`). La carpeta `data/` es solo para trabajo local.
 
 ---
 
@@ -186,34 +198,51 @@ Se pueden subir varios archivos de ambos tipos en una misma carga.
 |-----------|-------------|-------------|
 | Marca | `CHERY` | Filtro de marca |
 | Modelo | `TIGGO 2` | Filtro de modelo |
-| Fecha inicio | `2021-01-01` | Ignorar ventas anteriores a esta fecha |
-| Fecha fin de datos | hoy | Límite superior del histórico usado para entrenar. Se combina con «Eliminar mes actual»: gana el corte más conservador |
+| Fecha inicio | `2024-01-01` | Inicio de la **ventana de entrenamiento** — ver nota abajo |
+| Fecha fin de datos | hoy | Límite superior del histórico. Se combina con «Eliminar mes actual»: gana el corte más conservador |
 | Horizonte | `6` meses | Meses a predecir (3–12) |
 | Máx. ventas | `100` unid./mes | Límite superior de predicciones válidas |
 | Excluir mes actual | `true` | Eliminar el mes en curso (datos incompletos) |
 
-### Pestaña 🎓 Preparar Datos
+### Ventana de entrenamiento
 
-Modo académico que muestra el pipeline completo de transformación de datos, sin necesidad de lanzar un entrenamiento:
+SARIMAX ajusta sus coeficientes al nivel medio y la estacionalidad del período que le muestras. Si el mercado cambió de régimen (nuevo precio, nueva competencia, quiebre post-pandemia), incluir datos del régimen anterior introduce **sesgo sistemático** — el modelo subestima o sobreestima de forma persistente.
 
-1. **Datos brutos** — muestra de las filas individuales del Excel
-2. **Filtro marca** — descarte de filas de otras marcas
-3. **Filtro modelo** — aislamiento del modelo objetivo
-4. **Rango de fechas** — recorte temporal configurable
-5. **Resample mensual** — conversión de filas individuales a serie temporal (`resample('ME').size()`) con tabla y gráfico
-6. **Variable exógena** — ventas mensuales de los demás modelos de la marca, usadas como regresora en SARIMAX
+**Regla práctica:** usa al menos **36 meses** (3 ciclos estacionales completos) del período que mejor represente el comportamiento actual.
 
-Al final de la pestaña hay un **botón de descarga** del `.xlsx` resultante con tres hojas: `Serie_SARIMA`, `Ventas_Mensuales` y `Comparativa`.
+| Situación | Fecha de inicio recomendada |
+|-----------|----------------------------|
+| Mercado estable | Máximo histórico disponible |
+| Recuperación post-pandemia | 2021-01-01 |
+| Nuevo nivel de demanda desde 2024 | **2024-01-01** ← caso TIGGO 2 |
+| Lanzamiento de versión nueva | Fecha del lanzamiento |
+
+La app muestra un **expander de ayuda** con el cálculo de meses en la ventana seleccionada y alertas:
+- `< 36 meses` → ⚠️ advertencia (riesgo de coeficientes estacionales inestables)
+- `36–48 meses` → ℹ️ info (ventana aceptable)
+- `> 48 meses` → ✅ success (ventana robusta)
+
+### Diagnóstico de MAPE alto
+
+La pestaña Entrenamiento incluye una tabla de diagnóstico que se expande automáticamente cuando el MAPE supera el 20%:
+
+| # | Causa probable | Señal | Solución |
+|---|---------------|-------|----------|
+| 1 | Outliers / errores de datos | Error en meses puntuales, no sistemático | Revisar el histórico y corregir datos |
+| 2 | Horizonte demasiado largo | Error crece monotónicamente | Reducir el horizonte de predicción |
+| 3 | Variable exógena incorrecta | Correlación < 0.3 con la serie objetivo | Revisar `ventas_otros` o eliminarla |
+| 4 | Datos insuficientes | < 36 meses en la ventana | Ampliar la ventana de entrenamiento |
+| 5 | **Quiebre estructural** | Sesgo negativo persistente varios meses | Mover «Fecha inicio» a la fecha del quiebre |
 
 ### Modelo SARIMA
 
 - **Algoritmo**: SARIMAX con variable exógena (ventas de otros modelos de la misma marca)
 - **Búsqueda de hiperparámetros**: [Optuna](https://optuna.org/) con sampler **TPE (Tree-structured Parzen Estimator)** — 80 trials bayesianos sobre el espacio `p ∈ {0–3}`, `d ∈ {0–1}`, `q ∈ {0–3}`, `P ∈ {0–1}`, `D ∈ {0–1}`, `Q ∈ {0–2}`, `m=12` (~4× más rápido que el grid search exhaustivo de 384 combinaciones, con igual o mejor calidad)
 - **Criterio**: MAPE mínimo sobre el conjunto de test; se descartan predicciones fuera del rango `[0, max_ventas]`
-- **Trials descartados**: combinaciones con predicciones negativas, superiores al límite configurado, errores numéricos de convergencia, o combinaciones `d=1 AND D=1` (sobre-diferenciación que inestabiliza el modelo)
-- **Variable exógena**: ventas mensuales de los demás modelos de la misma marca (`ventas_otros`). En el horizonte de predicción se usa la media móvil de los últimos 6 meses como valor asumido; el usuario ve un aviso informativo antes del forecast.
+- **Trials descartados**: predicciones negativas, superiores al límite configurado, errores numéricos de convergencia, o combinaciones `d=1 AND D=1` (sobre-diferenciación)
+- **Variable exógena**: ventas mensuales de los demás modelos de la misma marca (`ventas_otros`). En el horizonte de predicción se usa la media móvil de los últimos 6 meses como valor asumido; el usuario ve un aviso antes del forecast
 - **Intervalos de confianza**: 95% en todos los puntos del forecast
-- **Walk-forward**: valida hasta los últimos **12 meses** (antes 6), con mínimo igual al horizonte de predicción
+- **Walk-forward**: valida hasta los últimos **12 meses**, con mínimo igual al horizonte de predicción configurado
 
 ### Flujo de aprobación
 
@@ -230,7 +259,7 @@ Página de comparación que enfrenta hasta **5 modelos** sobre el mismo históri
 | Modelo | Tipo | Enfoque |
 |--------|------|---------|
 | **SARIMA** | Serie de tiempo | Parámetros (p,d,q)(P,D,Q)₁₂ configurables manualmente |
-| **Prophet** | Serie de tiempo | Estacionalidad multiplicativa anual + festivos de México (MX) |
+| **Prophet** | Serie de tiempo | Estacionalidad multiplicativa anual + festivos de Perú (PE) |
 | **Regresión Lineal** | ML supervisado | Lag features + rolling stats + calendario |
 | **Random Forest** | ML supervisado | 300 estimadores, captura relaciones no lineales |
 | **XGBoost** | ML supervisado | Gradient boosting, lr=0.05, max_depth=4 |
@@ -302,13 +331,9 @@ El KPI de MAPE en los tabs **Dashboard** y **Predicciones** cambia de color seg�
 
 | MAPE | Color | Mensaje |
 |------|-------|---------|
-| ≤ 10% | verde (por defecto) | Sin alerta — modelo de alta precisión |
+| ≤ 10% | verde | Sin alerta — modelo de alta precisión |
 | 10–20% | ámbar | Advertencia — precisión aceptable, monitorear |
 | > 20% | rojo | Error — modelo de baja fiabilidad, reentrenar |
-
-### Selector de versión y barra lateral
-
-La barra lateral muestra el selector de runs y el estado de la carga de concesionarios (`🏪 N registros cargados` / `sin datos — carga en la pestaña 🏪`). El uploader completo de concesionarios se encuentra dentro del tab **🏪 Concesionarios** (expander auto-abierto cuando no hay datos cargados).
 
 ### Tab 🏪 Concesionarios (admin / analista / gerente)
 
@@ -319,8 +344,6 @@ Contiene el uploader de Excel con validación robusta: columnas requeridas marca
 - Columna de concesionario: `DET_CC` (prioridad) o `AGE`
 - Columna de ciudad: `AGE` o `CIUDAD`/`REGION`
 - Si la primera fila contiene descripciones (todo texto), se descarta automáticamente
-
-Disponible una vez cargado el Excel. Muestra análisis de ventas CHERY filtradas por año, modelo y ciudad:
 
 | Elemento | Descripción |
 |----------|-------------|
@@ -349,10 +372,24 @@ Disponible una vez cargado el Excel. Muestra análisis de ventas CHERY filtradas
 Chat sobre el modelo entrenado, alimentado con Gemini (`gemini-2.5-flash`). El contexto que recibe el LLM incluye parámetros SARIMA, AIC/BIC, MAPE, predicciones con intervalos de confianza y tendencia de los últimos 3 meses. Las respuestas se cachean en `session_state` y se **persisten en Supabase** (`<run>/llm_cache.json`) para sobrevivir recargas de página. El caché se invalida automáticamente al cambiar de run en la barra lateral.
 
 El prompt está adaptado al rol:
-- **Admin / Analista** — tono técnico; acepta preguntas sobre AIC, MAPE, walk-forward, parámetros del modelo o comparativa de algoritmos. El asistente conoce SARIMA, Prophet, Random Forest, XGBoost y Regresión Lineal.
-- **Gerente** — tono accionable; orientado a recomendaciones de compra e interpretación de tendencias. Para comparar modelos, se redirige a la página **Comparativa ML**.
+- **Admin / Analista** — tono técnico; acepta preguntas sobre AIC, MAPE, walk-forward, parámetros del modelo o comparativa de algoritmos
+- **Gerente** — tono accionable; orientado a recomendaciones de compra e interpretación de tendencias
 
 Requiere `GENAI_API_KEY` en `secrets.toml`. Si la clave no está configurada, el tab muestra un aviso en lugar de fallar.
+
+---
+
+## Módulo `core/`
+
+Todos los módulos utilitarios residen en el paquete `core/` e importan entre sí con rutas relativas. Los archivos de `pages/` y `app_principal.py` los importan con la notación `from core.xxx import`.
+
+| Módulo | Responsabilidad |
+|--------|----------------|
+| `core/auth_system.py` | Autenticación SHA-256, sesiones, timeout, RBAC, UI de login y header |
+| `core/supabase_io.py` | Todas las operaciones de I/O con Supabase Storage (upload/download, runs, log) |
+| `core/utils_validacion.py` | Validación de calidad del DataFrame antes de entrenar |
+| `core/logger.py` | Logger centralizado — escribe a consola y a `logs/app.log` (rotativo 2 MB × 3) |
+| `core/styles.py` | CSS global dark premium, helpers `kpi_card()`, `section_header()`, `apply_chart_theme()` |
 
 ---
 
@@ -368,11 +405,10 @@ Requiere `GENAI_API_KEY` en `secrets.toml`. Si la clave no está configurada, el
 ## Tests
 
 ```bash
-# Ejecutar la suite de tests unitarios
 pytest tests/ -v
 ```
 
-Los tests de `test_validacion.py` no dependen de Streamlit; validan la lógica pura de `validate_dataframe` y `get_dataset_summary` en 6 clases / 17 casos:
+Los tests de `tests/test_validacion.py` no dependen de Streamlit; validan la lógica pura de `validate_dataframe` y `get_dataset_summary` en 6 clases / 17 casos:
 
 | Clase | Qué cubre |
 |-------|-----------|
@@ -385,115 +421,102 @@ Los tests de `test_validacion.py` no dependen de Streamlit; validan la lógica p
 
 ---
 
-## Logging
-
-El módulo `logger.py` expone `get_logger(name)` que configura un logger con:
-- **Consola** — nivel `INFO`, formato compacto.
-- **Archivo rotativo** — `logs/app.log`, 2 MB × 3 backups, nivel `DEBUG`.
-
-Los módulos `auth_system.py` y `supabase_io.py` usan `get_logger()` para registrar eventos de login, aprobaciones de modelo y errores de I/O con Supabase.
-
----
-
 ## .gitignore (entradas clave)
 
 ```
-.streamlit/secrets.toml
-*.pkl
-*.xlsx
-*.xls
-*.csv
-__pycache__/
-.env
-mockup_*.py
-_dev/
-_sandbox/
-logs/
-*.log
+.streamlit/secrets.toml     ← credenciales
+data/                       ← todos los datos locales (xlsx, pkl, csv, json)
+*.pkl  *.xlsx  *.xls  *.csv ← captura por extensión (backup)
+mockup_*.py  mockup_*.png   ← artefactos de desarrollo
+docs/assets/                ← imágenes de mockup
+logs/  *.log                ← logs generados en runtime
+__pycache__/  venv/  .env   ← estándar Python
 ```
 
 ---
 
 ## Changelog
 
+### 2026-04-16 (v14)
+- **refactor**: Profesionalización de la estructura de carpetas — módulos Python extraídos a paquete `core/` (`auth_system`, `logger`, `styles`, `supabase_io`, `utils_validacion`).
+- **refactor**: Importaciones actualizadas en todos los archivos: `from core.xxx import` / `import core.xxx as`. Importaciones internas dentro de `core/` convertidas a relativas (`.module`).
+- **fix**: `core/logger.py` — corregido `_LOGS_DIR` para que los logs se escriban en la raíz del proyecto (`logs/`) y no dentro de `core/logs/`.
+- **chore**: Datos locales reorganizados en `data/{raw,processed,monthly,artifacts}/` (gitignored). `datos_reales/` → `data/monthly/`, `data dashboard/` → `data/artifacts/`.
+- **chore**: Mockup de sprint movido a `docs/assets/` (gitignored). `.gitignore` actualizado con los nuevos patrones de ruta.
+
+### 2026-04-16 (v13)
+- **feat**: Constante `TRAINING_DEFAULT_START = date(2024, 1, 1)` — ventana de entrenamiento por defecto cambiada de 2021-01-01 a 2024-01-01 para aislar el régimen de demanda actual del TIGGO 2 (~65 uds/mes) del régimen anterior (~31 uds/mes).
+- **feat**: Widget `fecha_inicio` con `help` extenso que explica el concepto de quiebre estructural y la regla de 36 meses mínimos.
+- **feat**: Nuevo expander "¿Cómo elegir la ventana de entrenamiento?" con tabla de casos de uso, cálculo dinámico de meses en la ventana y alertas contextuales (< 36 m ⚠️, 36–48 m ℹ️, ≥ 48 m ✅).
+- **feat**: Tabla de diagnóstico de MAPE — fila 5 actualizada con el caso concreto del TIGGO 2 como ejemplo de quiebre estructural (MAPE 42%).
+- **feat**: Campo `meses_ventana` añadido al dict de métricas guardado en Supabase para auditoría por run.
+- **data**: `veh_ml_features.xlsx` actualizado a 30.039 filas (hasta 2026-03-31) con datos reales de Feb y Mar 2026 (64 y 66 unidades TIGGO 2 confirmadas).
+
 ### 2026-04-15 (v12)
-- **fix**: Inconsistencia documentación/código — `docs/04_modelos_ml.md` corregido a `country_name='PE'` (festivos peruanos) alineando con la implementación real de Prophet.
-- **refactor**: Magic numbers extraídos a constantes nombradas en `1_Entrenamiento.py` (`OPTUNA_N_TRIALS`, `SARIMA_SEASONAL_PERIOD`, `WALK_FORWARD_MONTHS`, `EXOG_ROLLING_WINDOW`) y en `3_Comparativa_ML.py` (`RF_N_ESTIMATORS`, `XGB_LEARNING_RATE`, `XGB_MAX_DEPTH`, etc.).
-- **fix**: `warnings.filterwarnings('ignore')` global reemplazado en ambas páginas por supresión acotada solo a módulos `statsmodels` — el resto del runtime mantiene sus advertencias visibles.
-- **fix**: Todos los `except Exception: pass` en `supabase_io.py` ahora registran al menos `log.debug(...)` con contexto; ningún error se pierde en silencio.
-- **feat**: Validación anticipada de `max_ventas` antes de lanzar el entrenamiento — si el límite configurado es menor que el pico histórico del modelo, se muestra error bloqueante antes de gastar tiempo en Optuna.
-- **fix**: Traceback raw en la UI de Entrenamiento reemplazado por mensaje amigable + `log.exception()`; el detalle técnico queda disponible en un expander colapsado.
-- **feat**: Límite de 500 caracteres (`max_chars=500`) en ambos inputs del Asistente IA (manager y analyst) para prevenir prompts excesivamente largos hacia Gemini.
-- **docs**: Docstrings completos añadidos a `run_adf_test`, `train_sarima_model`, `perform_optuna_search` y `perform_walk_forward` con parámetros y tipos de retorno.
-- **chore**: Módulo `logger.py` importado en `1_Entrenamiento.py` y usado en el manejador de excepciones de entrenamiento.
+- **fix**: `docs/04_modelos_ml.md` corregido a `country_name='PE'` (festivos peruanos) alineando con la implementación real de Prophet.
+- **refactor**: Magic numbers extraídos a constantes nombradas en `1_Entrenamiento.py` y `3_Comparativa_ML.py`.
+- **fix**: `warnings.filterwarnings('ignore')` global reemplazado por supresión acotada solo a módulos `statsmodels`.
+- **fix**: Todos los `except Exception: pass` en `supabase_io.py` ahora registran `log.debug(...)` con contexto.
+- **feat**: Validación anticipada de `max_ventas` antes de lanzar Optuna — error bloqueante si el límite es menor que el pico histórico.
+- **fix**: Traceback raw reemplazado por mensaje amigable + expander colapsado con detalle técnico.
+- **feat**: Límite de 500 caracteres (`max_chars=500`) en inputs del Asistente IA.
+- **docs**: Docstrings completos en `run_adf_test`, `train_sarima_model`, `perform_optuna_search` y `perform_walk_forward`.
 
 ### 2026-04-15 (v11)
-- **feat**: Nuevo módulo `logger.py` — logging centralizado a consola + archivo rotativo (`logs/app.log`, 2 MB × 3 backups). `auth_system.py` y `supabase_io.py` integran el logger para registrar logins, fallos de sesión, aprobaciones de modelo y errores de I/O.
-- **feat**: Nueva suite de tests unitarios `tests/test_validacion.py` — 17 tests en 6 clases que validan la lógica pura de `validate_dataframe` y `get_dataset_summary` sin dependencia de Streamlit. Ejecutar con `pytest tests/ -v`.
-- **refactor**: Type hints completos en `auth_system.py`, `supabase_io.py` y `utils_validacion.py` — todas las funciones públicas y constantes tienen anotaciones PEP 484 explícitas.
-- **feat**: Diagnóstico de MAPE > 20% en pestaña Entrenamiento — expander expandido automáticamente con tabla de 5 causas probables (señal de alerta + solución) y pasos recomendados. Soft warning para MAPE entre 10% y 20%.
-- **docs**: `docs/04_modelos_ml.md` ampliado con dos nuevas secciones: (1) justificación de restricciones del espacio de búsqueda Optuna (`p ≤ 3`, prohibición de `d=1 AND D=1`); (2) limitación de la proyección de variable exógena con media móvil, cuándo falla y diagnóstico de correlación de Pearson.
-- **chore**: `mockup_sprint7.py` eliminado; `.gitignore` actualizado con `mockup_*.py`, `_dev/`, `_sandbox/`, `logs/` y `*.log`.
+- **feat**: Nuevo módulo `logger.py` — logging centralizado a consola + archivo rotativo (`logs/app.log`, 2 MB × 3 backups). Integrado en `auth_system.py` y `supabase_io.py`.
+- **feat**: Nueva suite de tests `tests/test_validacion.py` — 17 tests en 6 clases sin dependencia de Streamlit.
+- **refactor**: Type hints completos en `auth_system.py`, `supabase_io.py` y `utils_validacion.py`.
+- **feat**: Diagnóstico de MAPE > 20% con tabla de 5 causas y soluciones, expandido automáticamente.
+- **docs**: `docs/04_modelos_ml.md` ampliado con restricciones del espacio de búsqueda Optuna y limitaciones de la proyección de variable exógena.
 
 ### 2026-04-04 (v10)
-- **fix**: Restricción de sobre-diferenciación en Optuna — las combinaciones `d=1 AND D=1` se descartan automáticamente durante la búsqueda, evitando la inestabilidad que causaba un MAPE del 27.9% en la primera iteración.
-- **feat**: Walk-forward validation extendido a **12 meses** (antes 6) con mínimo igual al horizonte de predicción configurado.
-- **feat**: Aviso informativo de asunción de variable exógena antes del forecast — muestra el valor medio móvil de 6 meses usado para `ventas_otros` en el horizonte de predicción.
-- **feat**: Alertas dinámicas de MAPE en Dashboard y Predicciones — KPI en rojo (>20%), ámbar (10–20%) o verde (≤10%), con banner de error o advertencia explicativo.
-- **feat**: Nueva sección **Publicar modelo ganador en producción** en Comparativa ML — permite activar el run ganador en Supabase con un clic, con advertencia si el MAPE supera el 20%.
-- **feat**: Caché de respuestas Gemini persistido en Supabase (`<run>/llm_cache.json`) — sobrevive recargas de página e invalidación automática al cambiar de run.
-- **feat**: Uploader de concesionarios movido del sidebar al tab 🏪 — validación robusta con mensajes de error por columna (❌ bloqueante / ⚠️ advertencia), expander auto-abierto cuando no hay datos.
-- **fix**: Sidebar aligerado — muestra solo el estado de carga de concesionarios (N registros o aviso de ausencia).
-- **feat**: `supabase_io.py` — nuevas funciones `save_llm_cache()` y `load_llm_cache()` para persistencia de respuestas Gemini por run.
+- **fix**: Restricción `d=1 AND D=1` en Optuna para evitar sobre-diferenciación.
+- **feat**: Walk-forward validation extendido a 12 meses (antes 6).
+- **feat**: Aviso informativo de asunción de variable exógena antes del forecast.
+- **feat**: Alertas dinámicas de MAPE en Dashboard y Predicciones (rojo / ámbar / verde).
+- **feat**: Sección "Publicar modelo ganador en producción" en Comparativa ML.
+- **feat**: Caché de respuestas Gemini persistido en Supabase (`<run>/llm_cache.json`).
+- **feat**: Uploader de concesionarios movido del sidebar al tab 🏪, con validación robusta por columna.
 
 ### 2026-03-28 (v9)
-- **feat**: Dark premium UI aplicada a toda la aplicación — tema oscuro consistente (`#080D18` bg, `#20C997` teal, `#F59E0B` amber) en las cuatro páginas.
-- **feat**: Nuevo módulo `styles.py` — CSS global centralizado con helpers `kpi_card()`, `section_header()` y `apply_chart_theme()`. Evita duplicar estilos en cada página; se inyecta una sola vez vía `show_header()`.
-- **feat**: `.streamlit/config.toml` añadido — establece el tema base de Streamlit para que widgets nativos (botones, sliders, tabs) hereden el dark theme sin CSS extra.
-- **feat**: `auth_system.py` rediseñado — login premium con tarjeta oscura y borde tricolor, header con logo invertido y divider, sidebar user-card con badge de rol y countdown de sesión.
-- **feat**: `app_principal.py` — tarjetas de funcionalidades migradas de `st.info/success/warning` a componentes HTML `feature-card` (blue / green / amber) con tipografía Exo 2 + Barlow (Google Fonts).
-- **feat**: `pages/2_Dashboard.py` — KPIs migrados a `kpi_card()` custom, todos los charts a `apply_chart_theme()` con paleta teal/amber; footer HTML premium.
-- **feat**: `pages/1_Entrenamiento.py` y `pages/3_Comparativa_ML.py` — CSS legacy eliminado, heredan el global; `.winner-box` y demás clases movidas a `styles.py`.
+- **feat**: Dark premium UI aplicada a toda la aplicación (`#080D18` bg, `#20C997` teal, `#F59E0B` amber).
+- **feat**: Nuevo módulo `styles.py` con CSS global centralizado y helpers `kpi_card()`, `section_header()`, `apply_chart_theme()`.
+- **feat**: `.streamlit/config.toml` añadido para dark theme nativo en widgets Streamlit.
+- **feat**: Login premium con tarjeta oscura, borde tricolor, sidebar user-card con badge de rol y countdown de sesión.
 
 ### 2026-03-27 (v8)
-- **feat**: Nueva página **🏆 Comparativa ML** (`pages/3_Comparativa_ML.py`) — reemplaza a Prophet vs SARIMA. Enfrenta hasta 5 modelos (SARIMA, Prophet, Regresión Lineal, Random Forest, XGBoost) sobre el mismo histórico mensual del Tiggo 2. Métricas: MAE, RMSE, MAPE y R². Incluye feature engineering con lag features (1,2,3,6,12 meses), medias móviles y features de calendario. Gráficas de predicciones, errores por mes e importancia de features para modelos ML. Botón de descarga CSV del período de test.
-- **feat**: Landing page (`app_principal.py`) actualizada con tarjeta de acceso a Comparativa ML.
-- **feat**: Asistente IA del Dashboard actualizado — los prompts de admin/analista ahora incluyen SARIMA, Prophet, Random Forest, XGBoost y Regresión Lineal. Se añade orientación hacia Comparativa ML en ambos roles.
-- **chore**: Añadido `xgboost` a `requirements.txt`.
+- **feat**: Nueva página **🏆 Comparativa ML** — enfrenta SARIMA, Prophet, Regresión Lineal, Random Forest y XGBoost. Feature engineering con lag features y calendario. Gráficas de predicciones, errores e importancia de features. Descarga CSV.
+- **chore**: `xgboost` añadido a `requirements.txt`.
 
 ### 2026-03-25 (v7)
-- **feat**: Búsqueda de hiperparámetros SARIMA migrada de grid search exhaustivo a **Optuna TPE** (80 trials bayesianos vs 384 combinaciones fijas, ~4× más rápido con igual calidad). La función `perform_grid_search` fue reemplazada por `perform_optuna_search`.
-- **feat**: UI de resultados de búsqueda mejorada — expander *📊 Detalle de la búsqueda Optuna* con métricas en 3 columnas (trials evaluados, válidos, descartados) y explicación clara de por qué se descarta cada trial (predicciones negativas, fuera de rango, error numérico).
-- **fix**: Corregido error `MS is not supported as period frequency` (`to_timestamp('MS')` → `to_timestamp()`).
-- **chore**: Añadido `optuna` a `requirements.txt`.
+- **feat**: Búsqueda de hiperparámetros migrada de grid search exhaustivo a **Optuna TPE** (80 trials vs 384 combinaciones, ~4× más rápido).
+- **fix**: Error `MS is not supported as period frequency` corregido.
+- **chore**: `optuna` añadido a `requirements.txt`.
 
 ### 2026-03-25 (v6)
-- **feat**: Nueva página **⚔️ Prophet vs SARIMA** — comparación de ambos modelos sobre el mismo histórico con métricas MAE, RMSE, MAPE y tiempo de entrenamiento. Gráficas de predicciones, errores por mes y descomposición Prophet.
-- **feat**: Landing page actualizada con tarjeta de acceso a Prophet vs SARIMA.
-- **chore**: Añadido `prophet` a `requirements.txt`.
+- **feat**: Nueva página **⚔️ Prophet vs SARIMA** (antecesora de Comparativa ML).
+- **chore**: `prophet` añadido a `requirements.txt`.
 
 ### 2026-03-25 (v5)
-- **feat**: Limpieza automática de datos integrada en Tab 1 — elimina duplicados por `CHASIS` y filas con `MODELO3` nulo al cargar el Excel.
-- **feat**: Grid search ampliado de 45 a 192 combinaciones — incluye `d∈{0,1}` y `P∈{0,1}`.
-- **fix**: Criterio de selección del modelo cambiado de AIC mínimo a **MAPE mínimo** sobre el set de test.
-- **fix**: Variables exógenas simplificadas a solo `ventas_otros`.
-- **fix**: Dashboard Grid Search actualizado para mostrar y ordenar por MAPE.
+- **feat**: Limpieza automática al cargar — elimina duplicados por `CHASIS` y filas con `MODELO3` nulo.
+- **feat**: Grid search ampliado a 192 combinaciones con `d∈{0,1}` y `P∈{0,1}`.
+- **fix**: Criterio de selección cambiado de AIC mínimo a MAPE mínimo.
 
 ### 2026-03-23 (v4)
-- **feat**: Nueva pestaña **🤖 Asistente IA** en el Dashboard — chat sobre el modelo SARIMA entrenado, powered by Google Gemini (`gemini-2.5-flash`). Disponible para admin, analista y gerente. Requiere `GENAI_API_KEY` en `secrets.toml`.
-- **chore**: Añadido `google-genai` a `requirements.txt`.
+- **feat**: Tab **🤖 Asistente IA** en el Dashboard — chat SARIMA con Gemini (`gemini-2.5-flash`).
+- **chore**: `google-genai` añadido a `requirements.txt`.
 
 ### 2026-03-23 (v3)
-- **feat**: Nueva pestaña **🏪 Concesionarios** en el Dashboard — análisis de ventas CHERY por concesionario con KPIs, barras horizontales por ciudad, evolución mensual y ranking ABC.
+- **feat**: Tab **🏪 Concesionarios** — análisis de ventas CHERY por concesionario con KPIs, barras horizontales y ranking ABC.
 
 ### 2026-03-23 (v2)
-- **feat**: Nueva pestaña **🎓 Preparar Datos** — pipeline académico paso a paso con descarga del `.xlsx` de entrenamiento.
-- **feat**: Parámetro **Fecha fin de datos** en la pestaña Entrenamiento.
+- **feat**: Tab **🎓 Preparar Datos** — pipeline académico paso a paso con descarga del `.xlsx`.
+- **feat**: Parámetro **Fecha fin de datos** en pestaña Entrenamiento.
 
 ### 2026-03-23 (v1)
-- **feat**: Detección automática de tipo de hoja al subir archivos — `Hoja1` → ventas, `Stock Actual` → stock.
-- **fix**: Serialización JSON del test ADF corregida (`numpy.bool_` → `Python bool`).
-- **fix**: Modelo `.pkl` comprimido con gzip antes de subir a Supabase Storage (resuelve error 413).
+- **feat**: Detección automática de tipo de hoja (`Hoja1` → ventas, `Stock Actual` → stock).
+- **fix**: Serialización JSON del test ADF (`numpy.bool_` → `Python bool`).
+- **fix**: Modelo `.pkl` comprimido con gzip antes de subir a Supabase (resuelve error 413).
 
 ---
 
