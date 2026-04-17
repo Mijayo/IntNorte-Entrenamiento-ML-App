@@ -10,7 +10,7 @@ Este sistema permite a equipos comerciales y técnicos **entrenar, evaluar y des
 
 ## ¿Qué hace el sistema?
 
-El sistema cubre tres grandes áreas:
+El sistema cubre cuatro grandes áreas:
 
 ### 1. Entrenamiento de modelos SARIMA
 A partir de un histórico de ventas en Excel, el sistema construye automáticamente un modelo **SARIMAX** (SARIMA con variable exógena). El proceso incluye:
@@ -18,7 +18,7 @@ A partir de un histórico de ventas en Excel, el sistema construye automáticame
 - Análisis de estacionariedad (test ADF)
 - Búsqueda inteligente de hiperparámetros con **Optuna TPE**
 - Validación retrospectiva con **walk-forward**
-- Almacenamiento de todos los artefactos en la nube (Supabase Storage)
+- Almacenamiento de todos los artefactos en Supabase Storage y metadatos en PostgreSQL
 
 ### 2. Dashboard de visualización
 Una vez aprobado un modelo, el Dashboard muestra:
@@ -26,9 +26,15 @@ Una vez aprobado un modelo, el Dashboard muestra:
 - Métricas técnicas (AIC, BIC, MAPE)
 - Análisis de ventas por concesionario
 - Asistente de IA conversacional (Google Gemini) adaptado al rol del usuario
+- **Notificaciones en tiempo real** cuando otro usuario entrena un modelo nuevo
 
-### 3. Comparación Prophet vs SARIMA
-Una herramienta académica que enfrenta los dos modelos más usados en predicción de series temporales de negocio: SARIMA (estadístico clásico) y Prophet (Meta, 2017), para entender cuál se adapta mejor al patrón de ventas del modelo de vehículo.
+### 3. Comparativa de 5 modelos ML
+Enfrenta SARIMA, Prophet, Regresión Lineal, Random Forest y XGBoost sobre el mismo histórico para determinar cuál se adapta mejor al patrón de ventas.
+
+### 4. Gestión y trazabilidad
+- **Supabase Auth** para autenticación segura de usuarios con email y contraseña
+- **Audit log** que registra automáticamente quién inicia sesión, aprueba modelos o borra runs
+- Historial completo de entrenamientos en PostgreSQL con comparación de métricas entre runs
 
 ---
 
@@ -48,13 +54,15 @@ Una herramienta académica que enfrenta los dos modelos más usados en predicci�
 > **Escenario**: El equipo comercial quiere saber cuántas unidades del TIGGO 2 se venderán en los próximos 6 meses para planificar la orden de compra al fabricante.
 
 **Flujo:**
-1. El analista carga el Excel con ventas históricas desde enero 2021.
-2. El sistema limpia duplicados y valida que hay al menos 36 meses de datos.
-3. Se lanza la búsqueda Optuna: en ~2 minutos prueba 80 combinaciones de parámetros SARIMA y selecciona la que minimiza el error porcentual (MAPE) sobre los últimos 6 meses reales.
-4. Se ejecuta walk-forward: el sistema simula predecir cada mes pasado conociendo solo los datos anteriores, para medir cómo se habría desempeñado el modelo en condiciones reales.
-5. El analista compara el nuevo modelo con el modelo activo en producción. Si mejora el MAPE, hace clic en **Aprobar**.
-6. El Dashboard se actualiza automáticamente con las predicciones del modelo aprobado.
-7. El gerente consulta el Dashboard y pregunta al asistente IA: *"¿Deberíamos comprar más o menos unidades que el mes pasado?"*
+1. El analista inicia sesión con su email y contraseña (autenticado por Supabase Auth).
+2. Carga el Excel con ventas históricas desde enero 2021.
+3. El sistema limpia duplicados y valida que hay al menos 36 meses de datos.
+4. Se lanza la búsqueda Optuna: en ~2 minutos prueba 80 combinaciones de parámetros SARIMA.
+5. Se ejecuta walk-forward: el sistema simula predecir cada mes pasado en condiciones reales.
+6. El analista compara el nuevo modelo con el modelo activo. Si mejora el MAPE, hace clic en **Aprobar**.
+7. El sistema registra la aprobación en el audit log y actualiza el modelo activo en PostgreSQL.
+8. El gerente, que tiene el Dashboard abierto en otra sesión, recibe una notificación automática del nuevo modelo.
+9. El gerente consulta las predicciones y pregunta al asistente IA: *"¿Deberíamos comprar más o menos unidades que el mes pasado?"*
 
 ---
 
@@ -64,9 +72,11 @@ Una herramienta académica que enfrenta los dos modelos más usados en predicci�
 |------------|-----------|
 | Interfaz web | [Streamlit](https://streamlit.io) |
 | Modelos estadísticos | [statsmodels](https://www.statsmodels.org) (SARIMAX) |
-| Modelos de machine learning | [Prophet](https://facebook.github.io/prophet/) (Meta) |
+| Modelos de machine learning | [scikit-learn](https://scikit-learn.org), [Prophet](https://facebook.github.io/prophet/), [XGBoost](https://xgboost.readthedocs.io) |
 | Optimización de hiperparámetros | [Optuna](https://optuna.org) (TPE) |
-| Almacenamiento en la nube | [Supabase Storage](https://supabase.com) |
+| Almacenamiento de artefactos | [Supabase Storage](https://supabase.com) |
+| Base de datos relacional | [Supabase PostgreSQL](https://supabase.com) |
+| Autenticación | [Supabase Auth](https://supabase.com/auth) |
 | Asistente IA | [Google Gemini](https://ai.google.dev) (gemini-2.5-flash) |
 | Visualización | [Plotly](https://plotly.com/python/), [Matplotlib](https://matplotlib.org) |
 
@@ -77,7 +87,7 @@ Una herramienta académica que enfrenta los dos modelos más usados en predicci�
 | Documento | Contenido |
 |-----------|-----------|
 | [01_introduccion.md](01_introduccion.md) | Este documento |
-| [02_arquitectura.md](02_arquitectura.md) | Módulos, flujo de datos, Supabase Storage |
+| [02_arquitectura.md](02_arquitectura.md) | Módulos, flujo de datos, Supabase Storage + PostgreSQL |
 | [03_guia_usuario.md](03_guia_usuario.md) | Cómo usar el sistema paso a paso |
 | [04_modelos_ml.md](04_modelos_ml.md) | SARIMA, Prophet, Optuna — conceptos y comparación |
 | [05_despliegue.md](05_despliegue.md) | Configuración local y despliegue en Streamlit Cloud |
