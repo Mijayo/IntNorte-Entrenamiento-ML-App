@@ -560,7 +560,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
 
         # ── Uploader de datos ─────────────────────────────────────────────────
         with st.expander("📂 Cargar datos de concesionarios", expanded='df_concesionarios' not in st.session_state):
-            st.caption("Columnas mínimas: MARCA · MODELO2/MODELO3 · FECHA_VENTA/FECHA-VENTA · DET_CC")
+            st.caption("Columnas mínimas: MARCA · MODELO3 · FECHA-VENTA · CONCESIONARIO · CLI-DPTO/CLI-PROV")
             con_file = st.file_uploader(
                 "Excel histórico de ventas", type=['xlsx', 'xls'], key="con_uploader_tab",
             )
@@ -606,8 +606,8 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
                             errores_val.append("⚠️ Columna MARCA no encontrada — se usarán todos los registros.")
 
                         # Concesionario
-                        if not any(c in df_con_raw.columns for c in ['DET_CC', 'AGE', 'SUCURSAL']):
-                            errores_val.append("⚠️ Columna de concesionario no encontrada (DET_CC / AGE / SUCURSAL).")
+                        if not any(c in df_con_raw.columns for c in ['DET_CC', 'AGE', 'SUCURSAL', 'CONCESIONARIO']):
+                            errores_val.append("⚠️ Columna de concesionario no encontrada (CONCESIONARIO / DET_CC / AGE / SUCURSAL).")
 
                         for msg in errores_val:
                             (st.error if msg.startswith("❌") else st.warning)(msg)
@@ -633,7 +633,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
             # Detectar columnas
             conc_col   = next((c for c in ['DET_CC', 'AGE', 'SUCURSAL', 'CONCESIONARIO']
                                if c in df_c.columns), None)
-            ciudad_col = next((c for c in ['AGE', 'CIUDAD', 'REGION']
+            ciudad_col = next((c for c in ['CLI-DPTO', 'CLI-PROV', 'AGE', 'CIUDAD', 'REGION']
                                if c in df_c.columns), None)
             modelo_col = ('MODELO_NORM' if 'MODELO_NORM' in df_c.columns
                           else next((c for c in ['MODELO2', 'MODELO3', 'MODELO']
