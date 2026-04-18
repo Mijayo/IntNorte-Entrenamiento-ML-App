@@ -564,7 +564,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
             con_file = st.file_uploader(
                 "Excel histórico de ventas", type=['xlsx', 'xls'], key="con_uploader_tab",
             )
-            if con_file:
+            if con_file and 'df_concesionarios' not in st.session_state:
                 with st.spinner("Validando y procesando..."):
                     try:
                         df_con_raw = pd.read_excel(con_file, engine='openpyxl')
