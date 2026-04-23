@@ -561,6 +561,10 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         # ── Uploader de datos ─────────────────────────────────────────────────
         with st.expander("📂 Cargar datos de concesionarios", expanded='df_concesionarios' not in st.session_state):
             st.caption("Columnas mínimas: MARCA · MODELO3 · FECHA-VENTA · CONCESIONARIO · CLI-DPTO/CLI-PROV")
+            if 'df_concesionarios' in st.session_state:
+                if st.button("🗑 Limpiar datos y cargar nuevo archivo", key="con_reset_btn"):
+                    del st.session_state['df_concesionarios']
+                    st.rerun()
             con_file = st.file_uploader(
                 "Excel histórico de ventas", type=['xlsx', 'xls'], key="con_uploader_tab",
             )
