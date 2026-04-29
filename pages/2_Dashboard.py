@@ -176,22 +176,22 @@ with tabs[0]:
 
     col1, col2, col3, col4 = st.columns(4)
     mape = metricas['walk_forward_validation']['mape']
-    mape_color = "red" if mape > 20 else ("amber" if mape > 10 else "")
+    mape_color = "red" if mape > 15 else ("amber" if mape > 10 else "")
     col1.markdown(kpi_card("Total Ventas",    f"{metricas['datos_limpios']['total_ventas']:,}", "📦"), unsafe_allow_html=True)
     col2.markdown(kpi_card("Meses de Datos",  metricas['datos_limpios']['meses_datos'],         "📅", "blue"), unsafe_allow_html=True)
     col3.markdown(kpi_card("MAPE",            f"{mape:.2f}%",                                   "🎯", mape_color), unsafe_allow_html=True)
     col4.markdown(kpi_card("Próximo Mes",     f"{int(metricas['predicciones_futuras']['proximo_mes'])} uds", "🔮"), unsafe_allow_html=True)
 
-    if mape > 20:
+    if mape > 15:
         st.error(
-            f"⚠️ **MAPE {mape:.1f}% — Modelo de baja fiabilidad (umbral: 20%).** "
-            "Las predicciones tienen un error medio superior al 20% sobre el valor real. "
+            f"⚠️ **MAPE {mape:.1f}% — Modelo de baja fiabilidad (umbral: 15%).** "
+            "Las predicciones tienen un error medio superior al 15% sobre el valor real. "
             "Usa los valores del intervalo de confianza con precaución y considera "
             "reentrenar el modelo con datos más recientes o ampliar el histórico."
         )
     elif mape > 10:
         st.warning(
-            f"ℹ️ **MAPE {mape:.1f}% — Precisión aceptable (10–20%).** "
+            f"ℹ️ **MAPE {mape:.1f}% — Precisión aceptable (10–15%).** "
             "Adecuado para planificación de rango, menos fiable para compromisos exactos."
         )
 
@@ -237,53 +237,136 @@ with tabs[0]:
 with tabs[1]:
     st.markdown(section_header("Predicciones Futuras", "🔮"), unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
-    col1.markdown(kpi_card("Próximo Mes",     f"{pred_total['Predicción'].iloc[0]:.0f} uds", "🔮"), unsafe_allow_html=True)
-    col2.markdown(kpi_card("Total Horizonte", f"{pred_total['Predicción'].sum():.0f} uds",   "📦", "blue"), unsafe_allow_html=True)
-    col3.markdown(kpi_card("Promedio Mensual",f"{pred_total['Predicción'].mean():.1f} uds",  "📊", "amber"), unsafe_allow_html=True)
+    # ── Storytelling banner ───────────────────────────────────────────────────
+    st.markdown("""
+<div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);
+            border-radius:10px;padding:16px 20px;margin-bottom:18px;">
+<span style="font-size:1.05rem;font-weight:600;color:#A78BFA;">¿Cómo usa el negocio este modelo?</span><br>
+<span style="color:#94A3B8;font-size:0.92rem;">
+SARIMA puede proyectar hasta <strong style="color:#C9D8E6;">6 meses</strong> en el horizonte,
+pero el caso de uso real es más potente: <strong style="color:#C9D8E6;">cada mes</strong>, el equipo
+actualiza el histórico con las ventas del mes cerrado y lanza una nueva predicción para el mes siguiente.
+<br><br>
+La zona <strong style="color:#A78BFA;">violeta</strong> del gráfico muestra la <em>validación walk-forward</em>:
+simula exactamente ese proceso — el modelo predijo cada mes <strong>un solo paso adelante</strong>, con todos los
+datos anteriores disponibles, igual que en producción. Es la estimación más honesta del MAPE real del sistema.
+</span>
+</div>
+""", unsafe_allow_html=True)
 
+    # ── KPIs ──────────────────────────────────────────────────────────────────
+    mape_wf = walk_forward['error_pct'].mean()
+    mape_color_wf = "red" if mape_wf > 15 else ("amber" if mape_wf > 10 else "")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.markdown(kpi_card("Próximo Mes",         f"{pred_total['Predicción'].iloc[0]:.0f} uds", "🔮"), unsafe_allow_html=True)
+    col2.markdown(kpi_card("Total Horizonte",     f"{pred_total['Predicción'].sum():.0f} uds",   "📦", "blue"), unsafe_allow_html=True)
+    col3.markdown(kpi_card("Promedio Mensual",    f"{pred_total['Predicción'].mean():.1f} uds",  "📊", "amber"), unsafe_allow_html=True)
+    col4.markdown(kpi_card("MAPE real (1 mes)",   f"{mape_wf:.1f}%",                             "🎯", mape_color_wf), unsafe_allow_html=True)
+
+    # ── Gráfico principal ─────────────────────────────────────────────────────
     fig_pred = go.Figure()
+
+    # Región de walk-forward (fondo sombreado)
+    if not walk_forward.empty:
+        wf_x0 = walk_forward['fecha'].iloc[0]
+        wf_x1 = walk_forward['fecha'].iloc[-1]
+        fig_pred.add_shape(
+            type="rect",
+            x0=wf_x0, x1=wf_x1, y0=0, y1=1, yref="paper",
+            fillcolor="rgba(167,139,250,0.06)",
+            line=dict(width=0),
+            layer="below",
+        )
+        fig_pred.add_annotation(
+            x=wf_x0, y=1, yref="paper",
+            text="◀ Validación walk-forward ▶",
+            showarrow=False, xanchor="left",
+            font=dict(color="#A78BFA", size=11, family="Rajdhani, sans-serif"),
+            bgcolor="rgba(167,139,250,0.12)", borderpad=4,
+        )
+
+    # Histórico
     fig_pred.add_trace(go.Scatter(
         x=hist_total.index, y=hist_total.values,
         mode='lines', name='Histórico',
         line=dict(color=COLORS['primary'], width=2),
     ))
+
+    # Walk-forward: predicciones del modelo (violeta)
+    if not walk_forward.empty:
+        fig_pred.add_trace(go.Scatter(
+            x=walk_forward['fecha'], y=walk_forward['prediccion'],
+            mode='lines+markers', name='Predicción walk-forward (1 mes)',
+            line=dict(color=COLORS['purple'], width=2, dash='dot'),
+            marker=dict(size=8, symbol='diamond', color=COLORS['purple'],
+                        line=dict(color='#080D18', width=1.5)),
+            customdata=walk_forward['error_pct'].values,
+            hovertemplate='%{y:.0f} uds<br>Error: %{customdata:.1f}%<extra>WF predicción</extra>',
+        ))
+
+    # Predicción futura
     fig_pred.add_trace(go.Scatter(
         x=pred_total['Fecha'], y=pred_total['Predicción'],
-        mode='lines+markers', name='Predicción',
+        mode='lines+markers', name='Predicción futura',
         line=dict(color=COLORS['accent'], width=2.5),
         marker=dict(size=9, symbol='circle', color=COLORS['accent'],
                     line=dict(color='#080D18', width=1.5)),
     ))
+
+    # Banda IC 95%
     fig_pred.add_trace(go.Scatter(
         x=pred_total['Fecha'].tolist() + pred_total['Fecha'].tolist()[::-1],
         y=pred_total['IC_Superior'].tolist() + pred_total['IC_Inferior'].tolist()[::-1],
-        fill='toself', fillcolor='rgba(245,158,11,0.1)',
+        fill='toself', fillcolor='rgba(255,58,92,0.08)',
         line=dict(color='rgba(0,0,0,0)'), name='IC 95%',
     ))
+
+    # Línea vertical: inicio de predicción futura
     fig_pred.add_shape(
         type="line",
         x0=hist_total.index[-1], x1=hist_total.index[-1],
         y0=0, y1=1, yref="paper",
         line=dict(color='rgba(100,116,139,0.6)', width=1.5, dash="dot"),
     )
-    apply_chart_theme(fig_pred, height=560, title='Histórico + Predicción — TIGGO 2')
+
+    apply_chart_theme(fig_pred, height=580, title='Histórico · Validación Walk-Forward · Predicción — TIGGO 2')
     fig_pred.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
     st.plotly_chart(fig_pred, use_container_width=True, config={'displayModeBar': False})
 
-    if mape > 20:
+    if mape_wf > 15:
         st.error(
-            f"⚠️ **Atención:** MAPE walk-forward = {mape:.1f}%. "
+            f"⚠️ **Atención:** MAPE walk-forward = {mape_wf:.1f}% (objetivo: <15%). "
             "Para decisiones de compra, usa el **IC inferior** como referencia conservadora."
         )
+    elif mape_wf > 10:
+        st.warning(
+            f"ℹ️ MAPE walk-forward = {mape_wf:.1f}% — aceptable, cerca del objetivo <15%."
+        )
+    else:
+        st.success(f"✅ MAPE walk-forward = {mape_wf:.1f}% — por debajo del objetivo del 15%.")
 
-    st.subheader("📋 Tabla de Predicciones")
-    st.dataframe(pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']],
-                 use_container_width=True, hide_index=True)
+    # ── Tablas ────────────────────────────────────────────────────────────────
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.subheader("📋 Predicción futura")
+        st.dataframe(pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']],
+                     use_container_width=True, hide_index=True)
+    with col_t2:
+        st.subheader("🔄 Walk-forward (caso de uso real)")
+        wf_show = walk_forward.copy()
+        wf_show['fecha'] = wf_show['fecha'].dt.strftime('%B %Y')
+        wf_show.columns = ['Mes', 'Real', 'Predicción', 'Error Abs', 'Error %']
+        st.dataframe(
+            wf_show.style
+                   .background_gradient(subset=['Error %'], cmap='RdYlGn_r')
+                   .format({'Real': '{:.0f}', 'Predicción': '{:.1f}',
+                            'Error Abs': '{:.2f}', 'Error %': '{:.2f}%'}),
+            use_container_width=True, hide_index=True
+        )
 
     if has_permission('exportar'):
         csv = pred_total.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Exportar CSV", csv,
+        st.download_button("📥 Exportar CSV predicciones", csv,
                            f"predicciones_{datetime.now().strftime('%Y%m%d')}.csv",
                            "text/csv")
 

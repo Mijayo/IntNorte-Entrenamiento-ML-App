@@ -828,14 +828,14 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                 mape_wf = df_wf['error_pct'].mean()
                 st.success(f"✅ MAPE walk-forward: {mape_wf:.2f}% · {len(df_wf)}/{n_wf} meses validados")
 
-                # ── Diagnóstico automático cuando MAPE > 20% ─────────────────
-                if mape_wf > 20:
+                # ── Diagnóstico automático cuando MAPE > 15% ─────────────────
+                if mape_wf > 15:
                     with st.expander("⚠️ MAPE elevado: causas probables y acciones recomendadas",
                                      expanded=True):
                         st.warning(
-                            f"El MAPE walk-forward es **{mape_wf:.1f}%** (umbral aceptable: ≤ 20%). "
+                            f"El MAPE walk-forward es **{mape_wf:.1f}%** (objetivo: ≤ 15%). "
                             "Esto indica que, en promedio, las predicciones se desvían más de un "
-                            "20% del valor real. Antes de activar este modelo en producción, "
+                            "15% del valor real. Antes de activar este modelo en producción, "
                             "revisa las siguientes causas:"
                         )
                         st.markdown("""
@@ -852,14 +852,14 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                         st.info(
                             "**Próximos pasos recomendados:**  \n"
                             "1. Ve a la pestaña **Comparativa ML** y compara con Prophet y Random Forest.  \n"
-                            "2. Si Prophet obtiene MAPE < 20%, considera usarlo como modelo de producción.  \n"
-                            "3. Si ningún modelo logra MAPE < 20%, documenta la limitación de los datos "
+                            "2. Si Prophet obtiene MAPE < 15%, considera usarlo como modelo de producción.  \n"
+                            "3. Si ningún modelo logra MAPE < 15%, documenta la limitación de los datos "
                             "antes de presentar el sistema."
                         )
                 elif mape_wf > 10:
                     st.warning(
                         f"⚠️ MAPE walk-forward: **{mape_wf:.1f}%** — aceptable pero mejorable. "
-                        "Considera comparar con Prophet en la pestaña **Comparativa ML**."
+                        "Objetivo: <15%. Considera comparar con Prophet en la pestaña **Comparativa ML**."
                     )
 
                 progress_bar.progress(0.80)

@@ -312,14 +312,23 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 | Tab | Admin | Analista | Gerente | Viewer |
 |-----|:-----:|:--------:|:-------:|:------:|
 | Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
-| Predicciones (N meses + IC) | ✅ | ✅ | ✅ | ✅ |
+| Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
 | Recomendaciones de compra | — | — | ✅ | — |
 | Análisis ACF/PACF | ✅ | ✅ | — | — |
 | Resultados Grid Search | ✅ | ✅ | — | — |
-| Walk-forward validation | ✅ | ✅ | — | — |
+| Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — |
 | Métricas técnicas completas | ✅ | ✅ | — | — |
 | **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
 | Ventas por Concesionario | ✅ | ✅ | ✅ | — |
+
+### Tab Predicciones — storytelling walk-forward
+
+El tab de Predicciones integra la validación walk-forward directamente en el gráfico principal (visible a todos los roles):
+
+- **Zona violeta** (`#A78BFA`): período de validación walk-forward — el modelo predijo cada mes **un paso adelante** con todos los datos anteriores, simulando el flujo de producción real.
+- **Línea futura** (rojo signal): predicción hacia los próximos N meses.
+- **KPI "MAPE real (1 mes)"**: precisión del caso de uso real (1 mes ahead), objetivo < 15%.
+- **Narrativo**: SARIMA puede proyectar hasta 6 meses, pero el flujo operativo es mes a mes.
 
 ---
 
@@ -377,6 +386,14 @@ __pycache__/  venv/  .env   ← estándar Python
 ---
 
 ## Changelog
+
+### 2026-04-29 (v16)
+- **feat**: **Walk-forward en tab Predicciones** — overlay violeta (`#A78BFA`) en el gráfico principal mostrando las predicciones 1-mes-adelante de la validación walk-forward, visible a todos los roles.
+- **feat**: **Storytelling operacional** — banner explicativo en el tab Predicciones: "SARIMA puede proyectar 6 meses, pero el caso de uso real es predecir 1 mes y renovar mes a mes".
+- **feat**: **KPI "MAPE real (1 mes)"** — nueva tarjeta en tab Predicciones con el MAPE walk-forward y semáforo de color.
+- **feat**: **Tabla walk-forward en predicciones** — tabla con gradiente de error al lado de la tabla de predicciones futuras, para todos los roles.
+- **feat**: Región sombreada + anotación "Validación walk-forward" sobre el período validado en el gráfico.
+- **feat**: **Objetivo MAPE < 15%** — umbrales actualizados de 20% → 15% en Dashboard (Tab 0), Tab Predicciones y página de Entrenamiento.
 
 ### 2026-04-17 (v15)
 - **feat**: **Supabase Auth** — `auth_system.py` autentica via `supabase.auth.sign_in_with_password()` usando el `email` del usuario configurado en `secrets.toml`. Fallback automático a credenciales locales SHA-256 si Supabase Auth no está disponible. Logout cierra la sesión en Supabase con `auth.sign_out()`.
