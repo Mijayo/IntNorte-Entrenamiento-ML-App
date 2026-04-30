@@ -77,7 +77,7 @@ Esta pestaña no entrena nada — es puramente informativa. Muestra seis pasos:
 3. **Filtro modelo** — solo se conservan las filas del modelo objetivo (ej. TIGGO 2).
 4. **Rango de fechas** — se recorta el período según las fechas configuradas.
 5. **Resample mensual** — se cuenta cuántas ventas hubo cada mes, generando la serie temporal.
-6. **Variable exógena** — se calcula el total mensual de ventas de los *otros* modelos de la misma marca, que se usará como señal adicional en el modelo.
+6. **Variable exógena** — se calcula el total mensual de ventas de los *otros* modelos de la misma marca. El sistema comprueba automáticamente si esta variable tiene correlación real con las ventas del modelo objetivo (Pearson r ≥ 0.3). Si la correlación es baja, la variable se descarta para no añadir ruido al modelo.
 
 Al final hay un botón para **descargar el Excel de entrenamiento** (tres hojas: `Serie_SARIMA`, `Ventas_Mensuales`, `Comparativa`), útil para revisiones externas o documentación.
 
@@ -99,7 +99,12 @@ Al final hay un botón para **descargar el Excel de entrenamiento** (tres hojas:
 | Horizonte | 6 meses | Cuántos meses hacia adelante predecir |
 | Máx. ventas esperadas | 100 unid./mes | Descarta combinaciones que predicen valores irracionales |
 
-Haz clic en **Iniciar Entrenamiento**. El proceso tarda entre 1 y 3 minutos y muestra su progreso en tiempo real:
+Tras pulsar **Iniciar Entrenamiento**, el sistema primero evalúa si la variable exógena (`ventas_otros`) tiene correlación suficiente con las ventas del modelo objetivo:
+
+- `ℹ️ Variable exógena incluida — Pearson r = 0.61` → se usará en el modelo.
+- `⚠️ Variable exógena descartada — Pearson r = 0.18` → SARIMA entrena sin ella.
+
+El proceso tarda entre 1 y 3 minutos y muestra su progreso en tiempo real:
 
 ```
 🔍 Optuna trial 45/80 · Evaluados: 45 · Válidos: 32 · Descartados: 13 · Mejor: MAPE 4.87%

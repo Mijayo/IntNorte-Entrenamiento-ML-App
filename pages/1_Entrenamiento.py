@@ -247,11 +247,12 @@ def perform_walk_forward(ventas: pd.Series, exog_data: pd.DataFrame,
     results = []
     for i in range(len(ventas) - n_months, len(ventas)):
         try:
-            model_wf = SARIMAX(ventas[:i], exog=exog_data[:i],
+            _exog_i = exog_data[:i] if exog_data is not None else None
+            model_wf = SARIMAX(ventas[:i], exog=_exog_i,
                                order=best_params[0], seasonal_order=best_params[1],
                                enforce_stationarity=False, enforce_invertibility=False)
             res_wf = model_wf.fit(disp=False, maxiter=200, method='lbfgs')
-            pred = res_wf.forecast(steps=1, exog=exog_data[i:i+1])
+            pred = res_wf.forecast(steps=1, exog=exog_data[i:i+1] if exog_data is not None else None)
             if 0 <= pred.iloc[0] <= max_ventas:
                 real = ventas.iloc[i]
                 results.append({
@@ -737,6 +738,21 @@ intervalos de confianza son muy amplios y el modelo tiende a sobreajustarse.
                 exog_data = pd.DataFrame({'ventas_otros': ventas_otros}) \
                               .reindex(ventas_modelo.index, fill_value=0)
 
+                # ── Filtro de correlación: descartar exógeno si es ruido ────────
+                _r_exog = float(np.corrcoef(ventas_modelo.values,
+                                            exog_data['ventas_otros'].values)[0, 1])
+                if abs(_r_exog) >= 0.3:
+                    st.info(
+                        f"ℹ️ Variable exógena incluida — Pearson r = {_r_exog:.2f} "
+                        f"(|r| ≥ 0.3 · señal suficiente)"
+                    )
+                else:
+                    st.warning(
+                        f"⚠️ Variable exógena descartada — Pearson r = {_r_exog:.2f} "
+                        f"(|r| < 0.3 · introduce ruido). Se entrena SARIMA puro."
+                    )
+                    exog_data = None
+
                 progress_bar.progress(0.10)
 
                 # Paso 2: ADF
@@ -771,8 +787,8 @@ intervalos de confianza son muy amplios y el modelo tiende a sobreajustarse.
                 train_size = len(ventas_modelo) - horizonte
                 train = ventas_modelo[:train_size]
                 test = ventas_modelo[train_size:]
-                train_exog = exog_data[:train_size]
-                test_exog = exog_data[train_size:]
+                train_exog = exog_data[:train_size] if exog_data is not None else None
+                test_exog = exog_data[train_size:] if exog_data is not None else None
 
                 best_params, best_aic, best_mape, grid_results, failures = perform_optuna_search(
                     train, test, train_exog, test_exog, progress_bar, status_text, max_ventas
@@ -869,18 +885,21 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                 model_final = train_sarima_model(ventas_modelo, exog_data,
                                                   best_params[0], best_params[1])
 
-                exog_future_val = exog_data['ventas_otros'].rolling(EXOG_ROLLING_WINDOW).mean().iloc[-1]
-                exog_future = pd.DataFrame({
-                    'ventas_otros': [exog_future_val] * horizonte
-                })
-                st.info(
-                    f"ℹ️ **Variable exógena en el horizonte de predicción:** "
-                    f"se usa la media móvil de los últimos {EXOG_ROLLING_WINDOW} meses "
-                    f"(`ventas_otros` = {exog_future_val:.0f} uds/mes) como estimación "
-                    f"para los {horizonte} meses futuros. Si dispones de un pronóstico "
-                    "más preciso de ventas de otros modelos CHERY, puedes ajustar "
-                    "esta cifra manualmente reentrenando."
-                )
+                if exog_data is not None:
+                    _n_trend = min(EXOG_ROLLING_WINDOW * 2, len(exog_data))
+                    _recent = exog_data['ventas_otros'].values[-_n_trend:]
+                    _slope, _intercept = np.polyfit(np.arange(_n_trend), _recent, 1)
+                    _future_x = np.arange(_n_trend, _n_trend + horizonte)
+                    _exog_proj = np.clip(_intercept + _slope * _future_x, 0, None).round(0)
+                    exog_future = pd.DataFrame({'ventas_otros': _exog_proj})
+                    _dir = "↗ creciente" if _slope > 1 else ("↘ decreciente" if _slope < -1 else "→ estable")
+                    st.info(
+                        f"ℹ️ **Proyección exógena (tendencia lineal):** últimos {_n_trend} meses · "
+                        f"pendiente {_slope:+.1f} uds/mes ({_dir}) · "
+                        f"rango proyectado: {int(_exog_proj.min())}–{int(_exog_proj.max())} uds/mes."
+                    )
+                else:
+                    exog_future = None
                 forecast = model_final.forecast(steps=horizonte, exog=exog_future)
                 conf_int = model_final.get_forecast(steps=horizonte, exog=exog_future).conf_int()
                 fechas_futuras = pd.date_range(
@@ -920,6 +939,7 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                         'combinaciones_descartadas': failures
                     },
                     'adf_test': adf,
+                    'variable_exogena': {'usada': exog_data is not None, 'pearson_r': round(_r_exog, 3)},
                     'walk_forward_validation': {'mape': float(mape_wf), 'meses_evaluados': len(df_wf)},
                     'predicciones_futuras': {'proximo_mes': float(predicciones['Predicción'].iloc[0])}
                 }

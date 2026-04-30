@@ -279,11 +279,13 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 
 ### Modelo SARIMA
 
-- **Algoritmo**: SARIMAX con variable exógena (ventas de otros modelos de la misma marca)
+- **Algoritmo**: SARIMAX con variable exógena opcional (ventas de otros modelos de la misma marca); se incluye automáticamente solo si `|Pearson r| ≥ 0.3` — si no, se entrena SARIMA puro para evitar inyección de ruido
+- **Proyección exógena**: tendencia lineal (`polyfit` grado 1 sobre los últimos 12 meses) proyectada al horizonte; el sistema muestra pendiente, dirección (↗/↘/→) y rango
 - **Búsqueda**: Optuna TPE (80 trials) sobre `p∈{0–3}`, `d∈{0–1}`, `q∈{0–3}`, `P∈{0–1}`, `D∈{0–1}`, `Q∈{0–2}`, `m=12`
 - **Criterio**: MAPE mínimo sobre el conjunto de test
 - **Walk-forward**: valida los últimos 12 meses (mínimo = horizonte configurado)
 - **Intervalos de confianza**: 95% en todos los puntos del forecast
+- **Trazabilidad exógena**: `pearson_r` y `usada: bool` guardados en `metricas_mejoradas.json` por cada run
 
 ---
 
@@ -386,6 +388,11 @@ __pycache__/  venv/  .env   ← estándar Python
 ---
 
 ## Changelog
+
+### 2026-04-30 (v17)
+- **feat**: **Filtro de correlación del exógeno** — antes de entrenar calcula `Pearson r` entre `ventas_modelo` y `ventas_otros`. Si `|r| < 0.3` la variable exógena se descarta automáticamente y SARIMA entrena sin ella, eliminando ruido. El valor `pearson_r` y `usada: bool` quedan en `metricas_mejoradas.json`.
+- **feat**: **Proyección exógena por tendencia lineal** — reemplaza la media móvil constante. `polyfit` grado 1 sobre los últimos 12 meses proyectado al horizonte; muestra pendiente, dirección (↗/↘/→) y rango proyectado.
+- **fix**: `perform_walk_forward` y slicing de `train_exog`/`test_exog` manejan `exog_data=None` cuando el filtro de correlación descarta la variable.
 
 ### 2026-04-29 (v16)
 - **feat**: **Walk-forward en tab Predicciones** — overlay violeta (`#A78BFA`) en el gráfico principal mostrando las predicciones 1-mes-adelante de la validación walk-forward, visible a todos los roles.
