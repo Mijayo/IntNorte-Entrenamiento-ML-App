@@ -323,14 +323,31 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 | **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
 | Ventas por Concesionario | ✅ | ✅ | ✅ | — |
 
-### Tab Predicciones — storytelling walk-forward
+### Tab Predicciones — conceptos y secciones
 
-El tab de Predicciones integra la validación walk-forward directamente en el gráfico principal (visible a todos los roles):
+#### Banner de contexto (dos conceptos diferenciados)
 
-- **Zona violeta** (`#A78BFA`): período de validación walk-forward — el modelo predijo cada mes **un paso adelante** con todos los datos anteriores, simulando el flujo de producción real.
-- **Línea futura** (rojo signal): predicción hacia los próximos N meses.
-- **KPI "MAPE real (1 mes)"**: precisión del caso de uso real (1 mes ahead), objetivo < 15%.
-- **Narrativo**: SARIMA puede proyectar hasta 6 meses, pero el flujo operativo es mes a mes.
+- **① Predicción mes a mes**: el modelo genera una estimación independiente para *cada mes* del horizonte. Cada fila de la tabla tiene su propio intervalo de confianza al 95% — no es un reparto del total.
+- **② Horizonte de 6 meses**: ventana de visibilidad hacia adelante. En operación real, el equipo actualiza el histórico cada mes con las ventas cerradas y relanza la predicción. La **zona violeta** (`#A78BFA`) del gráfico muestra la validación walk-forward: el modelo predijo cada mes **un paso adelante** con todos los datos anteriores, simulando exactamente ese flujo. Es la estimación más honesta del MAPE real del sistema.
+
+#### Gráfico principal
+
+- **Zona violeta** (`#A78BFA`): período de validación walk-forward.
+- **Línea futura** (rojo signal): predicción hacia los próximos N meses con banda IC 95%.
+- **KPI "MAPE real (1 mes)"**: precisión del caso de uso real, objetivo < 15%.
+
+#### Proyección de Ingresos · Horizonte 6 Meses
+
+Sección separada debajo de las tablas de predicción:
+
+| Elemento | Descripción |
+|----------|-------------|
+| **Precio por unidad (€)** | Input configurable (default 25 000 €) |
+| **Margen neto (%)** | Input opcional — si > 0 añade columna de beneficio |
+| **KPIs** | Unidades totales, Ingresos totales, Rango IC 95% en € |
+| **Tabla mes a mes** | Predicción (uds) · Ingresos · IC inferior/superior · Beneficio (si margen > 0) |
+
+Los ingresos se calculan multiplicando la predicción mensual por el precio unitario; el beneficio aplica el margen sobre los ingresos. El rango IC se traslada a euros para comunicar la incertidumbre en términos financieros.
 
 ---
 
@@ -388,6 +405,10 @@ __pycache__/  venv/  .env   ← estándar Python
 ---
 
 ## Changelog
+
+### 2026-05-04 (v18)
+- **feat**: **Clarificación conceptual en Tab Predicciones** — el banner storytelling ahora distingue explícitamente ① predicción mes a mes (cada fila es independiente con su propio IC 95%) vs ② horizonte de 6 meses (ventana de visibilidad + ciclo operativo de renovación mensual).
+- **feat**: **Proyección de Ingresos · Horizonte 6 Meses** — nueva sección debajo de las tablas de predicción con inputs configurables de precio por unidad (€) y margen neto (%). Genera KPIs de ingresos totales y rango IC 95% en euros, tabla mes a mes con ingresos/beneficio y columna de beneficio opcional cuando el margen es > 0.
 
 ### 2026-04-30 (v17)
 - **feat**: **Filtro de correlación del exógeno** — antes de entrenar calcula `Pearson r` entre `ventas_modelo` y `ventas_otros`. Si `|r| < 0.3` la variable exógena se descarta automáticamente y SARIMA entrena sin ella, eliminando ruido. El valor `pearson_r` y `usada: bool` quedan en `metricas_mejoradas.json`.

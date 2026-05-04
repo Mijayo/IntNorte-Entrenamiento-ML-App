@@ -175,7 +175,7 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 | Tab | Descripción |
 |-----|-------------|
 | 📊 Dashboard | KPIs: ventas del último mes, MAPE, horizonte. Gráfico del histórico completo. |
-| 🔮 Predicciones | Histórico + predicción de los próximos N meses con banda de confianza al 95%. |
+| 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + proyección de ingresos a 6 meses. |
 | 🔬 ACF/PACF | Gráficos de autocorrelación para interpretar la estructura de la serie. |
 | 🔍 Grid Search | Resultados de la búsqueda Optuna: top modelos, scatter AIC vs MAPE. |
 | 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
@@ -188,7 +188,7 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 | Tab | Descripción |
 |-----|-------------|
 | 📊 Dashboard | KPIs e histórico. |
-| 🔮 Predicciones | Predicciones con intervalos de confianza. |
+| 🔮 Predicciones | Predicciones mes a mes con IC 95% + proyección de ingresos/beneficio a 6 meses. |
 | 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante. |
 | 🤖 Asistente IA | Chat orientado a decisiones de negocio. |
 | 🏪 Concesionarios | Análisis por distribuidor. |
@@ -196,6 +196,41 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 #### Viewer (2 tabs)
 
 Dashboard básico y predicciones, sin métricas técnicas ni IA.
+
+---
+
+### Tab Predicciones — dos conceptos clave
+
+> Es importante entender la diferencia entre los dos escenarios temporales del modelo.
+
+**① Predicción mes a mes**
+El modelo genera una estimación *independiente* para cada mes del horizonte. Cada fila de la tabla es una predicción propia con su intervalo de confianza al 95% — no es el total de 6 meses dividido entre 6.
+
+**② Horizonte de 6 meses**
+Es la ventana de visibilidad hacia adelante. En operación real, el equipo actualiza el histórico cada mes con las ventas cerradas y relanza el modelo; el horizonte te permite ver más lejos, pero la predicción más fiable es siempre la del mes inmediato.
+
+La **zona violeta** del gráfico muestra la validación walk-forward: simula exactamente ese proceso de renovación mensual — el modelo predijo cada mes un solo paso adelante con todos los datos anteriores disponibles. El KPI "MAPE real (1 mes)" refleja ese error real de producción (objetivo < 15%).
+
+---
+
+### Tab Predicciones — Proyección de Ingresos
+
+Debajo de las tablas de predicción encontrarás la sección **💰 Proyección de Ingresos · Horizonte 6 Meses**.
+
+**Parámetros configurables:**
+
+| Campo | Por defecto | Descripción |
+|-------|-------------|-------------|
+| Precio medio por unidad (€) | 25 000 € | Precio neto de venta por vehículo |
+| Margen neto estimado (%) | 8 % | Porcentaje de beneficio neto; pon 0 para omitirlo |
+
+**Lo que muestra:**
+
+- **KPIs de resumen**: unidades totales predichas, ingresos totales estimados a 6 meses y rango de incertidumbre IC 95% en euros.
+- **KPIs de beneficio** (si margen > 0): beneficio estimado total y margen aplicado.
+- **Tabla mes a mes**: predicción en unidades · ingresos estimados · IC inferior y superior en euros · beneficio mensual (si aplica).
+
+> Los ingresos son el producto de las unidades predichas × el precio unitario. El rango IC 95% se traslada a euros para comunicar la incertidumbre financiera de forma comprensible para cualquier rol.
 
 ---
 
