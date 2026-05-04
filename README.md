@@ -208,10 +208,10 @@ streamlit run app_principal.py
 
 | Rol | Entrenamiento | Comparativa ML | Tabs del Dashboard |
 |-----|:-------------:|:--------------:|---------------------|
-| `admin` | ✅ | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
-| `analyst` | ✅ | ✅ | Dashboard, Predicciones, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
-| `manager` | — | — | Dashboard, Predicciones, Recomendaciones de compra, **Asistente IA**, Concesionarios |
-| `viewer` | — | — | Dashboard, Predicciones |
+| `admin` | ✅ | ✅ | Dashboard, Predicciones, **Proyección Ingresos**, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
+| `analyst` | ✅ | ✅ | Dashboard, Predicciones, **Proyección Ingresos**, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
+| `manager` | — | — | Dashboard, Predicciones, **Proyección Ingresos**, Recomendaciones de compra, **Asistente IA**, Concesionarios |
+| `viewer` | — | — | Dashboard, Predicciones, **Proyección Ingresos** |
 
 ---
 
@@ -315,6 +315,7 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 |-----|:-----:|:--------:|:-------:|:------:|
 | Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
 | Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
+| **Proyección Ingresos (USD, horizonte 6 meses)** | ✅ | ✅ | ✅ | ✅ |
 | Recomendaciones de compra | — | — | ✅ | — |
 | Análisis ACF/PACF | ✅ | ✅ | — | — |
 | Resultados Grid Search | ✅ | ✅ | — | — |
@@ -336,18 +337,21 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 - **Línea futura** (rojo signal): predicción hacia los próximos N meses con banda IC 95%.
 - **KPI "MAPE real (1 mes)"**: precisión del caso de uso real, objetivo < 15%.
 
-#### Proyección de Ingresos · Horizonte 6 Meses
+### Tab Proyección de Ingresos — USD, Horizonte 6 Meses
 
-Sección separada debajo de las tablas de predicción:
+Tab dedicado disponible para **todos los roles**. Traduce la predicción SARIMA en cifras financieras en dólares.
 
 | Elemento | Descripción |
 |----------|-------------|
-| **Precio por unidad (€)** | Input configurable (default 25 000 €) |
-| **Margen neto (%)** | Input opcional — si > 0 añade columna de beneficio |
-| **KPIs** | Unidades totales, Ingresos totales, Rango IC 95% en € |
-| **Tabla mes a mes** | Predicción (uds) · Ingresos · IC inferior/superior · Beneficio (si margen > 0) |
+| **Precio por unidad (USD $)** | Input configurable (default 27 000 $) |
+| **Margen neto (%)** | Input opcional — si > 0 añade KPI y columna de beneficio |
+| **Tipo de cambio** | Factor multiplicador para convertir a moneda local (default 1.0) |
+| **KPIs** | Unidades totales, Ingresos centrales, Rango IC 95% en $, Beneficio estimado (si margen > 0) |
+| **Gráfico de barras** | Barras de ingresos proyectados con banda IC 95% superpuesta (overlay) + línea de beneficio neto |
+| **Tabla mes a mes** | Predicción (uds) · Ingresos · IC inferior/superior · Beneficio (si aplica) + fila de totales |
+| **Exportar CSV** | Disponible para roles con permiso `exportar` |
 
-Los ingresos se calculan multiplicando la predicción mensual por el precio unitario; el beneficio aplica el margen sobre los ingresos. El rango IC se traslada a euros para comunicar la incertidumbre en términos financieros.
+Los ingresos se calculan multiplicando la predicción mensual por el precio efectivo (precio × tipo de cambio). El rango IC se traslada a dólares para comunicar la incertidumbre financiera. La visualización usa barras en overlay: la banda IC 95% aparece como capa semitransparente sobre las barras de ingreso central.
 
 ---
 
@@ -405,6 +409,11 @@ __pycache__/  venv/  .env   ← estándar Python
 ---
 
 ## Changelog
+
+### 2026-05-04 (v19)
+- **feat**: **Tab dedicado "💰 Proyección Ingresos"** — nueva pestaña disponible para todos los roles (viewer, manager, admin, analyst) en posición tabs[2]. Inputs: precio unitario (USD $), margen neto (%) y tipo de cambio para conversión a moneda local. KPIs: unidades totales, ingresos centrales, rango IC 95% en dólares, beneficio neto (si margen > 0). Gráfico de barras con banda IC 95% en overlay y línea de beneficio neto. Tabla mensual con fila de totales y gradiente de color. Exportar CSV para roles con permiso `exportar`.
+- **refactor**: La sección de proyección financiera que existía al fondo del tab Predicciones fue eliminada — el tab dedicado la reemplaza con mayor detalle y formato USD.
+- **refactor**: Todos los índices de tabs de admin/analyst desplazados +1 (ACF/PACF → 3, Grid Search → 4, Walk-Forward → 5, Métricas → 6, Asistente IA → 7, Concesionarios → 8). Manager: Recomendaciones → 3, Asistente IA → 4, Concesionarios → 5.
 
 ### 2026-05-04 (v18)
 - **feat**: **Clarificación conceptual en Tab Predicciones** — el banner storytelling ahora distingue explícitamente ① predicción mes a mes (cada fila es independiente con su propio IC 95%) vs ② horizonte de 6 meses (ventana de visibilidad + ciclo operativo de renovación mensual).

@@ -170,12 +170,13 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 
 ### Tabs disponibles según rol
 
-#### Admin y Analista (8 tabs)
+#### Admin y Analista (9 tabs)
 
 | Tab | Descripción |
 |-----|-------------|
 | 📊 Dashboard | KPIs: ventas del último mes, MAPE, horizonte. Gráfico del histórico completo. |
-| 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + proyección de ingresos a 6 meses. |
+| 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + validación walk-forward. |
+| 💰 Proyección Ingresos | Proyección financiera a 6 meses en dólares (ver sección abajo). |
 | 🔬 ACF/PACF | Gráficos de autocorrelación para interpretar la estructura de la serie. |
 | 🔍 Grid Search | Resultados de la búsqueda Optuna: top modelos, scatter AIC vs MAPE. |
 | 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
@@ -183,19 +184,20 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 | 🤖 Asistente IA | Chat con Gemini sobre el modelo (ver sección abajo). |
 | 🏪 Concesionarios | Análisis de ventas por distribuidor (requiere cargar Excel en el sidebar). |
 
-#### Gerente (5 tabs)
+#### Gerente (6 tabs)
 
 | Tab | Descripción |
 |-----|-------------|
 | 📊 Dashboard | KPIs e histórico. |
-| 🔮 Predicciones | Predicciones mes a mes con IC 95% + proyección de ingresos/beneficio a 6 meses. |
+| 🔮 Predicciones | Predicciones mes a mes con IC 95% + validación walk-forward. |
+| 💰 Proyección Ingresos | Proyección financiera a 6 meses en dólares. |
 | 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante. |
 | 🤖 Asistente IA | Chat orientado a decisiones de negocio. |
 | 🏪 Concesionarios | Análisis por distribuidor. |
 
-#### Viewer (2 tabs)
+#### Viewer (3 tabs)
 
-Dashboard básico y predicciones, sin métricas técnicas ni IA.
+Dashboard básico, predicciones y proyección de ingresos, sin métricas técnicas ni IA.
 
 ---
 
@@ -213,24 +215,26 @@ La **zona violeta** del gráfico muestra la validación walk-forward: simula exa
 
 ---
 
-### Tab Predicciones — Proyección de Ingresos
+### Tab Proyección de Ingresos
 
-Debajo de las tablas de predicción encontrarás la sección **💰 Proyección de Ingresos · Horizonte 6 Meses**.
+Disponible para **todos los roles**. Traduce la predicción SARIMA en cifras financieras en dólares.
 
 **Parámetros configurables:**
 
 | Campo | Por defecto | Descripción |
 |-------|-------------|-------------|
-| Precio medio por unidad (€) | 25 000 € | Precio neto de venta por vehículo |
+| Precio medio por unidad (USD $) | 27 000 $ | Precio neto de venta por vehículo en dólares |
 | Margen neto estimado (%) | 8 % | Porcentaje de beneficio neto; pon 0 para omitirlo |
+| Tipo de cambio | 1.00 | Multiplica el precio para convertir a moneda local si aplica |
 
 **Lo que muestra:**
 
-- **KPIs de resumen**: unidades totales predichas, ingresos totales estimados a 6 meses y rango de incertidumbre IC 95% en euros.
+- **KPIs de resumen**: unidades totales predichas, ingresos totales estimados a 6 meses y rango de incertidumbre IC 95% en dólares.
 - **KPIs de beneficio** (si margen > 0): beneficio estimado total y margen aplicado.
-- **Tabla mes a mes**: predicción en unidades · ingresos estimados · IC inferior y superior en euros · beneficio mensual (si aplica).
+- **Gráfico de barras**: ingresos proyectados mes a mes con la banda IC 95% superpuesta en semitransparente. Si el margen es > 0, una línea adicional muestra el beneficio neto mensual.
+- **Tabla mes a mes**: predicción en unidades · ingresos · IC inferior/superior en $ · beneficio (si aplica) · fila de totales al final.
 
-> Los ingresos son el producto de las unidades predichas × el precio unitario. El rango IC 95% se traslada a euros para comunicar la incertidumbre financiera de forma comprensible para cualquier rol.
+> Los ingresos son el producto de las unidades predichas × precio × tipo de cambio. El rango IC 95% se traslada a dólares para comunicar la incertidumbre financiera de forma comprensible para cualquier rol. Los roles con permiso `exportar` verán el botón **Exportar CSV proyección USD**.
 
 ---
 

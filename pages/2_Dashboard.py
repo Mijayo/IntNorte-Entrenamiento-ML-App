@@ -160,14 +160,14 @@ context_tiggo = (
 # ── Tabs según rol ────────────────────────────────────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst']:
-    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "🔬 ACF/PACF",
-                    "🔍 Grid Search", "🔄 Walk-Forward", "📋 Métricas Técnicas",
-                    "🤖 Asistente IA", "🏪 Concesionarios"])
+    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "💰 Proyección Ingresos",
+                    "🔬 ACF/PACF", "🔍 Grid Search", "🔄 Walk-Forward",
+                    "📋 Métricas Técnicas", "🤖 Asistente IA", "🏪 Concesionarios"])
 elif st.session_state.role == 'manager':
-    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "💼 Recomendaciones",
-                    "🤖 Asistente IA", "🏪 Concesionarios"])
+    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "💰 Proyección Ingresos",
+                    "💼 Recomendaciones", "🤖 Asistente IA", "🏪 Concesionarios"])
 else:
-    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones"])
+    tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones", "💰 Proyección Ingresos"])
 
 # ── Tab 1: Dashboard ──────────────────────────────────────────────────────────
 
@@ -366,74 +366,173 @@ Es la estimación más honesta del error real del sistema.
             use_container_width=True, hide_index=True
         )
 
-    # ── Proyección financiera a 6 meses ──────────────────────────────────────
-    st.markdown("---")
-    st.markdown(section_header("Proyección de Ingresos · Horizonte 6 Meses", "💰"), unsafe_allow_html=True)
-    st.caption(
-        "Los ingresos se calculan a partir de la predicción mes a mes. "
-        "Introduce el precio medio de venta y, opcionalmente, el margen neto para estimar el beneficio."
-    )
-
-    fin_col1, fin_col2 = st.columns(2)
-    with fin_col1:
-        precio_unit = st.number_input(
-            "Precio medio por unidad (€)",
-            min_value=1_000, max_value=500_000, value=25_000, step=500,
-            format="%d",
-            help="Precio de venta neto por unidad. Ajústalo al precio real de tu mercado."
-        )
-    with fin_col2:
-        margen_pct = st.number_input(
-            "Margen neto estimado (%)",
-            min_value=0.0, max_value=100.0, value=8.0, step=0.5,
-            format="%.1f",
-            help="Porcentaje de beneficio neto sobre los ingresos. Déjalo en 0 para omitir."
-        )
-
-    df_fin = pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
-    df_fin['Ingresos (€)']    = (df_fin['Predicción'] * precio_unit).round(0).astype(int)
-    df_fin['IC Inf (€)']      = (df_fin['IC_Inferior'] * precio_unit).round(0).astype(int)
-    df_fin['IC Sup (€)']      = (df_fin['IC_Superior'] * precio_unit).round(0).astype(int)
-    if margen_pct > 0:
-        df_fin['Beneficio (€)'] = (df_fin['Ingresos (€)'] * margen_pct / 100).round(0).astype(int)
-
-    total_uds      = int(df_fin['Predicción'].sum())
-    total_ing      = int(df_fin['Ingresos (€)'].sum())
-    ic_inf_total   = int(df_fin['IC Inf (€)'].sum())
-    ic_sup_total   = int(df_fin['IC Sup (€)'].sum())
-
-    kf1, kf2, kf3 = st.columns(3)
-    kf1.markdown(kpi_card("Unidades totales (6 m)", f"{total_uds:,} uds", "📦", "blue"), unsafe_allow_html=True)
-    kf2.markdown(kpi_card("Ingresos totales (6 m)", f"{total_ing:,.0f} €", "💵"), unsafe_allow_html=True)
-    kf3.markdown(kpi_card("Rango IC 95% (6 m)", f"{ic_inf_total:,.0f} – {ic_sup_total:,.0f} €", "📐", "amber"), unsafe_allow_html=True)
-
-    if margen_pct > 0:
-        total_ben = int(df_fin['Beneficio (€)'].sum())
-        kf_b1, kf_b2, _ = st.columns(3)
-        kf_b1.markdown(kpi_card("Beneficio estimado (6 m)", f"{total_ben:,.0f} €", "💹", ""), unsafe_allow_html=True)
-        kf_b2.markdown(kpi_card("Margen aplicado", f"{margen_pct:.1f}%", "📊", ""), unsafe_allow_html=True)
-
-    display_cols = ['Mes', 'Predicción', 'Ingresos (€)', 'IC Inf (€)', 'IC Sup (€)']
-    fmt = {'Predicción': '{:.0f}', 'Ingresos (€)': '{:,}', 'IC Inf (€)': '{:,}', 'IC Sup (€)': '{:,}'}
-    if margen_pct > 0:
-        display_cols.append('Beneficio (€)')
-        fmt['Beneficio (€)'] = '{:,}'
-
-    st.dataframe(
-        df_fin[display_cols].style.format(fmt),
-        use_container_width=True, hide_index=True
-    )
-
     if has_permission('exportar'):
         csv = pred_total.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Exportar CSV predicciones", csv,
                            f"predicciones_{datetime.now().strftime('%Y%m%d')}.csv",
                            "text/csv")
 
-# ── Tab 3: Recomendaciones (manager) ─────────────────────────────────────────
+# ── Tab 3: Proyección de Ingresos (todos los roles) ──────────────────────────
+
+with tabs[2]:
+    st.markdown(section_header("Proyección de Ingresos · Horizonte 6 Meses", "💰"), unsafe_allow_html=True)
+
+    st.markdown("""
+<div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);
+            border-radius:10px;padding:14px 20px;margin-bottom:18px;">
+<span style="font-size:1.0rem;font-weight:600;color:#4ADE80;">Escenario financiero basado en predicción SARIMA</span><br>
+<span style="color:#94A3B8;font-size:0.9rem;">
+Los ingresos se calculan mes a mes a partir de la predicción central del modelo.
+El intervalo de confianza al 95% define el rango pesimista–optimista.
+Ajusta el precio unitario y el margen neto para tu escenario real.
+</span>
+</div>
+""", unsafe_allow_html=True)
+
+    inp_col1, inp_col2, inp_col3 = st.columns(3)
+    with inp_col1:
+        precio_usd = st.number_input(
+            "Precio medio por unidad (USD $)",
+            min_value=1_000, max_value=500_000, value=27_000, step=500,
+            format="%d",
+            help="Precio de venta neto por unidad en dólares.",
+        )
+    with inp_col2:
+        margen_usd_pct = st.number_input(
+            "Margen neto estimado (%)",
+            min_value=0.0, max_value=100.0, value=8.0, step=0.5,
+            format="%.1f",
+            help="Porcentaje de beneficio neto sobre ingresos. 0 = omitir.",
+        )
+    with inp_col3:
+        tc = st.number_input(
+            "Tipo de cambio (USD / moneda local)",
+            min_value=0.01, max_value=10000.0, value=1.0, step=0.01,
+            format="%.2f",
+            help="Factor para convertir el precio a moneda local si aplica. Deja en 1 si ya está en USD.",
+        )
+
+    df_usd = pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
+    precio_efectivo     = precio_usd * tc
+    df_usd['Ingresos ($)']  = (df_usd['Predicción'] * precio_efectivo).round(0).astype(int)
+    df_usd['IC Inf ($)']    = (df_usd['IC_Inferior'] * precio_efectivo).round(0).astype(int)
+    df_usd['IC Sup ($)']    = (df_usd['IC_Superior'] * precio_efectivo).round(0).astype(int)
+    if margen_usd_pct > 0:
+        df_usd['Beneficio ($)'] = (df_usd['Ingresos ($)'] * margen_usd_pct / 100).round(0).astype(int)
+
+    total_uds_usd   = int(df_usd['Predicción'].sum())
+    total_ing_usd   = int(df_usd['Ingresos ($)'].sum())
+    ic_inf_usd      = int(df_usd['IC Inf ($)'].sum())
+    ic_sup_usd      = int(df_usd['IC Sup ($)'].sum())
+
+    ku1, ku2, ku3 = st.columns(3)
+    ku1.markdown(kpi_card("Unidades (6 meses)", f"{total_uds_usd:,} uds", "📦", "blue"), unsafe_allow_html=True)
+    ku2.markdown(kpi_card("Ingresos centrales (6 m)", f"${total_ing_usd:,.0f}", "💵"), unsafe_allow_html=True)
+    ku3.markdown(kpi_card("Rango IC 95% (6 m)", f"${ic_inf_usd:,.0f} – ${ic_sup_usd:,.0f}", "📐", "amber"), unsafe_allow_html=True)
+
+    if margen_usd_pct > 0:
+        total_ben_usd = int(df_usd['Beneficio ($)'].sum())
+        kb1, kb2, _ = st.columns(3)
+        kb1.markdown(kpi_card("Beneficio neto (6 m)", f"${total_ben_usd:,.0f}", "💹"), unsafe_allow_html=True)
+        kb2.markdown(kpi_card("Margen aplicado", f"{margen_usd_pct:.1f}%", "📊"), unsafe_allow_html=True)
+
+    # ── Gráfico: barras de ingresos con rango IC ──────────────────────────────
+    fig_rev = go.Figure()
+
+    # Banda IC (área)
+    fig_rev.add_trace(go.Bar(
+        x=df_usd['Mes'], y=df_usd['IC Sup ($)'] - df_usd['IC Inf ($)'],
+        base=df_usd['IC Inf ($)'],
+        name='Rango IC 95%',
+        marker=dict(color='rgba(251,191,36,0.18)', line=dict(width=0)),
+        hovertemplate='IC 95%: $%{base:,.0f} – $%{customdata:,.0f}<extra></extra>',
+        customdata=df_usd['IC Sup ($)'],
+    ))
+
+    # Barras de ingresos centrales
+    fig_rev.add_trace(go.Bar(
+        x=df_usd['Mes'], y=df_usd['Ingresos ($)'],
+        name='Ingresos proyectados',
+        marker=dict(
+            color=COLORS['primary'],
+            line=dict(color=COLORS['primary'], width=0),
+        ),
+        text=[f"${v:,.0f}" for v in df_usd['Ingresos ($)']],
+        textposition='outside',
+        textfont=dict(color='#94A3B8', size=11),
+        hovertemplate='%{x}<br>Ingresos: $%{y:,.0f}<extra></extra>',
+    ))
+
+    # Línea de beneficio (si aplica)
+    if margen_usd_pct > 0:
+        fig_rev.add_trace(go.Scatter(
+            x=df_usd['Mes'], y=df_usd['Beneficio ($)'],
+            mode='lines+markers', name='Beneficio neto',
+            line=dict(color=COLORS['accent'], width=2.5, dash='dot'),
+            marker=dict(size=8, color=COLORS['accent'], symbol='diamond',
+                        line=dict(color='#080D18', width=1.5)),
+            hovertemplate='%{x}<br>Beneficio: $%{y:,.0f}<extra></extra>',
+        ))
+
+    apply_chart_theme(fig_rev, height=480,
+                      title='Proyección de Ingresos en USD — Horizonte 6 Meses')
+    fig_rev.update_layout(
+        barmode='overlay',
+        hovermode='x unified',
+        xaxis_title='Mes',
+        yaxis_title='USD ($)',
+        yaxis_tickprefix='$',
+        yaxis_tickformat=',.0f',
+    )
+    st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False})
+
+    # ── Tabla detallada ───────────────────────────────────────────────────────
+    st.subheader("📋 Detalle mensual")
+    disp_cols_usd = ['Mes', 'Predicción', 'Ingresos ($)', 'IC Inf ($)', 'IC Sup ($)']
+    fmt_usd = {
+        'Predicción':  '{:.0f}',
+        'Ingresos ($)': '${:,}',
+        'IC Inf ($)':  '${:,}',
+        'IC Sup ($)':  '${:,}',
+    }
+    if margen_usd_pct > 0:
+        disp_cols_usd.append('Beneficio ($)')
+        fmt_usd['Beneficio ($)'] = '${:,}'
+
+    # Fila de totales
+    totals_row = {
+        'Mes': 'TOTAL',
+        'Predicción': df_usd['Predicción'].sum(),
+        'Ingresos ($)': total_ing_usd,
+        'IC Inf ($)': ic_inf_usd,
+        'IC Sup ($)': ic_sup_usd,
+    }
+    if margen_usd_pct > 0:
+        totals_row['Beneficio ($)'] = total_ben_usd
+    df_usd_show = pd.concat([df_usd[disp_cols_usd],
+                              pd.DataFrame([totals_row])[disp_cols_usd]],
+                             ignore_index=True)
+
+    st.dataframe(
+        df_usd_show.style
+                   .background_gradient(subset=['Ingresos ($)'], cmap='Greens')
+                   .format(fmt_usd),
+        use_container_width=True, hide_index=True,
+    )
+
+    if has_permission('exportar'):
+        csv_usd = df_usd[disp_cols_usd].to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "📥 Exportar CSV proyección USD",
+            csv_usd,
+            f"proyeccion_ingresos_usd_{datetime.now().strftime('%Y%m%d')}.csv",
+            "text/csv",
+        )
+
+# ── Tab 4: Recomendaciones (manager) ─────────────────────────────────────────
 
 if st.session_state.role == 'manager':
-    with tabs[2]:
+    with tabs[3]:
         st.header("💼 Recomendaciones de Compra", divider='orange')
 
         proximo = pred_total['Predicción'].iloc[0]
@@ -479,7 +578,7 @@ if st.session_state.role == 'manager':
 # ── Tab LLM (manager) ────────────────────────────────────────────────────────
 
 if st.session_state.role == 'manager':
-    with tabs[3]:
+    with tabs[4]:
         st.header("🤖 Asistente IA", divider='violet')
         st.markdown(
             "Consulta al asistente sobre las predicciones, el modelo activo o las recomendaciones de compra. "
@@ -534,7 +633,7 @@ if st.session_state.role == 'manager':
 if st.session_state.role in ['admin', 'analyst']:
 
     # ACF / PACF
-    with tabs[2]:
+    with tabs[3]:
         st.header("🔬 Análisis ACF/PACF", divider='blue')
         acf_bytes, pacf_bytes = sio.load_acf_pacf_images(selected_run)
         col1, col2 = st.columns(2)
@@ -552,7 +651,7 @@ if st.session_state.role in ['admin', 'analyst']:
                 st.warning("Imagen PACF no disponible")
 
     # Grid Search
-    with tabs[3]:
+    with tabs[4]:
         st.markdown(section_header("Grid Search de Parámetros", "🔍"), unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.markdown(kpi_card("Combinaciones", len(grid_search), "🔢"), unsafe_allow_html=True)
@@ -579,7 +678,7 @@ if st.session_state.role in ['admin', 'analyst']:
         st.plotly_chart(fig_grid, use_container_width=True, config={'displayModeBar': False})
 
     # Walk-Forward
-    with tabs[4]:
+    with tabs[5]:
         st.markdown(section_header("Walk-Forward Validation", "🔄"), unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         col1.markdown(kpi_card("MAPE Promedio",   f"{walk_forward['error_pct'].mean():.2f}%", "📊", "amber"), unsafe_allow_html=True)
@@ -616,7 +715,7 @@ if st.session_state.role in ['admin', 'analyst']:
         )
 
     # Métricas Técnicas
-    with tabs[5]:
+    with tabs[6]:
         st.header("📋 Métricas Técnicas Completas", divider='gray')
         col1, col2 = st.columns(2)
         orden = metricas['mejor_modelo']['order']
@@ -642,7 +741,7 @@ if st.session_state.role in ['admin', 'analyst']:
 # ── Tab LLM (admin / analyst) ────────────────────────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst']:
-    with tabs[6]:
+    with tabs[7]:
         st.header("🤖 Asistente IA", divider='violet')
         st.markdown(
             "Consulta al asistente sobre las predicciones, el modelo SARIMA o las métricas de validación. "
@@ -696,7 +795,7 @@ if st.session_state.role in ['admin', 'analyst']:
 # ── Tab Concesionarios (admin / analyst / manager) ────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst', 'manager']:
-    con_idx = 7 if st.session_state.role in ['admin', 'analyst'] else 4
+    con_idx = 8 if st.session_state.role in ['admin', 'analyst'] else 5
 
     with tabs[con_idx]:
         st.header("🏪 Ventas CHERY por Concesionario", divider='violet')
