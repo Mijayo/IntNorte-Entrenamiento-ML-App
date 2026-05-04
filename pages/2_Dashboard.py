@@ -241,15 +241,17 @@ with tabs[1]:
     st.markdown("""
 <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);
             border-radius:10px;padding:16px 20px;margin-bottom:18px;">
-<span style="font-size:1.05rem;font-weight:600;color:#A78BFA;">¿Cómo usa el negocio este modelo?</span><br>
+<span style="font-size:1.05rem;font-weight:600;color:#A78BFA;">Dos conceptos clave — no confundir</span><br>
 <span style="color:#94A3B8;font-size:0.92rem;">
-SARIMA puede proyectar hasta <strong style="color:#C9D8E6;">6 meses</strong> en el horizonte,
-pero el caso de uso real es más potente: <strong style="color:#C9D8E6;">cada mes</strong>, el equipo
-actualiza el histórico con las ventas del mes cerrado y lanza una nueva predicción para el mes siguiente.
-<br><br>
-La zona <strong style="color:#A78BFA;">violeta</strong> del gráfico muestra la <em>validación walk-forward</em>:
-simula exactamente ese proceso — el modelo predijo cada mes <strong>un solo paso adelante</strong>, con todos los
-datos anteriores disponibles, igual que en producción. Es la estimación más honesta del MAPE real del sistema.
+<strong style="color:#C9D8E6;">① Predicción mes a mes:</strong>
+el modelo genera una estimación independiente para <em>cada mes</em> del horizonte.
+No es un agregado — cada fila de la tabla es una predicción propia con su intervalo de confianza.<br><br>
+<strong style="color:#C9D8E6;">② Horizonte de 6 meses:</strong>
+es la ventana de visibilidad hacia adelante. En operación real, el equipo actualiza el histórico
+cada mes con las ventas cerradas y relanza la predicción; la validación walk-forward (zona
+<strong style="color:#A78BFA;">violeta</strong>) simula exactamente ese proceso —
+el modelo predijo cada mes <strong>un solo paso adelante</strong>, con todos los datos anteriores disponibles.
+Es la estimación más honesta del error real del sistema.
 </span>
 </div>
 """, unsafe_allow_html=True)
@@ -363,6 +365,64 @@ datos anteriores disponibles, igual que en producción. Es la estimación más h
                             'Error Abs': '{:.2f}', 'Error %': '{:.2f}%'}),
             use_container_width=True, hide_index=True
         )
+
+    # ── Proyección financiera a 6 meses ──────────────────────────────────────
+    st.markdown("---")
+    st.markdown(section_header("Proyección de Ingresos · Horizonte 6 Meses", "💰"), unsafe_allow_html=True)
+    st.caption(
+        "Los ingresos se calculan a partir de la predicción mes a mes. "
+        "Introduce el precio medio de venta y, opcionalmente, el margen neto para estimar el beneficio."
+    )
+
+    fin_col1, fin_col2 = st.columns(2)
+    with fin_col1:
+        precio_unit = st.number_input(
+            "Precio medio por unidad (€)",
+            min_value=1_000, max_value=500_000, value=25_000, step=500,
+            format="%d",
+            help="Precio de venta neto por unidad. Ajústalo al precio real de tu mercado."
+        )
+    with fin_col2:
+        margen_pct = st.number_input(
+            "Margen neto estimado (%)",
+            min_value=0.0, max_value=100.0, value=8.0, step=0.5,
+            format="%.1f",
+            help="Porcentaje de beneficio neto sobre los ingresos. Déjalo en 0 para omitir."
+        )
+
+    df_fin = pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
+    df_fin['Ingresos (€)']    = (df_fin['Predicción'] * precio_unit).round(0).astype(int)
+    df_fin['IC Inf (€)']      = (df_fin['IC_Inferior'] * precio_unit).round(0).astype(int)
+    df_fin['IC Sup (€)']      = (df_fin['IC_Superior'] * precio_unit).round(0).astype(int)
+    if margen_pct > 0:
+        df_fin['Beneficio (€)'] = (df_fin['Ingresos (€)'] * margen_pct / 100).round(0).astype(int)
+
+    total_uds      = int(df_fin['Predicción'].sum())
+    total_ing      = int(df_fin['Ingresos (€)'].sum())
+    ic_inf_total   = int(df_fin['IC Inf (€)'].sum())
+    ic_sup_total   = int(df_fin['IC Sup (€)'].sum())
+
+    kf1, kf2, kf3 = st.columns(3)
+    kf1.markdown(kpi_card("Unidades totales (6 m)", f"{total_uds:,} uds", "📦", "blue"), unsafe_allow_html=True)
+    kf2.markdown(kpi_card("Ingresos totales (6 m)", f"{total_ing:,.0f} €", "💵"), unsafe_allow_html=True)
+    kf3.markdown(kpi_card("Rango IC 95% (6 m)", f"{ic_inf_total:,.0f} – {ic_sup_total:,.0f} €", "📐", "amber"), unsafe_allow_html=True)
+
+    if margen_pct > 0:
+        total_ben = int(df_fin['Beneficio (€)'].sum())
+        kf_b1, kf_b2, _ = st.columns(3)
+        kf_b1.markdown(kpi_card("Beneficio estimado (6 m)", f"{total_ben:,.0f} €", "💹", ""), unsafe_allow_html=True)
+        kf_b2.markdown(kpi_card("Margen aplicado", f"{margen_pct:.1f}%", "📊", ""), unsafe_allow_html=True)
+
+    display_cols = ['Mes', 'Predicción', 'Ingresos (€)', 'IC Inf (€)', 'IC Sup (€)']
+    fmt = {'Predicción': '{:.0f}', 'Ingresos (€)': '{:,}', 'IC Inf (€)': '{:,}', 'IC Sup (€)': '{:,}'}
+    if margen_pct > 0:
+        display_cols.append('Beneficio (€)')
+        fmt['Beneficio (€)'] = '{:,}'
+
+    st.dataframe(
+        df_fin[display_cols].style.format(fmt),
+        use_container_width=True, hide_index=True
+    )
 
     if has_permission('exportar'):
         csv = pred_total.to_csv(index=False).encode('utf-8')
