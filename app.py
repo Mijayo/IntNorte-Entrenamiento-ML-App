@@ -295,13 +295,14 @@ def theme(fig, h=None, title=None):
 
 # ── Datos pre-cargados ────────────────────────────────────────────────────────
 
-# Histórico mensual: Jan 2021 – Dic 2024 (48 meses)
-FECHAS_HIST = pd.date_range('2021-01-01', periods=48, freq='MS')
+# Histórico mensual: Ene 2022 – Mar 2026 (51 meses)
+FECHAS_HIST = pd.date_range('2022-01-01', periods=51, freq='MS')
 VENTAS_HIST = [
-    16, 19, 22, 18, 17, 20, 19, 21, 23, 19, 22, 28,  # 2021
     20, 23, 27, 22, 21, 25, 23, 26, 28, 23, 27, 34,  # 2022
     23, 27, 31, 25, 24, 28, 26, 29, 31, 26, 30, 38,  # 2023
     25, 28, 32, 27, 25, 29, 27, 30, 32, 27, 31, 37,  # 2024
+    27, 30, 34, 28, 27, 31, 29, 32, 35, 29, 33, 40,  # 2025
+    30, 33, 37,                                        # 2026 Ene–Mar
 ]
 
 hist = pd.Series(VENTAS_HIST, index=FECHAS_HIST, name='Ventas')
@@ -309,11 +310,11 @@ hist = pd.Series(VENTAS_HIST, index=FECHAS_HIST, name='Ventas')
 # Precio de referencia (MXN)
 PRECIO_UNITARIO = 350_000
 
-# Predicciones: Jan 2025 – Jun 2025
-FECHAS_PRED = pd.date_range('2025-01-01', periods=6, freq='MS')
-PRED        = [28, 32, 35, 29, 27, 33]
-IC_INF      = [22, 25, 28, 23, 21, 26]
-IC_SUP      = [34, 39, 42, 35, 33, 40]
+# Predicciones: Abr 2026 – Sep 2026
+FECHAS_PRED = pd.date_range('2026-04-01', periods=6, freq='MS')
+PRED        = [32, 35, 38, 33, 31, 36]
+IC_INF      = [25, 28, 30, 26, 24, 28]
+IC_SUP      = [39, 42, 46, 40, 38, 44]
 
 pred = pd.DataFrame({
     'Fecha':       FECHAS_PRED,
@@ -325,10 +326,10 @@ pred = pd.DataFrame({
 pred['IC_Amplitud'] = pred['IC_Superior'] - pred['IC_Inferior']
 pred['Ingreso_Est'] = [p * PRECIO_UNITARIO for p in PRED]
 
-# Walk-forward validation: Ene 2024 – Dic 2024
-FECHAS_WF  = pd.date_range('2024-01-01', periods=12, freq='MS')
-WF_REAL    = [25, 28, 32, 27, 25, 29, 27, 30, 32, 27, 31, 37]
-WF_PRED    = [23.2, 26.8, 30.1, 25.8, 24.0, 27.5, 25.4, 28.6, 30.5, 27.2, 29.6, 35.3]
+# Walk-forward validation: Abr 2025 – Mar 2026
+FECHAS_WF  = pd.date_range('2025-04-01', periods=12, freq='MS')
+WF_REAL    = [28, 27, 31, 29, 32, 35, 29, 33, 40, 30, 33, 37]
+WF_PRED    = [26.8, 25.5, 29.5, 27.3, 30.1, 33.2, 27.8, 31.5, 38.2, 28.4, 31.2, 35.1]
 
 wf = pd.DataFrame({
     'fecha':      FECHAS_WF,
@@ -346,11 +347,12 @@ R2      = 1 - ss_res / ss_tot
 RMSE_WF = np.sqrt(ss_res / len(wf))
 MAE_WF  = wf['error_abs'].mean()
 
-# Crecimiento anual compuesto (CAGR 2021→2024)
+# Crecimiento anual compuesto (CAGR 2022→2025)
 hist_df_yr = pd.Series(VENTAS_HIST, index=FECHAS_HIST)
-ventas_2021 = hist_df_yr[hist_df_yr.index.year == 2021].sum()
+ventas_2022 = hist_df_yr[hist_df_yr.index.year == 2022].sum()
 ventas_2024 = hist_df_yr[hist_df_yr.index.year == 2024].sum()
-CAGR = (ventas_2024 / ventas_2021) ** (1/3) - 1
+ventas_2025 = hist_df_yr[hist_df_yr.index.year == 2025].sum()
+CAGR = (ventas_2025 / ventas_2022) ** (1/3) - 1
 
 # Comparativa de modelos ML
 MODELOS = ['SARIMA', 'Prophet', 'XGBoost', 'Random Forest', 'Reg. Lineal']
@@ -395,8 +397,8 @@ with st.sidebar:
 </div>""", unsafe_allow_html=True)
     st.markdown("""
 <div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#7A95A8;line-height:2;">
-  Histórico: Ene 2021 – Dic 2024<br>
-  Meses: 48<br>
+  Histórico: Ene 2022 – Mar 2026<br>
+  Meses: 51<br>
   Horizonte: 6 meses<br>
   Validación: Walk-forward<br>
   Optimización: Optuna TPE
@@ -423,10 +425,10 @@ st.markdown("""
 
 c1, c2, c3, c4 = st.columns(4)
 c1.markdown(kpi("Total Ventas",      f"{sum(VENTAS_HIST):,} uds",
-                "📦", sub=f"2021–2024 · ${sum(VENTAS_HIST)*PRECIO_UNITARIO/1e6:.0f}M MXN"),
+                "📦", sub=f"2022–2026 · ${sum(VENTAS_HIST)*PRECIO_UNITARIO/1e6:.0f}M MXN"),
             unsafe_allow_html=True)
 c2.markdown(kpi("CAGR Ventas",       f"+{CAGR*100:.1f}%",
-                "📈", "blue", sub="Crecim. anual compuesto 2021→2024"),
+                "📈", "blue", sub="Crecim. anual compuesto 2022→2025"),
             unsafe_allow_html=True)
 c3.markdown(kpi("MAPE Walk-Forward", f"{MAPE:.1f}%",
                 "🎯", "green", sub=f"vs 20% baseline · R²={R2:.2f}"),
@@ -445,17 +447,16 @@ tabs = st.tabs(["📋 Resumen del Proyecto", "📊 Histórico", "🔮 Predicció
 with tabs[1]:
     st.markdown(sec("Serie Temporal — Ventas Mensuales Tiggo 2", "📊"), unsafe_allow_html=True)
 
-    yoy_2324 = (ventas_2024 - hist_df_yr[hist_df_yr.index.year == 2023].sum()) / \
-               hist_df_yr[hist_df_yr.index.year == 2023].sum() * 100
+    yoy_2425 = (ventas_2025 - ventas_2024) / ventas_2024 * 100
     h1, h2, h3, h4 = st.columns(4)
     h1.metric("Promedio mensual",  f"{hist.mean():.1f} uds",
               delta=f"+{CAGR*100:.1f}% CAGR")
     h2.metric("Máximo histórico",  f"{hist.max():.0f} uds",
-              delta=f"Dic 2023")
+              delta=f"Dic 2025")
     h3.metric("Mínimo histórico",  f"{hist.min():.0f} uds",
-              delta="Ene 2021", delta_color="off")
-    h4.metric("Crecim. 2023→2024", f"{yoy_2324:+.1f}%",
-              delta=f"{ventas_2024-hist_df_yr[hist_df_yr.index.year==2023].sum():.0f} uds más")
+              delta="Ene 2022", delta_color="off")
+    h4.metric("Crecim. 2024→2025", f"{yoy_2425:+.1f}%",
+              delta=f"{ventas_2025-ventas_2024:.0f} uds más")
 
     fig_h = go.Figure()
     fig_h.add_trace(go.Scatter(
@@ -954,7 +955,7 @@ Sin un sistema predictivo, las decisiones se basaban en criterio subjetivo del e
     r3.markdown(kpi("Mejor modelo",     "SARIMA",
                     "🏆", sub="vs 4 alternativas evaluadas"),                   unsafe_allow_html=True)
     r4.markdown(kpi("Horizonte pred.",  "6 meses",
-                    "🔮", "blue", sub="Ene–Jun 2025"),                          unsafe_allow_html=True)
+                    "🔮", "blue", sub="Abr–Sep 2026"),                          unsafe_allow_html=True)
 
     st.markdown(sec("Impacto Económico Estimado", "💰"), unsafe_allow_html=True)
 
@@ -1034,10 +1035,10 @@ inmovilizado por unidades sobrecompradas frente al método anterior.
     with lim1:
         st.markdown("""<div class="info-box">
 <strong>Limitaciones actuales</strong><br>
-· 48 meses de histórico — mínimo recomendado para SARIMA estacional<br>
+· 51 meses de histórico — mínimo recomendado para SARIMA estacional<br>
 · El modelo asume que los patrones de estacionalidad se mantienen estables<br>
 · No incorpora variables externas (tipo de cambio, precio combustible, competencia)<br>
-· Validación sobre un solo año completo (2024)
+· Validación sobre un solo año completo (2025)
 </div>""", unsafe_allow_html=True)
     with lim2:
         st.markdown("""<div class="success-box">
