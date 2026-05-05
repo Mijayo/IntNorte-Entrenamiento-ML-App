@@ -209,8 +209,8 @@ code,pre { font-family:'JetBrains Mono',monospace!important; }
 }
 #MainMenu{visibility:hidden;} footer{visibility:hidden;}
 [data-testid="stDecoration"]{display:none!important;}
-/* Fix sidebar toggle: hide icon-text fallback */
-[data-testid="collapsedControl"] { display: none !important; }
+/* Fix sidebar expand button (keyboard_double_arrow_right icon) */
+[data-testid="stExpandSidebarButton"] { display: none !important; }
 
 /* ── Tablet (≥640px): 2-column KPI grids ─────────────────────────────── */
 @media (min-width: 640px) {
