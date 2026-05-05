@@ -209,6 +209,8 @@ code,pre { font-family:'JetBrains Mono',monospace!important; }
 }
 #MainMenu{visibility:hidden;} footer{visibility:hidden;}
 [data-testid="stDecoration"]{display:none!important;}
+/* Fix sidebar toggle: hide icon-text fallback */
+[data-testid="collapsedControl"] { display: none !important; }
 
 /* ── Tablet (≥640px): 2-column KPI grids ─────────────────────────────── */
 @media (min-width: 640px) {
@@ -307,8 +309,10 @@ VENTAS_HIST = [
 
 hist = pd.Series(VENTAS_HIST, index=FECHAS_HIST, name='Ventas')
 
-# Precio de referencia (MXN)
-PRECIO_UNITARIO = 350_000
+# Precio de referencia
+PRECIO_UNITARIO = 350_000   # MXN interno
+TC_USD          = 17.0       # MXN por USD
+PRECIO_USD      = PRECIO_UNITARIO / TC_USD
 
 # Predicciones: Abr 2026 – Sep 2026
 FECHAS_PRED = pd.date_range('2026-04-01', periods=6, freq='MS')
@@ -421,22 +425,6 @@ st.markdown("""
   </div>
 </div>""", unsafe_allow_html=True)
 
-# ── KPIs globales ─────────────────────────────────────────────────────────────
-
-c1, c2, c3, c4 = st.columns(4)
-c1.markdown(kpi("Total Ventas",      f"{sum(VENTAS_HIST):,} uds",
-                "📦", sub=f"2022–2026 · ${sum(VENTAS_HIST)*PRECIO_UNITARIO/1e6:.0f}M MXN"),
-            unsafe_allow_html=True)
-c2.markdown(kpi("CAGR Ventas",       f"+{CAGR*100:.1f}%",
-                "📈", "blue", sub="Crecim. anual compuesto 2022→2025"),
-            unsafe_allow_html=True)
-c3.markdown(kpi("MAPE Walk-Forward", f"{MAPE:.1f}%",
-                "🎯", "green", sub=f"vs 20% baseline · R²={R2:.2f}"),
-            unsafe_allow_html=True)
-c4.markdown(kpi("Próximo mes",       f"{PRED[0]} uds",
-                "🔮", "amber", sub=f"IC 95%: {IC_INF[0]}–{IC_SUP[0]} uds"),
-            unsafe_allow_html=True)
-
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
 tabs = st.tabs(["📋 Resumen del Proyecto", "📊 Histórico", "🔮 Predicción",
@@ -482,12 +470,12 @@ with tabs[1]:
         resumen_anual = hist_df.groupby('Año')['Ventas'].agg(
             Total='sum', Promedio='mean', Máximo='max', Mínimo='min'
         ).round(1)
-        resumen_anual['Ingreso MXN'] = (resumen_anual['Total'] * PRECIO_UNITARIO / 1e6).round(1)
+        resumen_anual['Ingreso USD'] = (resumen_anual['Total'] * PRECIO_USD / 1e6).round(1)
         resumen_anual['Crec. YoY'] = resumen_anual['Total'].pct_change().mul(100).round(1)
         st.dataframe(
             resumen_anual.style
                 .bar(subset=['Total'], color='#4a90d9')
-                .format({'Promedio': '{:.1f}', 'Ingreso MXN': '${:.1f}M',
+                .format({'Promedio': '{:.1f}', 'Ingreso USD': '${:.1f}M',
                          'Crec. YoY': '{:+.1f}%', 'Total': '{:.0f}',
                          'Máximo': '{:.0f}', 'Mínimo': '{:.0f}'}),
             use_container_width=True
@@ -513,7 +501,7 @@ con todos los datos anteriores disponibles. Es la estimación más honesta del e
 </div>
 """, unsafe_allow_html=True)
 
-    ingreso_6m = sum(PRED) * PRECIO_UNITARIO
+    ingreso_6m = sum(PRED) * PRECIO_USD
     p1, p2, p3, p4 = st.columns(4)
     p1.markdown(kpi("Próximo mes",      f"{PRED[0]} uds",
                     "🔮", sub=f"IC 95%: {IC_INF[0]}–{IC_SUP[0]}"),
@@ -525,7 +513,7 @@ con todos los datos anteriores disponibles. Es la estimación más honesta del e
                     "🎯", "green", sub="error real validado"),
                 unsafe_allow_html=True)
     p4.markdown(kpi("Ingreso estimado", f"${ingreso_6m/1e6:.1f}M",
-                    "💵", "green", sub="MXN · 6 meses"),
+                    "💵", "green", sub="USD · 6 meses"),
                 unsafe_allow_html=True)
 
     fig_p = go.Figure()
@@ -586,13 +574,14 @@ con todos los datos anteriores disponibles. Es la estimación más honesta del e
     st.subheader("📋 Tabla de predicciones")
     pred_show = pred[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior',
                        'IC_Amplitud', 'Ingreso_Est']].copy()
-    pred_show.columns = ['Mes', 'Pred.', 'IC Inf', 'IC Sup', 'Amplitud IC', 'Ingreso MXN']
+    pred_show['Ingreso_Est'] = (pred_show['Ingreso_Est'] / TC_USD).round(0).astype(int)
+    pred_show.columns = ['Mes', 'Pred.', 'IC Inf', 'IC Sup', 'Amplitud IC', 'Ingreso USD']
     st.dataframe(
         pred_show.style
             .bar(subset=['Pred.'], color='#4a90d9')
             .bar(subset=['Amplitud IC'], color='rgba(255,193,7,0.35)')
             .format({'Pred.': '{:.0f}', 'IC Inf': '{:.0f}', 'IC Sup': '{:.0f}',
-                     'Amplitud IC': '{:.0f}', 'Ingreso MXN': '${:,.0f}'}),
+                     'Amplitud IC': '{:.0f}', 'Ingreso USD': '${:,.0f}'}),
         use_container_width=True, hide_index=True,
     )
 
@@ -640,12 +629,12 @@ define el rango pesimista–optimista. Ajusta el precio y margen para tu escenar
 </div>
 """, unsafe_allow_html=True)
 
-    rev_c1, rev_c2, rev_c3 = st.columns(3)
+    rev_c1, rev_c2 = st.columns(2)
     with rev_c1:
         precio_unit = st.number_input(
-            "Precio por unidad (MXN $)", min_value=100_000, max_value=2_000_000,
-            value=PRECIO_UNITARIO, step=5_000, format="%d",
-            help="Precio de venta neto por unidad en pesos mexicanos.",
+            "Precio por unidad (USD $)", min_value=5_000, max_value=120_000,
+            value=int(PRECIO_USD), step=500, format="%d",
+            help="Precio de venta neto por unidad en dólares americanos.",
         )
     with rev_c2:
         margen_pct = st.number_input(
@@ -653,101 +642,93 @@ define el rango pesimista–optimista. Ajusta el precio y margen para tu escenar
             value=8.0, step=0.5, format="%.1f",
             help="Porcentaje de beneficio neto sobre ingresos. 0 = omitir.",
         )
-    with rev_c3:
-        tc_usd = st.number_input(
-            "Tipo de cambio USD / MXN", min_value=1.0, max_value=50.0,
-            value=17.0, step=0.1, format="%.1f",
-            help="Para mostrar equivalente en USD. 1 = sólo MXN.",
-        )
 
     df_rev = pred[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
-    df_rev['Ingreso (MXN)']  = (df_rev['Predicción'] * precio_unit).round(0).astype(int)
-    df_rev['IC Inf (MXN)']   = (df_rev['IC_Inferior'] * precio_unit).round(0).astype(int)
-    df_rev['IC Sup (MXN)']   = (df_rev['IC_Superior'] * precio_unit).round(0).astype(int)
+    df_rev['Ingreso (USD)']  = (df_rev['Predicción'] * precio_unit).round(0).astype(int)
+    df_rev['IC Inf (USD)']   = (df_rev['IC_Inferior'] * precio_unit).round(0).astype(int)
+    df_rev['IC Sup (USD)']   = (df_rev['IC_Superior'] * precio_unit).round(0).astype(int)
     if margen_pct > 0:
-        df_rev['Beneficio (MXN)'] = (df_rev['Ingreso (MXN)'] * margen_pct / 100).round(0).astype(int)
+        df_rev['Beneficio (USD)'] = (df_rev['Ingreso (USD)'] * margen_pct / 100).round(0).astype(int)
 
     total_uds_rev = int(df_rev['Predicción'].sum())
-    total_ing_rev = int(df_rev['Ingreso (MXN)'].sum())
-    ic_inf_rev    = int(df_rev['IC Inf (MXN)'].sum())
-    ic_sup_rev    = int(df_rev['IC Sup (MXN)'].sum())
+    total_ing_rev = int(df_rev['Ingreso (USD)'].sum())
+    ic_inf_rev    = int(df_rev['IC Inf (USD)'].sum())
+    ic_sup_rev    = int(df_rev['IC Sup (USD)'].sum())
 
     ku1, ku2, ku3 = st.columns(3)
-    ku1.markdown(kpi("Unidades (6 m)",      f"{total_uds_rev:,} uds", "📦", "blue", sub="Ene–Jun 2025"),       unsafe_allow_html=True)
-    ku2.markdown(kpi("Ingresos centrales",  f"${total_ing_rev/1e6:.1f}M", "💵", sub="MXN · 6 meses"),          unsafe_allow_html=True)
+    ku1.markdown(kpi("Unidades (6 m)",      f"{total_uds_rev:,} uds", "📦", "blue", sub="Abr–Sep 2026"),       unsafe_allow_html=True)
+    ku2.markdown(kpi("Ingresos centrales",  f"${total_ing_rev/1e6:.1f}M", "💵", sub="USD · 6 meses"),          unsafe_allow_html=True)
     ku3.markdown(kpi("Rango IC 95%",        f"${ic_inf_rev/1e6:.1f}M – ${ic_sup_rev/1e6:.1f}M", "📐", "amber",
-                     sub="MXN pess. – opt."), unsafe_allow_html=True)
+                     sub="USD pess. – opt."), unsafe_allow_html=True)
 
     if margen_pct > 0:
-        total_ben_rev = int(df_rev['Beneficio (MXN)'].sum())
+        total_ben_rev = int(df_rev['Beneficio (USD)'].sum())
         kb1, kb2, _ = st.columns(3)
-        kb1.markdown(kpi("Beneficio neto (6 m)", f"${total_ben_rev/1e6:.2f}M", "💹", "green", sub="MXN"), unsafe_allow_html=True)
+        kb1.markdown(kpi("Beneficio neto (6 m)", f"${total_ben_rev/1e6:.2f}M", "💹", "green", sub="USD"), unsafe_allow_html=True)
         kb2.markdown(kpi("Margen aplicado",       f"{margen_pct:.1f}%",          "📊", "amber"),           unsafe_allow_html=True)
 
     fig_rev = go.Figure()
     fig_rev.add_trace(go.Bar(
-        x=df_rev['Mes'], y=df_rev['IC Sup (MXN)'] - df_rev['IC Inf (MXN)'],
-        base=df_rev['IC Inf (MXN)'],
+        x=df_rev['Mes'], y=df_rev['IC Sup (USD)'] - df_rev['IC Inf (USD)'],
+        base=df_rev['IC Inf (USD)'],
         name='Rango IC 95%',
         marker=dict(color='rgba(255,193,7,0.18)', line=dict(width=0)),
-        hovertemplate='IC 95%: $%{base:,.0f} – $%{customdata:,.0f} MXN<extra></extra>',
-        customdata=df_rev['IC Sup (MXN)'],
+        hovertemplate='IC 95%: $%{base:,.0f} – $%{customdata:,.0f} USD<extra></extra>',
+        customdata=df_rev['IC Sup (USD)'],
     ))
     fig_rev.add_trace(go.Bar(
-        x=df_rev['Mes'], y=df_rev['Ingreso (MXN)'],
+        x=df_rev['Mes'], y=df_rev['Ingreso (USD)'],
         name='Ingresos proyectados',
         marker=dict(color=COLORS['primary'], line=dict(width=0)),
-        text=[f"${v/1e6:.1f}M" for v in df_rev['Ingreso (MXN)']],
+        text=[f"${v/1e6:.1f}M" for v in df_rev['Ingreso (USD)']],
         textposition='outside',
         textfont=dict(color='#94A3B8', size=11, family='JetBrains Mono, monospace'),
-        hovertemplate='%{x}<br>Ingresos: $%{y:,.0f} MXN<extra></extra>',
+        hovertemplate='%{x}<br>Ingresos: $%{y:,.0f} USD<extra></extra>',
     ))
     if margen_pct > 0:
         fig_rev.add_trace(go.Scatter(
-            x=df_rev['Mes'], y=df_rev['Beneficio (MXN)'],
+            x=df_rev['Mes'], y=df_rev['Beneficio (USD)'],
             mode='lines+markers', name='Beneficio neto',
             line=dict(color=COLORS['green'], width=2.5, dash='dot'),
             marker=dict(size=8, color=COLORS['green'], symbol='diamond',
                         line=dict(color='#080D18', width=1.5)),
-            hovertemplate='%{x}<br>Beneficio: $%{y:,.0f} MXN<extra></extra>',
+            hovertemplate='%{x}<br>Beneficio: $%{y:,.0f} USD<extra></extra>',
         ))
-    theme(fig_rev, h=420, title='Proyección de Ingresos — Horizonte 6 Meses (MXN)')
+    theme(fig_rev, h=420, title='Proyección de Ingresos — Horizonte 6 Meses (USD)')
     fig_rev.update_layout(
         barmode='overlay', hovermode='x unified',
-        xaxis_title='Mes', yaxis_title='MXN ($)',
+        xaxis_title='Mes', yaxis_title='USD ($)',
         yaxis_tickprefix='$', yaxis_tickformat=',.0f',
     )
     st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': False})
 
     st.subheader("📋 Detalle mensual")
-    disp_cols_rev = ['Mes', 'Predicción', 'Ingreso (MXN)', 'IC Inf (MXN)', 'IC Sup (MXN)']
-    fmt_rev = {'Predicción': '{:.0f}', 'Ingreso (MXN)': '${:,}',
-               'IC Inf (MXN)': '${:,}', 'IC Sup (MXN)': '${:,}'}
+    disp_cols_rev = ['Mes', 'Predicción', 'Ingreso (USD)', 'IC Inf (USD)', 'IC Sup (USD)']
+    fmt_rev = {'Predicción': '{:.0f}', 'Ingreso (USD)': '${:,}',
+               'IC Inf (USD)': '${:,}', 'IC Sup (USD)': '${:,}'}
     if margen_pct > 0:
-        disp_cols_rev.append('Beneficio (MXN)')
-        fmt_rev['Beneficio (MXN)'] = '${:,}'
+        disp_cols_rev.append('Beneficio (USD)')
+        fmt_rev['Beneficio (USD)'] = '${:,}'
     totals_row_rev = {
         'Mes': 'TOTAL', 'Predicción': total_uds_rev,
-        'Ingreso (MXN)': total_ing_rev, 'IC Inf (MXN)': ic_inf_rev, 'IC Sup (MXN)': ic_sup_rev,
+        'Ingreso (USD)': total_ing_rev, 'IC Inf (USD)': ic_inf_rev, 'IC Sup (USD)': ic_sup_rev,
     }
     if margen_pct > 0:
-        totals_row_rev['Beneficio (MXN)'] = total_ben_rev
+        totals_row_rev['Beneficio (USD)'] = total_ben_rev
     df_rev_show = pd.concat(
         [df_rev[disp_cols_rev], pd.DataFrame([totals_row_rev])[disp_cols_rev]],
         ignore_index=True,
     )
     st.dataframe(
         df_rev_show.style
-                   .background_gradient(subset=['Ingreso (MXN)'], cmap='Blues')
+                   .background_gradient(subset=['Ingreso (USD)'], cmap='Blues')
                    .format(fmt_rev),
         use_container_width=True, hide_index=True,
     )
 
-    usd_total = total_ing_rev / tc_usd
     st.markdown(f"""<div class="info-box">
-<strong>Supuestos:</strong> precio base = ${precio_unit:,} MXN/unidad &nbsp;·&nbsp;
-margen neto = {margen_pct:.1f}% &nbsp;·&nbsp; tipo de cambio = {tc_usd:.1f} MXN/USD &nbsp;·&nbsp;
-equivalente en USD = ${usd_total:,.0f} &nbsp;·&nbsp;
+<strong>Supuestos:</strong> precio base = ${precio_unit:,} USD/unidad &nbsp;·&nbsp;
+margen neto = {margen_pct:.1f}% &nbsp;·&nbsp;
 intervalo de confianza al 95% sobre predicciones SARIMA.
 </div>""", unsafe_allow_html=True)
 
@@ -904,6 +885,20 @@ with tabs[5]:
 # ══ Tab 1: Resumen del Proyecto ═══════════════════════════════════════════════
 
 with tabs[0]:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.markdown(kpi("Total Ventas",      f"{sum(VENTAS_HIST):,} uds",
+                    "📦", sub=f"2022–2026 · ${sum(VENTAS_HIST)*PRECIO_USD/1e6:.0f}M USD"),
+                unsafe_allow_html=True)
+    c2.markdown(kpi("CAGR Ventas",       f"+{CAGR*100:.1f}%",
+                    "📈", "blue", sub="Crecim. anual compuesto 2022→2025"),
+                unsafe_allow_html=True)
+    c3.markdown(kpi("MAPE Walk-Forward", f"{MAPE:.1f}%",
+                    "🎯", "green", sub=f"vs 20% baseline · R²={R2:.2f}"),
+                unsafe_allow_html=True)
+    c4.markdown(kpi("Próximo mes",       f"{PRED[0]} uds",
+                    "🔮", "amber", sub=f"IC 95%: {IC_INF[0]}–{IC_SUP[0]} uds"),
+                unsafe_allow_html=True)
+
     st.markdown(sec("El Problema de Negocio", "🎯"), unsafe_allow_html=True)
     st.markdown("""
 Interamericana Norte necesita **anticipar la demanda mensual del Chery Tiggo 2** para:
@@ -966,25 +961,25 @@ Sin un sistema predictivo, las decisiones se basaban en criterio subjetivo del e
     unidades_error_antes  = prom_ventas * error_baseline_pct
     unidades_error_modelo = prom_ventas * error_modelo_pct
     ahorro_unidades_mes   = unidades_error_antes - unidades_error_modelo
-    capital_inmovilizado  = ahorro_unidades_mes * PRECIO_UNITARIO
-    ahorro_pesos_mes      = capital_inmovilizado * (COSTO_CAPITAL / 12)
+    capital_inmovilizado  = ahorro_unidades_mes * PRECIO_USD
+    ahorro_usd_mes        = capital_inmovilizado * (COSTO_CAPITAL / 12)
 
     e1, e2, e3, e4 = st.columns(4)
     e1.markdown(kpi("Ahorro inventario/mes",
-                    f"${ahorro_pesos_mes:,.0f}",
+                    f"${ahorro_usd_mes:,.0f}",
                     "💵", "green", sub="costo de capital liberado"), unsafe_allow_html=True)
     e2.markdown(kpi("Ahorro anual estimado",
-                    f"${ahorro_pesos_mes*12/1e6:.2f}M",
-                    "📈", "amber", sub="MXN · proyección 12 meses"), unsafe_allow_html=True)
+                    f"${ahorro_usd_mes*12/1e6:.2f}M",
+                    "📈", "amber", sub="USD · proyección 12 meses"), unsafe_allow_html=True)
     e3.markdown(kpi("Unidades rescatadas/mes",
                     f"{ahorro_unidades_mes:.1f}",
                     "📦", sub=f"de {unidades_error_antes:.1f} → {unidades_error_modelo:.1f} uds error"), unsafe_allow_html=True)
     e4.markdown(kpi("Capital liberado/mes",
                     f"${capital_inmovilizado/1e6:.1f}M",
-                    "🏦", "blue", sub="MXN desinmovilizados"), unsafe_allow_html=True)
+                    "🏦", "blue", sub="USD desinmovilizados"), unsafe_allow_html=True)
 
     st.markdown(f"""<div class="info-box">
-<strong>Supuestos del cálculo:</strong> precio unitario Tiggo 2 = $350,000 MXN &nbsp;·&nbsp;
+<strong>Supuestos del cálculo:</strong> precio unitario Tiggo 2 = ${PRECIO_USD:,.0f} USD &nbsp;·&nbsp;
 costo de capital = 15% anual &nbsp;·&nbsp; error baseline (criterio subjetivo) = 20% &nbsp;·&nbsp;
 MAPE modelo = {MAPE:.1f}%. El ahorro mensual representa la reducción en costo financiero del capital
 inmovilizado por unidades sobrecompradas frente al método anterior.

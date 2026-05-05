@@ -1,4 +1,12 @@
-__pycache__/
-*.pyc
-.DS_Store
-.streamlit/secrets.toml
+# Ignore everything
+*
+
+# Unignore the path to _Sistema_Tiggo2
+!_ISDI/
+_ISDI/*
+!_ISDI/_Troncal/
+_ISDI/_Troncal/*
+!_ISDI/_Troncal/_Sistema_Tiggo2/
+!_ISDI/_Troncal/_Sistema_Tiggo2/**
+!_ISDI/_Troncal/_Demo_Interamericana/
+!_ISDI/_Troncal/_Demo_Interamericana/**
