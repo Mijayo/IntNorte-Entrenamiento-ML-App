@@ -39,6 +39,7 @@ st.markdown("""
   --c-purple:  #A78BFA;
   --c-text:    #C9D8E6;
   --c-muted:   #3F5060;
+  --c-dim:     #1A2838;
 }
 
 /* ── Base (mobile-first) ──────────────────────────────────────────────── */
@@ -127,6 +128,11 @@ h2,h3 { font-family:'Rajdhani',sans-serif!important; font-weight:600!important; 
   border:1px solid var(--c-border); border-radius:5px;
   padding:12px 12px 10px; text-align:center; position:relative; overflow:hidden;
   box-shadow:0 2px 18px rgba(0,0,0,.55); margin-bottom:4px;
+  transition: border-color .25s, box-shadow .25s;
+}
+.kpi-card:hover {
+  border-color: rgba(0,224,255,.28);
+  box-shadow: 0 4px 28px rgba(0,0,0,.6), 0 0 18px rgba(0,224,255,.07);
 }
 .kpi-card::before {
   content:''; position:absolute; top:0; left:0; right:0; height:2px;
@@ -149,7 +155,8 @@ h2,h3 { font-family:'Rajdhani',sans-serif!important; font-weight:600!important; 
 .kpi-value.amber { color:var(--c-gold); text-shadow:0 0 22px rgba(255,193,7,.24); }
 .kpi-value.blue  { color:#38BDF8;        text-shadow:0 0 22px rgba(56,189,248,.22); }
 .kpi-value.green { color:var(--c-green); text-shadow:0 0 22px rgba(0,245,160,.22); }
-.kpi-value.red   { color:var(--c-red);   text-shadow:0 0 22px rgba(255,58,92,.24); }
+.kpi-value.red    { color:var(--c-red);    text-shadow:0 0 22px rgba(255,58,92,.24); }
+.kpi-value.purple { color:var(--c-purple); text-shadow:0 0 22px rgba(167,139,250,.22); }
 .kpi-sub { font-size:.65rem; color:var(--c-muted); margin-top:5px; font-family:'JetBrains Mono',monospace; }
 
 /* ── Section headers ─────────────────────────────────────────────────── */
@@ -182,6 +189,11 @@ h2,h3 { font-family:'Rajdhani',sans-serif!important; font-weight:600!important; 
 }
 .info-box {
   background:rgba(0,224,255,.04); border-left:3px solid var(--c-cyan);
+  border-radius:0 4px 4px 0; padding:10px 14px; margin:8px 0;
+  font-family:'Rajdhani',sans-serif; font-size:.88rem; color:var(--c-text);
+}
+.warning-box {
+  background:rgba(255,193,7,.04); border-left:3px solid var(--c-gold);
   border-radius:0 4px 4px 0; padding:10px 14px; margin:8px 0;
   font-family:'Rajdhani',sans-serif; font-size:.88rem; color:var(--c-text);
 }
@@ -294,6 +306,9 @@ VENTAS_HIST = [
 
 hist = pd.Series(VENTAS_HIST, index=FECHAS_HIST, name='Ventas')
 
+# Precio de referencia (MXN)
+PRECIO_UNITARIO = 350_000
+
 # Predicciones: Jan 2025 – Jun 2025
 FECHAS_PRED = pd.date_range('2025-01-01', periods=6, freq='MS')
 PRED        = [28, 32, 35, 29, 27, 33]
@@ -336,9 +351,6 @@ hist_df_yr = pd.Series(VENTAS_HIST, index=FECHAS_HIST)
 ventas_2021 = hist_df_yr[hist_df_yr.index.year == 2021].sum()
 ventas_2024 = hist_df_yr[hist_df_yr.index.year == 2024].sum()
 CAGR = (ventas_2024 / ventas_2021) ** (1/3) - 1
-
-# Precio de referencia (MXN)
-PRECIO_UNITARIO = 350_000
 
 # Comparativa de modelos ML
 MODELOS = ['SARIMA', 'Prophet', 'XGBoost', 'Random Forest', 'Reg. Lineal']
@@ -425,7 +437,8 @@ c4.markdown(kpi("Próximo mes",       f"{PRED[0]} uds",
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
-tabs = st.tabs(["📋 Resumen del Proyecto", "📊 Histórico", "🔮 Predicción", "🔄 Validación del Modelo", "🏆 Comparativa ML"])
+tabs = st.tabs(["📋 Resumen del Proyecto", "📊 Histórico", "🔮 Predicción",
+                "💰 Proyección de Ingresos", "🔄 Validación del Modelo", "🏆 Comparativa ML"])
 
 # ══ Tab 2: Histórico ══════════════════════════════════════════════════════════
 
@@ -484,6 +497,21 @@ with tabs[1]:
 with tabs[2]:
     st.markdown(sec("Predicción Enero – Junio 2025", "🔮"), unsafe_allow_html=True)
 
+    st.markdown("""
+<div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);
+            border-radius:8px;padding:14px 18px;margin-bottom:16px;">
+<span style="font-size:.95rem;font-weight:600;color:#A78BFA;">Dos conceptos clave — no confundir</span><br>
+<span style="color:#7A95A8;font-size:0.88rem;">
+<strong style="color:#C9D8E6;">① Predicción mes a mes:</strong>
+el modelo genera una estimación independiente para <em>cada mes</em> del horizonte.
+Cada fila de la tabla es una predicción propia con su intervalo de confianza al 95%.<br><br>
+<strong style="color:#C9D8E6;">② Validación walk-forward (zona <span style="color:#A78BFA;">violeta</span>):</strong>
+simula la operación real — el modelo predijo cada mes <strong>un solo paso adelante</strong>
+con todos los datos anteriores disponibles. Es la estimación más honesta del error del sistema.
+</span>
+</div>
+""", unsafe_allow_html=True)
+
     ingreso_6m = sum(PRED) * PRECIO_UNITARIO
     p1, p2, p3, p4 = st.columns(4)
     p1.markdown(kpi("Próximo mes",      f"{PRED[0]} uds",
@@ -492,19 +520,44 @@ with tabs[2]:
     p2.markdown(kpi("Total horizonte",  f"{sum(PRED)} uds",
                     "📦", "blue", sub="Ene–Jun 2025"),
                 unsafe_allow_html=True)
-    p3.markdown(kpi("Promedio mensual", f"{sum(PRED)/len(PRED):.1f} uds",
-                    "📊", "amber", sub=f"vs {hist.mean():.1f} hist."),
+    p3.markdown(kpi("MAPE Walk-Forward", f"{MAPE:.1f}%",
+                    "🎯", "green", sub="error real validado"),
                 unsafe_allow_html=True)
     p4.markdown(kpi("Ingreso estimado", f"${ingreso_6m/1e6:.1f}M",
                     "💵", "green", sub="MXN · 6 meses"),
                 unsafe_allow_html=True)
 
     fig_p = go.Figure()
+    # Walk-forward region (shaded)
+    fig_p.add_shape(
+        type='rect',
+        x0=FECHAS_WF[0], x1=FECHAS_WF[-1], y0=0, y1=1, yref='paper',
+        fillcolor='rgba(167,139,250,0.06)', line=dict(width=0), layer='below',
+    )
+    fig_p.add_annotation(
+        x=FECHAS_WF[0], y=1, yref='paper',
+        text='◀ Validación walk-forward ▶',
+        showarrow=False, xanchor='left',
+        font=dict(color='#A78BFA', size=11, family='Rajdhani, sans-serif'),
+        bgcolor='rgba(167,139,250,0.12)', borderpad=4,
+    )
+    # Histórico
     fig_p.add_trace(go.Scatter(
         x=hist.index, y=hist.values,
         mode='lines', name='Histórico',
         line=dict(color=COLORS['primary'], width=2),
     ))
+    # Walk-forward predicciones (violeta)
+    fig_p.add_trace(go.Scatter(
+        x=wf['fecha'], y=wf['prediccion'],
+        mode='lines+markers', name='Pred. walk-forward (1 mes)',
+        line=dict(color=COLORS['series'][4], width=2, dash='dot'),
+        marker=dict(size=7, symbol='diamond', color=COLORS['series'][4],
+                    line=dict(color='#080D18', width=1.5)),
+        customdata=wf['error_pct'].values,
+        hovertemplate='%{y:.0f} uds<br>Error: %{customdata:.1f}%<extra>WF</extra>',
+    ))
+    # Predicción futura
     fig_p.add_trace(go.Scatter(
         x=pred['Fecha'], y=pred['Predicción'],
         mode='lines+markers', name='Predicción SARIMA',
@@ -512,18 +565,20 @@ with tabs[2]:
         marker=dict(size=9, symbol='circle', color=COLORS['accent'],
                     line=dict(color='#080D18', width=1.5)),
     ))
+    # Banda IC 95%
     fig_p.add_trace(go.Scatter(
         x=pred['Fecha'].tolist() + pred['Fecha'].tolist()[::-1],
         y=pred['IC_Superior'].tolist() + pred['IC_Inferior'].tolist()[::-1],
         fill='toself', fillcolor='rgba(255,193,7,0.08)',
         line=dict(color='rgba(0,0,0,0)'), name='IC 95%',
     ))
+    # Línea inicio predicción
     fig_p.add_shape(
         type='line',
         x0=hist.index[-1], x1=hist.index[-1], y0=0, y1=1, yref='paper',
         line=dict(color='rgba(100,116,139,0.6)', width=1.5, dash='dot'),
     )
-    theme(fig_p, h=400, title='Histórico + Predicción — Tiggo 2 · Interamericana Norte')
+    theme(fig_p, h=440, title='Histórico · Validación Walk-Forward · Predicción — Tiggo 2')
     fig_p.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
     st.plotly_chart(fig_p, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': False})
 
@@ -568,9 +623,136 @@ Predicción central + 10% buffer · Equilibrio demanda / inventario
     else:
         st.info(f"Tendencia ESTABLE: {tendencia:+.1f}% vs. promedio histórico de {prom_hist:.1f} uds/mes.")
 
-# ══ Tab 4: Validación ════════════════════════════════════════════════════════
+# ══ Tab 4: Proyección de Ingresos ════════════════════════════════════════════
 
 with tabs[3]:
+    st.markdown(sec("Proyección de Ingresos · Horizonte 6 Meses", "💰"), unsafe_allow_html=True)
+
+    st.markdown("""
+<div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);
+            border-radius:8px;padding:14px 18px;margin-bottom:16px;">
+<span style="font-size:.95rem;font-weight:600;color:#4ADE80;">Escenario financiero basado en predicción SARIMA</span><br>
+<span style="color:#7A95A8;font-size:0.88rem;">
+Los ingresos se calculan mes a mes desde la predicción central. El intervalo de confianza al 95%
+define el rango pesimista–optimista. Ajusta el precio y margen para tu escenario real.
+</span>
+</div>
+""", unsafe_allow_html=True)
+
+    rev_c1, rev_c2, rev_c3 = st.columns(3)
+    with rev_c1:
+        precio_unit = st.number_input(
+            "Precio por unidad (MXN $)", min_value=100_000, max_value=2_000_000,
+            value=PRECIO_UNITARIO, step=5_000, format="%d",
+            help="Precio de venta neto por unidad en pesos mexicanos.",
+        )
+    with rev_c2:
+        margen_pct = st.number_input(
+            "Margen neto estimado (%)", min_value=0.0, max_value=100.0,
+            value=8.0, step=0.5, format="%.1f",
+            help="Porcentaje de beneficio neto sobre ingresos. 0 = omitir.",
+        )
+    with rev_c3:
+        tc_usd = st.number_input(
+            "Tipo de cambio USD / MXN", min_value=1.0, max_value=50.0,
+            value=17.0, step=0.1, format="%.1f",
+            help="Para mostrar equivalente en USD. 1 = sólo MXN.",
+        )
+
+    df_rev = pred[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
+    df_rev['Ingreso (MXN)']  = (df_rev['Predicción'] * precio_unit).round(0).astype(int)
+    df_rev['IC Inf (MXN)']   = (df_rev['IC_Inferior'] * precio_unit).round(0).astype(int)
+    df_rev['IC Sup (MXN)']   = (df_rev['IC_Superior'] * precio_unit).round(0).astype(int)
+    if margen_pct > 0:
+        df_rev['Beneficio (MXN)'] = (df_rev['Ingreso (MXN)'] * margen_pct / 100).round(0).astype(int)
+
+    total_uds_rev = int(df_rev['Predicción'].sum())
+    total_ing_rev = int(df_rev['Ingreso (MXN)'].sum())
+    ic_inf_rev    = int(df_rev['IC Inf (MXN)'].sum())
+    ic_sup_rev    = int(df_rev['IC Sup (MXN)'].sum())
+
+    ku1, ku2, ku3 = st.columns(3)
+    ku1.markdown(kpi("Unidades (6 m)",      f"{total_uds_rev:,} uds", "📦", "blue", sub="Ene–Jun 2025"),       unsafe_allow_html=True)
+    ku2.markdown(kpi("Ingresos centrales",  f"${total_ing_rev/1e6:.1f}M", "💵", sub="MXN · 6 meses"),          unsafe_allow_html=True)
+    ku3.markdown(kpi("Rango IC 95%",        f"${ic_inf_rev/1e6:.1f}M – ${ic_sup_rev/1e6:.1f}M", "📐", "amber",
+                     sub="MXN pess. – opt."), unsafe_allow_html=True)
+
+    if margen_pct > 0:
+        total_ben_rev = int(df_rev['Beneficio (MXN)'].sum())
+        kb1, kb2, _ = st.columns(3)
+        kb1.markdown(kpi("Beneficio neto (6 m)", f"${total_ben_rev/1e6:.2f}M", "💹", "green", sub="MXN"), unsafe_allow_html=True)
+        kb2.markdown(kpi("Margen aplicado",       f"{margen_pct:.1f}%",          "📊", "amber"),           unsafe_allow_html=True)
+
+    fig_rev = go.Figure()
+    fig_rev.add_trace(go.Bar(
+        x=df_rev['Mes'], y=df_rev['IC Sup (MXN)'] - df_rev['IC Inf (MXN)'],
+        base=df_rev['IC Inf (MXN)'],
+        name='Rango IC 95%',
+        marker=dict(color='rgba(255,193,7,0.18)', line=dict(width=0)),
+        hovertemplate='IC 95%: $%{base:,.0f} – $%{customdata:,.0f} MXN<extra></extra>',
+        customdata=df_rev['IC Sup (MXN)'],
+    ))
+    fig_rev.add_trace(go.Bar(
+        x=df_rev['Mes'], y=df_rev['Ingreso (MXN)'],
+        name='Ingresos proyectados',
+        marker=dict(color=COLORS['primary'], line=dict(width=0)),
+        text=[f"${v/1e6:.1f}M" for v in df_rev['Ingreso (MXN)']],
+        textposition='outside',
+        textfont=dict(color='#94A3B8', size=11, family='JetBrains Mono, monospace'),
+        hovertemplate='%{x}<br>Ingresos: $%{y:,.0f} MXN<extra></extra>',
+    ))
+    if margen_pct > 0:
+        fig_rev.add_trace(go.Scatter(
+            x=df_rev['Mes'], y=df_rev['Beneficio (MXN)'],
+            mode='lines+markers', name='Beneficio neto',
+            line=dict(color=COLORS['green'], width=2.5, dash='dot'),
+            marker=dict(size=8, color=COLORS['green'], symbol='diamond',
+                        line=dict(color='#080D18', width=1.5)),
+            hovertemplate='%{x}<br>Beneficio: $%{y:,.0f} MXN<extra></extra>',
+        ))
+    theme(fig_rev, h=420, title='Proyección de Ingresos — Horizonte 6 Meses (MXN)')
+    fig_rev.update_layout(
+        barmode='overlay', hovermode='x unified',
+        xaxis_title='Mes', yaxis_title='MXN ($)',
+        yaxis_tickprefix='$', yaxis_tickformat=',.0f',
+    )
+    st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False, 'scrollZoom': False})
+
+    st.subheader("📋 Detalle mensual")
+    disp_cols_rev = ['Mes', 'Predicción', 'Ingreso (MXN)', 'IC Inf (MXN)', 'IC Sup (MXN)']
+    fmt_rev = {'Predicción': '{:.0f}', 'Ingreso (MXN)': '${:,}',
+               'IC Inf (MXN)': '${:,}', 'IC Sup (MXN)': '${:,}'}
+    if margen_pct > 0:
+        disp_cols_rev.append('Beneficio (MXN)')
+        fmt_rev['Beneficio (MXN)'] = '${:,}'
+    totals_row_rev = {
+        'Mes': 'TOTAL', 'Predicción': total_uds_rev,
+        'Ingreso (MXN)': total_ing_rev, 'IC Inf (MXN)': ic_inf_rev, 'IC Sup (MXN)': ic_sup_rev,
+    }
+    if margen_pct > 0:
+        totals_row_rev['Beneficio (MXN)'] = total_ben_rev
+    df_rev_show = pd.concat(
+        [df_rev[disp_cols_rev], pd.DataFrame([totals_row_rev])[disp_cols_rev]],
+        ignore_index=True,
+    )
+    st.dataframe(
+        df_rev_show.style
+                   .background_gradient(subset=['Ingreso (MXN)'], cmap='Blues')
+                   .format(fmt_rev),
+        use_container_width=True, hide_index=True,
+    )
+
+    usd_total = total_ing_rev / tc_usd
+    st.markdown(f"""<div class="info-box">
+<strong>Supuestos:</strong> precio base = ${precio_unit:,} MXN/unidad &nbsp;·&nbsp;
+margen neto = {margen_pct:.1f}% &nbsp;·&nbsp; tipo de cambio = {tc_usd:.1f} MXN/USD &nbsp;·&nbsp;
+equivalente en USD = ${usd_total:,.0f} &nbsp;·&nbsp;
+intervalo de confianza al 95% sobre predicciones SARIMA.
+</div>""", unsafe_allow_html=True)
+
+# ══ Tab 5: Validación ════════════════════════════════════════════════════════
+
+with tabs[4]:
     st.markdown(sec("Walk-Forward Validation — 2024", "🔄"), unsafe_allow_html=True)
 
     v1, v2, v3, v4 = st.columns(4)
@@ -622,7 +804,7 @@ with tabs[3]:
     wf_show.columns = ['Mes', 'Real', 'Predicción', 'Error Abs.', 'Error %']
     st.dataframe(
         wf_show.style
-               .bar(subset=['Error %'], color='#e05c5c')
+               .background_gradient(subset=['Error %'], cmap='RdYlGn_r')
                .format({'Real': '{:.0f}', 'Predicción': '{:.1f}',
                         'Error Abs.': '{:.2f}', 'Error %': '{:.2f}%'}),
         use_container_width=True, hide_index=True,
@@ -631,14 +813,21 @@ with tabs[3]:
     mae_uds = wf['error_abs'].mean()
     if MAPE <= 10:
         st.markdown(f"""<div class="success-box">
-MAPE = {MAPE:.1f}% · MAE = <strong>{mae_uds:.1f} unidades</strong> — El modelo se equivoca en promedio
-<strong>{mae_uds:.1f} unidades por mes</strong> sobre ventas reales de ~{wf['real'].mean():.0f} uds/mes.
-Error medio inferior al 10%: apto para planificación de pedidos y compromisos de inventario.
+✅ <strong>MAPE = {MAPE:.1f}% — excelente precisión.</strong> El modelo se equivoca en promedio
+<strong>{mae_uds:.1f} unidades/mes</strong> sobre ventas reales de ~{wf['real'].mean():.0f} uds/mes.
+Error inferior al 10%: apto para planificación de pedidos y compromisos de inventario.
 </div>""", unsafe_allow_html=True)
+    elif MAPE <= 15:
+        st.markdown(f"""<div class="warning-box">
+⚠️ <strong>MAPE = {MAPE:.1f}% — precisión aceptable (10–15%).</strong>
+Adecuado para planificación de rango; usa el IC inferior como referencia conservadora en compromisos exactos.
+</div>""", unsafe_allow_html=True)
+    else:
+        st.error(f"MAPE = {MAPE:.1f}% — supera el umbral del 15%. Considera reentrenar el modelo con datos más recientes.")
 
-# ══ Tab 5: Comparativa ML ════════════════════════════════════════════════════
+# ══ Tab 6: Comparativa ML ════════════════════════════════════════════════════
 
-with tabs[4]:
+with tabs[5]:
     st.markdown(sec("Comparativa de 5 Modelos — Mismo Histórico", "🏆"), unsafe_allow_html=True)
 
     st.markdown(f"""<div class="winner-box">
