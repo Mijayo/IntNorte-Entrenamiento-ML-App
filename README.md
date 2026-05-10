@@ -410,6 +410,13 @@ __pycache__/  venv/  .env   ← estándar Python
 
 ## Changelog
 
+Ver historial completo en [CHANGELOG.md](CHANGELOG.md).
+
+### 2026-05-10 (v20)
+- **feat(ui)**: Rediseño visual completo — línea gráfica alineada con la presentación Interamericana Norte / SAA 2025
+- **refactor(styles)**: Paleta global migrada a naranja vibrante (`#FF4800`) como acento primario y fondos cálidos oscuros
+- **feat(home)**: Nueva sección hero con breadcrumb `FILE 2025/SAA`, headline de display y KPI inline por feature card
+
 ### 2026-05-04 (v19)
 - **feat**: **Tab dedicado "💰 Proyección Ingresos"** — nueva pestaña disponible para todos los roles (viewer, manager, admin, analyst) en posición tabs[2]. Inputs: precio unitario (USD $), margen neto (%) y tipo de cambio para conversión a moneda local. KPIs: unidades totales, ingresos centrales, rango IC 95% en dólares, beneficio neto (si margen > 0). Gráfico de barras con banda IC 95% en overlay y línea de beneficio neto. Tabla mensual con fila de totales y gradiente de color. Exportar CSV para roles con permiso `exportar`.
 - **refactor**: La sección de proyección financiera que existía al fondo del tab Predicciones fue eliminada — el tab dedicado la reemplaza con mayor detalle y formato USD.
