@@ -47,7 +47,9 @@ Se escribe como **SARIMA(p, d, q)(P, D, Q, m)** donde cada letra es un hiperpar�
 | `Q` | MA estacional | Igual que `q`, pero a escala anual |
 | `m` | Período estacional | Número de períodos en un ciclo (12 para datos mensuales) |
 
-**Ejemplo:** SARIMA(1,1,1)(1,1,1,12) significa:
+**Modelo activo:** SARIMA(2,0,1)(1,0,2,12) — orden encontrado en Iteración 2.
+
+**Ejemplo de lectura:** SARIMA(1,1,1)(1,1,1,12) significa:
 - `p=1`: el valor de este mes depende del mes anterior
 - `d=1`: se diferencia una vez para eliminar la tendencia
 - `q=1`: el error del mes anterior también se incorpora al modelo
@@ -59,20 +61,21 @@ En este sistema se usa la variante **SARIMAX** (la X es de e**X**ógena), que a�
 
 La intuición es que si en un mes se venden muchas unidades de otros modelos CHERY, es probable que el contexto de mercado (campañas, eventos) también favorezca las ventas del TIGGO 2. Esta señal ayuda al modelo a capturar efectos que la propia serie del TIGGO 2 no tiene suficiente historia para detectar.
 
-#### Limitación: proyección de la variable exógena en el horizonte
+#### Proyección de la variable exógena en el horizonte
 
-SARIMAX necesita valores de `ventas_otros` también para los meses futuros que se predicen. Como esos datos no existen en el momento de la predicción, el sistema usa una **aproximación**: la media móvil de los últimos 6 meses históricos.
+SARIMAX necesita valores de `ventas_otros` también para los meses futuros. El sistema usa una **tendencia lineal** proyectada: `polyfit` grado 1 sobre los últimos 12 meses históricos, extendida al horizonte de pronóstico. La dirección (↗/↘/→) y el rango proyectado se muestran en la interfaz.
 
 ```python
-exog_future_val = exog_data['ventas_otros'].rolling(6).mean().iloc[-1]
-# Se aplica el mismo valor constante a todos los meses del horizonte
+# polyfit grado 1 sobre los últimos 12 meses → extrapolación lineal al horizonte
+coeffs = np.polyfit(range(12), exog_data['ventas_otros'].iloc[-12:], 1)
+exog_future = [np.polyval(coeffs, 12 + i) for i in range(horizonte)]
 ```
 
 **Implicaciones prácticas:**
 
-- Si las ventas del resto de modelos CHERY cambian significativamente (lanzamiento de un nuevo modelo, discontinuación de una línea, crisis de suministro), la proyección constante introduce un sesgo sistemático.
-- Esta aproximación es razonable cuando el horizonte es corto (≤ 6 meses) y el portfolio de la marca es estable.
-- Si se dispone de un pronóstico más preciso de ventas de otros modelos (p. ej., objetivos comerciales del trimestre), reentrenar con ese valor mejora la calidad del forecast.
+- Si las ventas del resto de modelos CHERY cambian significativamente (lanzamiento de un nuevo modelo, discontinuación de una línea), la proyección lineal puede sobre o subestimar el exógeno.
+- Esta aproximación es razonable cuando el horizonte es corto (≤ 6 meses) y la tendencia de la marca es estable.
+- Si la correlación Pearson entre `ventas_otros` y `ventas_tiggo2` es `|r| < 0.3`, la variable exógena se descarta automáticamente y el modelo entrena como SARIMA puro.
 
 **Diagnóstico recomendado:** antes de activar el modelo, verificar que la correlación entre `ventas_otros` y `ventas_tiggo2` sea positiva (Pearson > 0.3). Si la correlación es baja o negativa, la variable exógena está añadiendo ruido y es mejor entrenar un SARIMA puro (sin exog).
 
@@ -85,7 +88,7 @@ Antes de entrenar, el sistema verifica si la serie es estacionaria con el **test
 - Si el p-valor ≥ 0.05, la serie necesita diferenciación (`d > 0`)
 
 ```
-Test ADF para serie TIGGO 2 (2021-01 a 2026-02):
+Test ADF para serie TIGGO 2 (2022-01 a 2026-03):
   Estadístico: -2.31
   p-valor: 0.0178  → ✅ Serie estacionaria (p < 0.05)
 ```
@@ -173,12 +176,12 @@ A diferencia de una división simple train/test, el walk-forward simula exactame
 ```
 Mes  │ Datos usados para entrenar    │ Se predice  │ Real
 ─────┼────────────────────────────────┼─────────────┼──────
-Sep  │ ene 2021 ... ago 2025          │ Sep 2025    │  44
-Oct  │ ene 2021 ... sep 2025          │ Oct 2025    │  38
-Nov  │ ene 2021 ... oct 2025          │ Nov 2025    │  51
-Dic  │ ene 2021 ... nov 2025          │ Dic 2025    │  39
-Ene  │ ene 2021 ... dic 2025          │ Ene 2026    │  42
-Feb  │ ene 2021 ... ene 2026          │ Feb 2026    │  47
+Sep  │ ene 2022 ... ago 2025          │ Sep 2025    │  44
+Oct  │ ene 2022 ... sep 2025          │ Oct 2025    │  38
+Nov  │ ene 2022 ... oct 2025          │ Nov 2025    │  51
+Dic  │ ene 2022 ... nov 2025          │ Dic 2025    │  39
+Ene  │ ene 2022 ... dic 2025          │ Ene 2026    │  42
+Feb  │ ene 2022 ... ene 2026          │ Feb 2026    │  47
 ```
 
 El MAPE walk-forward es la media de los errores porcentuales de esas 6 predicciones individuales. Es el indicador más confiable de cómo se comportará el modelo en producción.

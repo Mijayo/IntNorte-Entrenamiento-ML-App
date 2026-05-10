@@ -494,9 +494,9 @@ def get_login_css():
 }
 
 [data-testid="stFormSubmitButton"]>button {
-  background: rgba(255,72,0,.07) !important;
-  border: 1px solid rgba(255,72,0,.32) !important;
-  color: #FF4800 !important;
+  background: rgba(37,99,235,.10) !important;
+  border: 1px solid rgba(37,99,235,.40) !important;
+  color: #3B82F6 !important;
   font-family: 'Rajdhani', sans-serif !important;
   font-weight: 700 !important;
   font-size: .95rem !important;
@@ -507,8 +507,8 @@ def get_login_css():
   transition: background .2s, box-shadow .2s, transform .15s !important;
 }
 [data-testid="stFormSubmitButton"]>button:hover {
-  background: rgba(255,72,0,.13) !important;
-  box-shadow: 0 0 22px rgba(255,72,0,.2) !important;
+  background: rgba(37,99,235,.18) !important;
+  box-shadow: 0 0 22px rgba(37,99,235,.25) !important;
   transform: translateY(-1px) !important;
 }
 

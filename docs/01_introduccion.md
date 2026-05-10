@@ -55,7 +55,7 @@ Enfrenta SARIMA, Prophet, Regresión Lineal, Random Forest y XGBoost sobre el mi
 
 **Flujo:**
 1. El analista inicia sesión con su email y contraseña (autenticado por Supabase Auth).
-2. Carga el Excel con ventas históricas desde enero 2021.
+2. Carga el Excel con ventas históricas desde enero 2022 (51 meses · 1,804 unidades).
 3. El sistema limpia duplicados y valida que hay al menos 36 meses de datos.
 4. Se lanza la búsqueda Optuna: en ~2 minutos prueba 80 combinaciones de parámetros SARIMA.
 5. Se ejecuta walk-forward: el sistema simula predecir cada mes pasado en condiciones reales.

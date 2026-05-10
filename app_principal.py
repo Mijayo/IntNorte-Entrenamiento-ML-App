@@ -130,10 +130,10 @@ st.markdown("""
     <span class="hero-meta-tag">CHERY TIGGO 2</span>
   </div>
   <h2 class="home-hero-title">
-    Vender lo que de<br>verdad <span class="hero-accent">se vende.</span>
+    Vender lo que de verdad <span class="hero-accent">se vende.</span>
   </h2>
   <p class="home-hero-sub">
-    Solución Analítica Avanzada de Predicción de Demanda&nbsp;&nbsp;·&nbsp;&nbsp;Norte Perú&nbsp;&nbsp;·&nbsp;&nbsp;SARIMA (7,1,2)(1,1,2)[12]
+    Solución Analítica Avanzada de Predicción de Demanda&nbsp;&nbsp;·&nbsp;&nbsp;Norte Perú&nbsp;&nbsp;·&nbsp;&nbsp;SARIMA (2,0,1)(1,0,2)[12]
   </p>
 </div>
 """, unsafe_allow_html=True)
