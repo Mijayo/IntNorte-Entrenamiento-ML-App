@@ -9,16 +9,16 @@ Fuentes: Rajdhani (display) + JetBrains Mono (datos)
 # ── Paleta de colores ─────────────────────────────────────────────────────────
 
 COLORS = {
-    'primary':    '#FF4800',   # vibrant orange (acción principal)
+    'primary':    '#0073FF',   # vibrant orange (acción principal)
     'secondary':  '#C2FF00',   # lime-yellow
     'accent':     '#FF3A5C',   # signal red
     'success':    '#00F5A0',   # neon green
     'purple':     '#A78BFA',
     'text':       '#C9D8E6',
     'muted':      '#3F5060',
-    'border':     'rgba(255,72,0,0.14)',
+    'border':     'rgba(0,115,255,0.14)',
     # Series para gráficos
-    'series': ['#FF4800', '#C2FF00', '#00F5A0', '#FF3A5C',
+    'series': ['#0073FF', '#C2FF00', '#00F5A0', '#FF3A5C',
                '#A78BFA', '#F97316', '#38BDF8', '#FB7185'],
 }
 
@@ -33,13 +33,13 @@ def apply_chart_theme(fig, height=None, title=None):
         plot_bgcolor='rgba(4,8,15,0.92)',
         font=dict(family='Rajdhani, sans-serif', color='#7A95A8', size=12),
         xaxis=dict(
-            gridcolor='rgba(255,72,0,0.07)',
+            gridcolor='rgba(0,115,255,0.07)',
             showgrid=True, zeroline=False,
             tickfont=dict(family='JetBrains Mono, monospace', color='#3F5060', size=11),
             title_font=dict(family='Rajdhani, sans-serif', color='#7A95A8'),
         ),
         yaxis=dict(
-            gridcolor='rgba(255,72,0,0.07)',
+            gridcolor='rgba(0,115,255,0.07)',
             showgrid=True, zeroline=False,
             tickfont=dict(family='JetBrains Mono, monospace', color='#3F5060', size=11),
             title_font=dict(family='Rajdhani, sans-serif', color='#7A95A8'),
@@ -47,11 +47,11 @@ def apply_chart_theme(fig, height=None, title=None):
         hoverlabel=dict(
             bgcolor='#070C18',
             font=dict(family='Rajdhani, sans-serif', color='#C9D8E6', size=14),
-            bordercolor='rgba(255,72,0,0.3)',
+            bordercolor='rgba(0,115,255,0.3)',
         ),
         legend=dict(
             bgcolor='rgba(4,8,15,0.85)',
-            bordercolor='rgba(255,72,0,0.12)',
+            bordercolor='rgba(0,115,255,0.12)',
             borderwidth=1,
             font=dict(family='Rajdhani, sans-serif', color='#7A95A8', size=12),
         ),
@@ -107,8 +107,8 @@ def get_global_css():
   --c-bg:      #0D0C0A;
   --c-surface: #131210;
   --c-raised:  #1A1815;
-  --c-border:  rgba(255,72,0,0.13);
-  --c-cyan:    #FF4800;
+  --c-border:  rgba(0,115,255,0.13);
+  --c-cyan:    #0073FF;
   --c-gold:    #C2FF00;
   --c-red:     #FF3A5C;
   --c-green:   #00F5A0;
@@ -199,7 +199,7 @@ h2, h3 {
 
 /* ── Sidebar ───────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
-  border-right: 1px solid rgba(255,72,0,0.07) !important;
+  border-right: 1px solid rgba(0,115,255,0.07) !important;
   background-color: var(--c-surface) !important;
 }
 [data-testid="stSidebar"] * {
@@ -231,7 +231,7 @@ code, pre {
 .page-header {
   display: flex; align-items: center; gap: 18px;
   padding: 14px 0 18px; margin-bottom: 18px;
-  border-bottom: 1px solid rgba(255,72,0,0.07);
+  border-bottom: 1px solid rgba(0,115,255,0.07);
 }
 .page-header img {
   height: 30px; width: auto;
@@ -239,7 +239,7 @@ code, pre {
 }
 .header-divider {
   width: 1px; height: 34px;
-  background: linear-gradient(180deg, transparent, rgba(255,72,0,0.4), transparent);
+  background: linear-gradient(180deg, transparent, rgba(0,115,255,0.4), transparent);
   flex-shrink: 0;
 }
 .header-text h1 {
@@ -262,18 +262,18 @@ code, pre {
   border-radius: 5px;
   padding: 20px 16px 16px;
   text-align: center; position: relative; overflow: hidden;
-  box-shadow: 0 2px 18px rgba(0,0,0,.55), 0 0 0 1px rgba(255,72,0,.03);
+  box-shadow: 0 2px 18px rgba(0,0,0,.55), 0 0 0 1px rgba(0,115,255,.03);
   margin-bottom: 6px;
   transition: border-color .25s, box-shadow .25s;
 }
 .kpi-card:hover {
-  border-color: rgba(255,72,0,.28);
-  box-shadow: 0 4px 28px rgba(0,0,0,.6), 0 0 18px rgba(255,72,0,.07);
+  border-color: rgba(0,115,255,.28);
+  box-shadow: 0 4px 28px rgba(0,0,0,.6), 0 0 18px rgba(0,115,255,.07);
 }
 .kpi-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--c-cyan), rgba(255,72,0,.15));
-  box-shadow: 0 1px 8px rgba(255,72,0,.25);
+  background: linear-gradient(90deg, var(--c-cyan), rgba(0,115,255,.15));
+  box-shadow: 0 1px 8px rgba(0,115,255,.25);
 }
 .kpi-icon { font-size: 1.15rem; margin-bottom: 10px; opacity: .55; }
 .kpi-label {
@@ -287,7 +287,7 @@ code, pre {
   font-size: 2.25rem; font-weight: 400;
   font-family: 'JetBrains Mono', monospace;
   color: var(--c-cyan); line-height: 1.1;
-  text-shadow: 0 0 22px rgba(255,72,0,.28);
+  text-shadow: 0 0 22px rgba(0,115,255,.28);
 }
 .kpi-value.amber  { color: var(--c-gold);   text-shadow: 0 0 22px rgba(255,193,7,.24); }
 .kpi-value.blue   { color: #38BDF8;          text-shadow: 0 0 22px rgba(56,189,248,.22); }
@@ -303,13 +303,13 @@ code, pre {
 .section-header {
   display: flex; align-items: center; gap: 10px;
   margin: 26px 0 14px; padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255,72,0,0.06);
+  border-bottom: 1px solid rgba(0,115,255,0.06);
 }
 .section-header-bar {
   width: 3px; height: 15px; flex-shrink: 0;
-  background: linear-gradient(180deg, var(--c-cyan), rgba(255,72,0,.2));
+  background: linear-gradient(180deg, var(--c-cyan), rgba(0,115,255,.2));
   border-radius: 2px;
-  box-shadow: 0 0 10px rgba(255,72,0,.35);
+  box-shadow: 0 0 10px rgba(0,115,255,.35);
 }
 .section-header-text {
   font-family: 'Rajdhani', sans-serif;
@@ -327,14 +327,14 @@ code, pre {
   font-family: 'Rajdhani', sans-serif;
 }
 .admin-badge   { background: rgba(255,193,7,.07);   color: var(--c-gold);   border: 1px solid rgba(255,193,7,.22); }
-.manager-badge { background: rgba(255,72,0,.07);   color: var(--c-cyan);   border: 1px solid rgba(255,72,0,.22); }
+.manager-badge { background: rgba(0,115,255,.07);   color: var(--c-cyan);   border: 1px solid rgba(0,115,255,.22); }
 .analyst-badge { background: rgba(56,189,248,.07);  color: #38BDF8;          border: 1px solid rgba(56,189,248,.22); }
 .viewer-badge  { background: rgba(63,80,96,.1);     color: #7A95A8;          border: 1px solid rgba(63,80,96,.28); }
 
 /* ── User info sidebar card ───────────────────────────────── */
 .user-info-card {
-  background: rgba(255,72,0,.04);
-  border: 1px solid rgba(255,72,0,.1);
+  background: rgba(0,115,255,.04);
+  border: 1px solid rgba(0,115,255,.1);
   border-radius: 5px; padding: 14px 16px; margin: 10px 0;
 }
 .user-name {
@@ -350,7 +350,7 @@ code, pre {
 .session-timer {
   font-size: .65rem; color: var(--c-muted);
   margin-top: 8px; padding-top: 8px;
-  border-top: 1px solid rgba(255,72,0,.06);
+  border-top: 1px solid rgba(0,115,255,.06);
   font-family: 'JetBrains Mono', monospace; letter-spacing: .03em;
 }
 
@@ -366,7 +366,7 @@ code, pre {
 }
 .feature-card {
   background: linear-gradient(150deg, var(--c-surface) 0%, var(--c-raised) 100%);
-  border: 1px solid rgba(255,72,0,.1);
+  border: 1px solid rgba(0,115,255,.1);
   border-radius: 5px;
   padding: 28px 24px 24px;
   flex: 1 !important; min-height: 270px;
@@ -374,8 +374,8 @@ code, pre {
   transition: border-color .25s, box-shadow .25s;
 }
 .feature-card:hover {
-  border-color: rgba(255,72,0,.24);
-  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 22px rgba(255,72,0,.07);
+  border-color: rgba(0,115,255,.24);
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 22px rgba(0,115,255,.07);
 }
 .feature-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
@@ -385,8 +385,8 @@ code, pre {
   box-shadow: 0 1px 10px rgba(194,255,0,.18);
 }
 .feature-card.blue::before  {
-  background: linear-gradient(90deg, var(--c-cyan), rgba(255,72,0,.15));
-  box-shadow: 0 1px 10px rgba(255,72,0,.22);
+  background: linear-gradient(90deg, var(--c-cyan), rgba(0,115,255,.15));
+  box-shadow: 0 1px 10px rgba(0,115,255,.22);
 }
 .feature-card.amber::before {
   background: linear-gradient(90deg, var(--c-purple), rgba(167,139,250,.2));
@@ -418,7 +418,7 @@ code, pre {
   border-radius: 3px; display: inline-block;
   font-family: 'Rajdhani', sans-serif;
 }
-.badge-all  { background: rgba(255,72,0,.07); color: var(--c-cyan); border: 1px solid rgba(255,72,0,.22); }
+.badge-all  { background: rgba(0,115,255,.07); color: var(--c-cyan); border: 1px solid rgba(0,115,255,.22); }
 .badge-tech { background: rgba(255,193,7,.07); color: var(--c-gold); border: 1px solid rgba(255,193,7,.22); }
 
 /* ── Alert / info boxes ────────────────────────────────────── */
@@ -451,7 +451,7 @@ code, pre {
   text-align: center; padding: 20px 0 10px;
   font-size: .67rem; color: var(--c-dim);
   font-family: 'JetBrains Mono', monospace;
-  border-top: 1px solid rgba(255,72,0,.05); margin-top: 36px;
+  border-top: 1px solid rgba(0,115,255,.05); margin-top: 36px;
   letter-spacing: .07em;
 }
 
@@ -473,7 +473,7 @@ def get_login_css():
 [data-testid="stSidebar"] { display: none !important; }
 
 [data-testid="stTextInput"] input {
-  border: 1px solid rgba(255,72,0,.2) !important;
+  border: 1px solid rgba(0,115,255,.2) !important;
   border-radius: 4px !important;
   font-family: 'JetBrains Mono', monospace !important;
   font-size: .9rem !important;
@@ -481,8 +481,8 @@ def get_login_css():
   transition: border-color .2s, box-shadow .2s !important;
 }
 [data-testid="stTextInput"] input:focus {
-  border-color: #FF4800 !important;
-  box-shadow: 0 0 0 3px rgba(255,72,0,.09), 0 0 14px rgba(255,72,0,.14) !important;
+  border-color: #0073FF !important;
+  box-shadow: 0 0 0 3px rgba(0,115,255,.09), 0 0 14px rgba(0,115,255,.14) !important;
 }
 [data-testid="stTextInput"] label {
   color: #3F5060 !important;
@@ -514,25 +514,25 @@ def get_login_css():
 
 .login-card {
   background: rgba(7,12,24,.97);
-  border: 1px solid rgba(255,72,0,.16);
+  border: 1px solid rgba(0,115,255,.16);
   border-radius: 7px;
   padding: 44px 40px 36px;
   position: relative; overflow: hidden;
   box-shadow: 0 32px 64px rgba(0,0,0,.8),
-              0 0 52px rgba(255,72,0,.05),
+              0 0 52px rgba(0,115,255,.05),
               inset 0 1px 0 rgba(255,255,255,.02);
 }
 .login-card::before {
   content: ''; position: absolute;
   top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, #FF4800 0%, rgba(255,72,0,.6) 60%, rgba(194,255,0,.6) 100%);
-  box-shadow: 0 0 14px rgba(255,72,0,.3);
+  background: linear-gradient(90deg, #0073FF 0%, rgba(0,115,255,.6) 60%, rgba(194,255,0,.6) 100%);
+  box-shadow: 0 0 14px rgba(0,115,255,.3);
 }
 .login-card::after {
   content: 'SYS:TIGGO2';
   position: absolute; top: 14px; right: 18px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: .58rem; color: rgba(255,72,0,.2);
+  font-size: .58rem; color: rgba(0,115,255,.2);
   letter-spacing: .1em;
 }
 .login-logo {

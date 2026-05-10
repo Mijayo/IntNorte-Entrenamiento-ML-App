@@ -38,13 +38,13 @@ st.markdown("""
 .home-hero {
   padding: 44px 0 40px;
   margin-bottom: 8px;
-  border-bottom: 1px solid rgba(255,72,0,0.10);
+  border-bottom: 1px solid rgba(0,115,255,0.10);
   position: relative;
 }
 .home-hero::before {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, rgba(255,72,0,0.5), rgba(194,255,0,0.3), transparent);
+  background: linear-gradient(90deg, rgba(0,115,255,0.5), rgba(194,255,0,0.3), transparent);
 }
 .hero-meta-row {
   display: flex; align-items: center; gap: 10px;
@@ -76,14 +76,14 @@ st.markdown("""
 /* ── Feature cards rediseño ── */
 .feature-card {
   background: var(--c-surface) !important;
-  border: 1px solid rgba(255,72,0,0.08) !important;
+  border: 1px solid rgba(0,115,255,0.08) !important;
   position: relative !important;
   transition: border-color .25s, transform .2s !important;
 }
 .feature-card:hover {
-  border-color: rgba(255,72,0,.22) !important;
+  border-color: rgba(0,115,255,.22) !important;
   transform: translateY(-2px) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,.55), 0 0 24px rgba(255,72,0,.08) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.55), 0 0 24px rgba(0,115,255,.08) !important;
 }
 .feature-card .fc-label {
   font-family: 'JetBrains Mono', monospace;
@@ -98,19 +98,19 @@ st.markdown("""
   font-size: .84rem; line-height: 1.75;
 }
 /* Card accent bars */
-.feature-card.blue::before  { background: linear-gradient(90deg, #FF4800, rgba(255,72,0,.15)); box-shadow: 0 1px 10px rgba(255,72,0,.2); }
+.feature-card.blue::before  { background: linear-gradient(90deg, #0073FF, rgba(0,115,255,.15)); box-shadow: 0 1px 10px rgba(0,115,255,.2); }
 .feature-card.green::before { background: linear-gradient(90deg, #C2FF00, rgba(194,255,0,.15)); box-shadow: 0 1px 10px rgba(194,255,0,.15); }
 .feature-card.amber::before { background: linear-gradient(90deg, #A78BFA, rgba(167,139,250,.15)); box-shadow: 0 1px 10px rgba(167,139,250,.15); }
 /* KPI badge inside card */
 .card-kpi {
   margin-top: 18px; padding-top: 16px;
-  border-top: 1px solid rgba(255,72,0,0.07);
+  border-top: 1px solid rgba(0,115,255,0.07);
   font-family: 'JetBrains Mono', monospace;
 }
 .card-kpi-value {
   font-size: 1.45rem; font-weight: 400;
   color: var(--c-cyan); line-height: 1;
-  text-shadow: 0 0 18px rgba(255,72,0,.3);
+  text-shadow: 0 0 18px rgba(0,115,255,.3);
 }
 .card-kpi-value.lime  { color: var(--c-gold); text-shadow: 0 0 18px rgba(194,255,0,.25); }
 .card-kpi-value.violet { color: var(--c-purple); text-shadow: 0 0 18px rgba(167,139,250,.2); }
@@ -189,7 +189,7 @@ st.markdown("""
 <div style="
   margin-top: 48px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255,72,0,0.06);
+  border-top: 1px solid rgba(0,115,255,0.06);
   display: flex; justify-content: space-between; align-items: center;
   font-family: 'JetBrains Mono', monospace;
   font-size: .55rem; letter-spacing: .16em;
