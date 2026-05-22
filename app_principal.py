@@ -133,7 +133,7 @@ st.markdown("""
     Vender lo que de verdad <span class="hero-accent">se vende.</span>
   </h2>
   <p class="home-hero-sub">
-    Solución Analítica Avanzada de Predicción de Demanda&nbsp;&nbsp;·&nbsp;&nbsp;Norte Perú&nbsp;&nbsp;·&nbsp;&nbsp;SARIMA (2,0,1)(1,0,2)[12]
+    Solución Analítica Avanzada de Predicción de Demanda&nbsp;&nbsp;·&nbsp;&nbsp;Norte Perú&nbsp;&nbsp;·&nbsp;&nbsp;SARIMA (1,1,0)(1,0,2)[12]
   </p>
 </div>
 """, unsafe_allow_html=True)
@@ -163,8 +163,8 @@ with col2:
   <p>Visualiza predicciones, KPIs y métricas del modelo activo.
      Cambia entre versiones históricas desde el panel lateral.</p>
   <div class="card-kpi">
-    <div class="card-kpi-value lime">14.65 %</div>
-    <div class="card-kpi-label">MAPE · walk-forward iter. 02</div>
+    <div class="card-kpi-value lime">10.32 %</div>
+    <div class="card-kpi-label">MAPE · walk-forward</div>
   </div>
   <span class="feature-card-badge badge-all">Todos los roles</span>
 </div>
@@ -195,8 +195,8 @@ st.markdown("""
   font-size: .55rem; letter-spacing: .16em;
   color: var(--c-muted); text-transform: uppercase; opacity: .6;
 ">
-  <span>EQUIPO&nbsp;&nbsp;Alberro · Alemany · López</span>
-  <span>PROG&nbsp;&nbsp;ISDI Estudio Empresarial · 2025</span>
+  <span>EQUIPO&nbsp;&nbsp;Maria · Cristina · Ingrid · Juan · Diego</span>
+  <span>PROG&nbsp;&nbsp;ISDI 2025 2026</span>
   <span>CLNT&nbsp;&nbsp;Interamericana Norte S.A.C.</span>
 </div>
 """, unsafe_allow_html=True)
