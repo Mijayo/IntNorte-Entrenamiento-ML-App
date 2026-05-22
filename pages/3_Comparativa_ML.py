@@ -110,11 +110,12 @@ def calc_metrics(real, pred, label):
     }
 
 
-def entrenar_sarima(train, test_len, order, seasonal_order):
+def entrenar_sarima(train, test_len, order, seasonal_order, exog_train=None, exog_test=None):
     model = SARIMAX(train, order=order, seasonal_order=seasonal_order,
+                    exog=exog_train,
                     enforce_stationarity=False, enforce_invertibility=False)
     res = model.fit(disp=False, maxiter=200, method='lbfgs')
-    return np.clip(res.forecast(steps=test_len).values, 0, None)
+    return np.clip(res.forecast(steps=test_len, exog=exog_test).values, 0, None)
 
 
 def entrenar_prophet(train, test_len, usar_holidays):
@@ -261,9 +262,16 @@ if fuente == "Cargar desde un run guardado en Supabase":
                 hist = hist.sort_index()
                 hist.index = hist.index.to_period('M').to_timestamp()
                 st.session_state["ventas_cml"] = hist
+                st.session_state["exog_cml"] = None
                 st.success(
                     f"Histórico cargado: {len(hist)} meses "
                     f"({hist.index[0].strftime('%b %Y')} → {hist.index[-1].strftime('%b %Y')})"
+                )
+                st.info(
+                    "ℹ️ **SARIMA sin variable exógena:** los artefactos de Supabase solo "
+                    "almacenan la serie de ventas Tiggo 2. La variable `ventas_otros` usada "
+                    "en producción no está disponible aquí, por lo que el MAPE de esta "
+                    "comparativa puede diferir del reportado en Entrenamiento."
                 )
             except Exception as e:
                 st.error(f"Error al cargar: {e}")
@@ -282,6 +290,12 @@ else:
             cols       = df_raw.columns.tolist()
             col_fecha  = st.selectbox("Columna de fecha:", cols)
             col_ventas = st.selectbox("Columna de ventas:", [c for c in cols if c != col_fecha])
+            _NONE_EXOG = "— Sin variable exógena —"
+            col_exog   = st.selectbox(
+                "Variable exógena para SARIMA (opcional):",
+                [_NONE_EXOG] + [c for c in cols if c not in (col_fecha, col_ventas)],
+                help="Si tu Excel incluye ventas_otros u otra variable correlacionada, selecciónala aquí para que SARIMA la use como regresor exógeno."
+            )
             if st.button("Usar estos datos", type="primary"):
                 df_raw[col_fecha] = pd.to_datetime(df_raw[col_fecha])
                 serie = (
@@ -289,7 +303,16 @@ else:
                     .sum().resample('MS').sum().sort_index()
                 )
                 st.session_state["ventas_cml"] = serie
-                st.success(f"Serie lista: {len(serie)} meses")
+                if col_exog != _NONE_EXOG:
+                    exog_serie = (
+                        df_raw.groupby(col_fecha)[col_exog]
+                        .sum().resample('MS').sum().sort_index()
+                    )
+                    st.session_state["exog_cml"] = exog_serie
+                    st.success(f"Serie lista: {len(serie)} meses · exógena: {col_exog}")
+                else:
+                    st.session_state["exog_cml"] = None
+                    st.success(f"Serie lista: {len(serie)} meses")
         except Exception as e:
             st.error(f"Error procesando archivo: {e}")
 
@@ -385,7 +408,13 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         status.text("Entrenando SARIMA...")
         t0 = time.time()
         try:
-            pred = entrenar_sarima(train, n_test, (p, d, q), (P, D, Q, 12))
+            exog_s = st.session_state.get("exog_cml")
+            exog_tr = exog_te = None
+            if exog_s is not None:
+                exog_al = exog_s.reindex(ventas_series.index).ffill().fillna(0)
+                exog_tr = exog_al.iloc[:-n_test].values.reshape(-1, 1)
+                exog_te = exog_al.iloc[-n_test:].values.reshape(-1, 1)
+            pred = entrenar_sarima(train, n_test, (p, d, q), (P, D, Q, 12), exog_tr, exog_te)
             met  = calc_metrics(test.values, pred, "SARIMA")
             met["Tiempo (s)"] = round(time.time() - t0, 2)
             resultados.append(met)
@@ -487,6 +516,10 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
             .highlight_max(subset=["R²"],                       axis=0, color="#d4edda")
             .highlight_min(subset=["Tiempo (s)"],               axis=0, color="#fff3cd"),
         use_container_width=True
+    )
+    st.caption(
+        "\\* MAPE calculado con denominador `(real + 0.1)` para evitar división por cero "
+        "en meses con ventas nulas — idéntico al criterio del modelo de producción."
     )
 
     # Ganador
