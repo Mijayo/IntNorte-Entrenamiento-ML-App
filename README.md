@@ -408,16 +408,14 @@ __pycache__/  venv/  .env   ← estándar Python
 
 ---
 
-## Modelo activo (Iteración 2 — v20)
+## Modelo activo (Iteración 3 — 2026-05-22)
 
 | Métrica | Valor |
 |---------|-------|
-| **Orden SARIMA** | `(2, 0, 1)(1, 0, 2)[12]` |
-| **AIC** | 138.48 |
-| **BIC** | 190.85 |
-| **MAPE walk-forward** | **14.65%** |
-| **Ventas en dataset** | 1,804 unidades |
-| **Período** | Ene 2022 – Mar 2026 (51 meses) |
+| **Orden SARIMA** | `(1, 1, 0)(1, 0, 2)[12]` |
+| **AIC** | 137.38 |
+| **MAPE walk-forward** | **10.32%** |
+| **Trials válidos** | 71 / 80 |
 | **Horizonte de pronóstico** | 6 meses |
 
 ---

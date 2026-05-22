@@ -47,7 +47,7 @@ Se escribe como **SARIMA(p, d, q)(P, D, Q, m)** donde cada letra es un hiperpar�
 | `Q` | MA estacional | Igual que `q`, pero a escala anual |
 | `m` | Período estacional | Número de períodos en un ciclo (12 para datos mensuales) |
 
-**Modelo activo:** SARIMA(2,0,1)(1,0,2,12) — orden encontrado en Iteración 2.
+**Modelo activo:** SARIMA(1,1,0)(1,0,2,12) — orden encontrado en Iteración 3 (2026-05-22).
 
 **Ejemplo de lectura:** SARIMA(1,1,1)(1,1,1,12) significa:
 - `p=1`: el valor de este mes depende del mes anterior

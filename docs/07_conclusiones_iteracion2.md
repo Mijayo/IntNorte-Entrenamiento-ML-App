@@ -140,14 +140,24 @@ MAPE walk-forward mide el futuro (producción)
 | Media | Intervalos de confianza en el pronóstico | Sin impacto en MAPE; mejora UX |
 | Baja | Supabase Realtime (reemplazar polling) | — |
 
+### Resultado Iteración 3 (2026-05-22)
+
+| Métrica | Iteración 2 | Iteración 3 | Variación |
+|---------|-------------|-------------|-----------|
+| **MAPE walk-forward** | 14.65% | **10.32%** | ▼ 4.33 pp |
+| **AIC** | 138.48 | 137.38 | −1.10 |
+| Orden SARIMA | (2,0,1)(1,0,2)\[12\] | **(1,1,0)(1,0,2)\[12\]** | — |
+| Trials válidos / total | 62 / 80 | 71 / 80 | +9 |
+| Horizonte | 6 meses | 6 meses | Sin cambio |
+
 ---
 
 ## 6. Veredicto Final
 
 | Dimensión | Estado | Nota |
 |-----------|--------|------|
-| **Precisión del modelo** | ⚠️ Aceptable | MAPE 14.65% — debajo del umbral de 15% |
-| **Objetivo <10% (excelente)** | ❌ Pendiente | Requiere ensemble o más datos |
+| **Precisión del modelo** | ✅ Bueno | MAPE 14.65% → **10.32%** (Iteración 3, 2026-05-22) |
+| **Objetivo <10% (excelente)** | ⚠️ Próximo | 10.32% — a 0.32 pp del umbral de excelencia |
 | **Arquitectura del sistema** | ✅ Estable | Sin modificaciones necesarias |
 | **Pipeline de validación** | ✅ Correcto | Walk-forward, 51 meses |
 | **Experiencia de usuario** | ✅ Mejorada | Semáforo en amarillo (antes rojo) |
