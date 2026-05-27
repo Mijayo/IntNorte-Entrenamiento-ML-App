@@ -2,7 +2,7 @@
 ============================================================================
 PÁGINA: COMPARATIVA DE MODELOS ML
 ============================================================================
-Compara SARIMA, Prophet, Regresión Lineal, Random Forest y XGBoost
+Compara SARIMAX, Prophet, Regresión Lineal, Random Forest y XGBoost
 para predecir el volumen mensual de ventas del Chery Tiggo 2.
 Los modelos ML usan lag features + features de calendario.
 ============================================================================
@@ -69,7 +69,7 @@ show_user_info()
 # ── Paleta de colores por modelo ──────────────────────────────────────────────
 
 COLORES = {
-    "SARIMA":           "#1C7293",
+    "SARIMAX":          "#1C7293",
     "Prophet":          "#E84855",
     "Reg. Lineal":      "#2ECC71",
     "Random Forest":    "#F39C12",
@@ -229,7 +229,9 @@ def plot_importancias(importancias):
 
 st.markdown("""
 > Compara hasta **5 modelos** sobre el mismo histórico mensual del Tiggo 2.
-> SARIMA y Prophet modelan la serie directamente.
+> SARIMAX y Prophet modelan la serie directamente.
+> SARIMAX incorpora además **ventas de otros modelos Chery** como regresor exógeno,
+> idéntico al modelo de producción.
 > Regresión Lineal, Random Forest y XGBoost usan **lag features** (ventas de meses previos)
 > y features de calendario para aprender patrones de compra.
 """)
@@ -258,21 +260,34 @@ if fuente == "Cargar desde un run guardado en Supabase":
     if st.button("Cargar histórico", type="primary"):
         with st.spinner("Descargando datos de Supabase..."):
             try:
-                _, _, _, _, hist = sio.load_precargados(run_sel)
+                metricas_run, _, _, _, hist, exog = sio.load_precargados(run_sel)
                 hist = hist.sort_index()
                 hist.index = hist.index.to_period('M').to_timestamp()
                 st.session_state["ventas_cml"] = hist
-                st.session_state["exog_cml"] = None
-                st.success(
-                    f"Histórico cargado: {len(hist)} meses "
-                    f"({hist.index[0].strftime('%b %Y')} → {hist.index[-1].strftime('%b %Y')})"
-                )
-                st.info(
-                    "ℹ️ **SARIMA sin variable exógena:** los artefactos de Supabase solo "
-                    "almacenan la serie de ventas Tiggo 2. La variable `ventas_otros` usada "
-                    "en producción no está disponible aquí, por lo que el MAPE de esta "
-                    "comparativa puede diferir del reportado en Entrenamiento."
-                )
+                st.session_state["run_metricas_cml"] = metricas_run
+
+                if exog is not None:
+                    exog = exog.sort_index()
+                    exog.index = exog.index.to_period('M').to_timestamp()
+                    st.session_state["exog_cml"] = exog
+                    _r = metricas_run.get("variable_exogena", {}).get("pearson_r", "—")
+                    st.success(
+                        f"✅ Histórico cargado: {len(hist)} meses "
+                        f"({hist.index[0].strftime('%b %Y')} → {hist.index[-1].strftime('%b %Y')})"
+                        f"  \n✅ **Variable exógena** (`ventas_otros`) disponible "
+                        f"— Pearson r = {_r}. SARIMAX usará exactamente los mismos datos que en Entrenamiento."
+                    )
+                else:
+                    st.session_state["exog_cml"] = None
+                    st.success(
+                        f"✅ Histórico cargado: {len(hist)} meses "
+                        f"({hist.index[0].strftime('%b %Y')} → {hist.index[-1].strftime('%b %Y')})"
+                    )
+                    st.warning(
+                        "⚠️ **Variable exógena no disponible** en este run (generado con una versión "
+                        "anterior del sistema). SARIMAX correrá sin `ventas_otros`. "
+                        "Reentrena el modelo para guardar también la exógena."
+                    )
             except Exception as e:
                 st.error(f"Error al cargar: {e}")
 
@@ -292,9 +307,9 @@ else:
             col_ventas = st.selectbox("Columna de ventas:", [c for c in cols if c != col_fecha])
             _NONE_EXOG = "— Sin variable exógena —"
             col_exog   = st.selectbox(
-                "Variable exógena para SARIMA (opcional):",
+                "Variable exógena para SARIMAX (ventas_otros u otra):",
                 [_NONE_EXOG] + [c for c in cols if c not in (col_fecha, col_ventas)],
-                help="Si tu Excel incluye ventas_otros u otra variable correlacionada, selecciónala aquí para que SARIMA la use como regresor exógeno."
+                help="Selecciona ventas_otros u otra variable correlacionada para que SARIMAX la use como regresor exógeno, igual que en Entrenamiento."
             )
             if st.button("Usar estos datos", type="primary"):
                 df_raw[col_fecha] = pd.to_datetime(df_raw[col_fecha])
@@ -335,7 +350,7 @@ with col_cfg1:
     st.caption(f"Train: {len(ventas_series) - n_test} meses | Test: {n_test} meses")
 
     st.subheader("Modelos a comparar")
-    usar_sarima  = st.checkbox("SARIMA",                    value=True)
+    usar_sarima  = st.checkbox("SARIMAX",                   value=True)
     usar_prophet = st.checkbox("Prophet",                   value=True)
     usar_lr      = st.checkbox("Regresión Lineal",          value=True)
     usar_rf      = st.checkbox("Random Forest",             value=True)
@@ -348,16 +363,30 @@ with col_cfg1:
 
 with col_cfg2:
     if usar_sarima:
-        st.subheader("Parámetros SARIMA")
+        st.subheader("Parámetros SARIMAX")
+
+        # Autocompletar desde el run cargado si está disponible
+        _run_met = st.session_state.get("run_metricas_cml")
+        if _run_met and "mejor_modelo" in _run_met:
+            _ord = _run_met["mejor_modelo"].get("order", [1, 1, 0])
+            _sea = _run_met["mejor_modelo"].get("seasonal_order", [1, 0, 2, 12])
+            st.caption(
+                f"⚡ Parámetros autocompletados desde el run cargado: "
+                f"({_ord[0]},{_ord[1]},{_ord[2]})({_sea[0]},{_sea[1]},{_sea[2]})[12]"
+            )
+        else:
+            _ord = [1, 1, 0]
+            _sea = [1, 0, 2, 12]
+
         cs1, cs2 = st.columns(2)
         with cs1:
-            p = st.number_input("p (AR)",  min_value=0, max_value=5, value=1)
-            d = st.number_input("d (I)",   min_value=0, max_value=2, value=1)
-            q = st.number_input("q (MA)",  min_value=0, max_value=5, value=1)
+            p = st.number_input("p (AR)",  min_value=0, max_value=5, value=int(_ord[0]))
+            d = st.number_input("d (I)",   min_value=0, max_value=2, value=int(_ord[1]))
+            q = st.number_input("q (MA)",  min_value=0, max_value=5, value=int(_ord[2]))
         with cs2:
-            P = st.number_input("P (SAR)", min_value=0, max_value=3, value=1)
-            D = st.number_input("D (SI)",  min_value=0, max_value=2, value=1)
-            Q = st.number_input("Q (SMA)", min_value=0, max_value=3, value=1)
+            P = st.number_input("P (SAR)", min_value=0, max_value=3, value=int(_sea[0]))
+            D = st.number_input("D (SI)",  min_value=0, max_value=2, value=int(_sea[1]))
+            Q = st.number_input("Q (SMA)", min_value=0, max_value=3, value=int(_sea[2]))
         st.caption("Período estacional fijo: 12 meses")
 
     usar_holidays = False
@@ -403,9 +432,9 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         progress.progress(paso[0] / n_activos)
         status.text(f"✔ {nombre} completado")
 
-    # ── SARIMA ────────────────────────────────────────────────────────────────
+    # ── SARIMAX ───────────────────────────────────────────────────────────────
     if usar_sarima:
-        status.text("Entrenando SARIMA...")
+        status.text("Entrenando SARIMAX...")
         t0 = time.time()
         try:
             exog_s = st.session_state.get("exog_cml")
@@ -415,13 +444,13 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
                 exog_tr = exog_al.iloc[:-n_test].values.reshape(-1, 1)
                 exog_te = exog_al.iloc[-n_test:].values.reshape(-1, 1)
             pred = entrenar_sarima(train, n_test, (p, d, q), (P, D, Q, 12), exog_tr, exog_te)
-            met  = calc_metrics(test.values, pred, "SARIMA")
+            met  = calc_metrics(test.values, pred, "SARIMAX")
             met["Tiempo (s)"] = round(time.time() - t0, 2)
             resultados.append(met)
-            predicciones["SARIMA"] = pred
+            predicciones["SARIMAX"] = pred
         except Exception as e:
-            errores["SARIMA"] = str(e)
-        avanzar("SARIMA")
+            errores["SARIMAX"] = str(e)
+        avanzar("SARIMAX")
 
     # ── Prophet ───────────────────────────────────────────────────────────────
     if usar_prophet:
@@ -588,11 +617,15 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
     )
 
     # Interpretación
-    mape_sarima  = df_met.loc["SARIMA",        "MAPE (%)"] if "SARIMA"        in df_met.index else "—"
+    mape_sarimax = df_met.loc["SARIMAX",       "MAPE (%)"] if "SARIMAX"       in df_met.index else "—"
     mape_prophet = df_met.loc["Prophet",       "MAPE (%)"] if "Prophet"       in df_met.index else "—"
     mape_lr      = df_met.loc["Reg. Lineal",   "MAPE (%)"] if "Reg. Lineal"   in df_met.index else "—"
     mape_rf      = df_met.loc["Random Forest", "MAPE (%)"] if "Random Forest" in df_met.index else "—"
     mape_xgb     = df_met.loc["XGBoost",       "MAPE (%)"] if "XGBoost"       in df_met.index else "—"
+
+    _exog_usada = st.session_state.get("exog_cml") is not None
+    _exog_nota  = ("con variable exógena `ventas_otros`" if _exog_usada
+                   else "sin variable exógena (run antiguo — reentrena para activarla)")
 
     with st.expander("📚 ¿Cómo interpretar estos resultados?"):
         st.markdown(f"""
@@ -602,7 +635,7 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
 
         | Modelo | MAPE obtenido | Interpretación |
         |--------|--------------|----------------|
-        | SARIMA | {mape_sarima}% | En promedio, el modelo se equivoca {mape_sarima}% respecto al valor real |
+        | SARIMAX | {mape_sarimax}% | En promedio, el modelo se equivoca {mape_sarimax}% respecto al valor real |
         | Prophet | {mape_prophet}% | En promedio, se equivoca {mape_prophet}% |
         | Reg. Lineal | {mape_lr}% | En promedio, se equivoca {mape_lr}% |
         | Random Forest | {mape_rf}% | En promedio, se equivoca {mape_rf}% |
@@ -620,35 +653,38 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         | **RMSE** | Como MAE pero penaliza errores grandes | Menor |
         | **R²** | Proporción de varianza de ventas explicada (1.0 = perfecto) | Mayor |
 
+        > SARIMAX evaluado {_exog_nota}.
+
         ---
 
-        ### ¿Por qué Prophet puede ganar a SARIMA?
+        ### ¿Por qué Prophet puede ganar a SARIMAX?
         1. **Estacionalidad multiplicativa** — si las ventas del Tiggo 2 suben en ciertos
            meses, Prophet escala el efecto proporcionalmente a la tendencia.
-           SARIMA usa diferenciación, que asume efectos aditivos.
+           SARIMAX usa diferenciación, que asume efectos aditivos.
         2. **Festivos de Perú** — Prophet añade automáticamente el impacto de días como
            Navidad, Año Nuevo, Fiestas Patrias y Semana Santa sobre el comportamiento de compra.
         3. **Changepoints** — si hubo un cambio de producto, crisis (ej. COVID) o
-           ajuste de precio, Prophet detecta y adapta la tendencia. SARIMA no lo hace
+           ajuste de precio, Prophet detecta y adapta la tendencia. SARIMAX no lo hace
            de forma automática.
 
-        ### ¿Cuándo SARIMA puede ganar?
+        ### ¿Cuándo SARIMAX puede ganar?
         - Series cortas (< 36 meses) donde Prophet no tiene suficiente historia.
-        - Cuando hay variables exógenas relevantes (stock disponible, precio de lista)
-          que se incorporan como SARIMAX.
+        - Cuando la variable exógena `ventas_otros` tiene alta correlación (|r| ≥ 0.3)
+          con las ventas del Tiggo 2 — en ese caso SARIMAX captura dinámicas del mercado
+          que Prophet no puede ver.
         - Series muy estables sin quiebres de tendencia visibles.
 
         ### ¿Por qué los modelos ML (LR, RF, XGBoost) pueden ganar?
         - Capturan patrones **no lineales** entre meses anteriores y el mes a predecir.
         - El **lag de 12 meses** les permite aprender directamente la estacionalidad anual
-          del Tiggo 2 sin necesidad de especificarla como en SARIMA.
+          del Tiggo 2 sin necesidad de especificarla como en SARIMAX.
         - XGBoost y Random Forest son robustos a valores atípicos en el histórico.
 
         ### ¿Cuándo los modelos ML pueden fallar?
         - Con series cortas (< {min_obs_ml} meses), los lags consumen demasiadas
           observaciones y el train queda con muy pocos ejemplos.
         - Si la serie tiene una tendencia fuerte y creciente, los lags no capturan
-          bien la extrapolación hacia el futuro (a diferencia de SARIMA/Prophet).
+          bien la extrapolación hacia el futuro (a diferencia de SARIMAX/Prophet).
 
         ### ¿Cuál usar en producción?
         El modelo con **menor MAPE** ({mejor} en este run) es la mejor opción para
@@ -689,20 +725,21 @@ else:
             "Considera reentrenar con más datos antes de publicar."
         )
 
-    # Mostrar parámetros recomendados si SARIMA es el ganador o está entre los evaluados
-    if "SARIMA" in res["metricas"].index:
-        mape_sarima_cml = res["metricas"].loc["SARIMA", "MAPE (%)"]
-        sarima_order_str = (
+    # Mostrar parámetros recomendados si SARIMAX es el ganador o está entre los evaluados
+    if "SARIMAX" in res["metricas"].index:
+        mape_sarimax_cml = res["metricas"].loc["SARIMAX", "MAPE (%)"]
+        sarimax_order_str = (
             f"`order=({p},{d},{q})` `seasonal_order=({P},{D},{Q},12)`"
             if usar_sarima else "parámetros definidos en la configuración de esta sesión"
         )
-        with st.expander("⚙️ Configuración SARIMA evaluada en esta comparativa"):
+        _exog_pub = st.session_state.get("exog_cml") is not None
+        with st.expander("⚙️ Configuración SARIMAX evaluada en esta comparativa"):
             st.info(
-                f"SARIMA MAPE: **{mape_sarima_cml:.1f}%**  \n"
-                f"Parámetros usados: {sarima_order_str}  \n\n"
-                "Si SARIMA es el modelo que quieres publicar, ve a la página **Entrenamiento** "
-                "y configura estos mismos parámetros. El proceso de entrenamiento generará "
-                "el modelo completo con intervalos de confianza y lo guardará en Supabase."
+                f"SARIMAX MAPE: **{mape_sarimax_cml:.1f}%**  \n"
+                f"Parámetros usados: {sarimax_order_str}  \n"
+                f"Variable exógena: **{'✅ ventas_otros incluida' if _exog_pub else '⚠️ no disponible (run antiguo)'}**  \n\n"
+                "Si SARIMAX es el modelo que quieres publicar, el run ya está guardado en Supabase "
+                "con todos los artefactos. Actívalo directamente con el botón de abajo."
             )
 
     # Si la fuente es un run de Supabase, ofrecer activarlo

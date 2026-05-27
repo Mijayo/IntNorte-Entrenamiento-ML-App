@@ -4,6 +4,17 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-27 (v22)
+
+- **refactor(comparativa + entrenamiento)**: Unificación total — ambas páginas usan ahora **SARIMAX** (con variable exógena `ventas_otros`) idéntico al modelo de producción. Antes, Comparativa ML ejecutaba SARIMA *sin* exógena, produciendo una comparación no equitativa que inflaba el MAPE del modelo de serie temporal frente a los algoritmos ML supervisados.
+- **feat(supabase_io)**: `save_to_dashboard` guarda `historico_exog.xlsx` cuando el run incluye variable exógena. `load_precargados` pasa de devolver 5 valores a **6** (añade la serie exógena como último elemento). Retrocompatible: devuelve `None` para runs anteriores sin el archivo.
+- **feat(comparativa)**: Los parámetros SARIMAX (p, d, q, P, D, Q) se auto-completan desde `metricas_mejoradas.json` del run cargado — ya no es necesario introducirlos manualmente.
+- **feat(comparativa)**: Al cargar un run se muestra el estado de la variable exógena (Pearson r, disponible / no disponible) con badge de aviso para runs históricos sin exog.
+- **refactor(2_Dashboard, 3_Proyeccion_Ingresos)**: Desempaquetado de `load_precargados` actualizado a 6-tupla (`_exog` ignorado en estas páginas).
+- **chore**: Renombrado de cadenas literales `"SARIMA"` → `"SARIMAX"` en colores, checkboxes, intérprete de resultados, sección de publicación y mensajes informativos de `4_Comparativa_ML.py`.
+
+---
+
 ### 2026-05-27 (v21)
 
 - **feat(auth)**: Nuevo rol **`financiero`** — usuario `financiero` con icono 💰, badge propio en sidebar y contraseña configurable en `secrets.toml`.

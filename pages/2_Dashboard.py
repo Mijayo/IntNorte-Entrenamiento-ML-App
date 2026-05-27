@@ -115,7 +115,7 @@ if st.session_state.cache_llm_run != selected_run:
 # ── Cargar datos ──────────────────────────────────────────────────────────────
 
 with st.spinner('Cargando datos...'):
-    metricas, pred_total, grid_search, walk_forward, hist_total = sio.load_precargados(selected_run)
+    metricas, pred_total, grid_search, walk_forward, hist_total, _exog = sio.load_precargados(selected_run)
 
 # ── Header ───────────────────────────────────────────────────────────────────
 

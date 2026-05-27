@@ -207,8 +207,19 @@ def save_to_dashboard(
     metricas: dict,
     acf_fig: matplotlib.figure.Figure,
     pacf_fig: matplotlib.figure.Figure,
+    exog_data: "pd.Series | pd.DataFrame | None" = None,
 ) -> None:
-    """Sube todos los artefactos del run a Supabase Storage."""
+    """Sube todos los artefactos del run a Supabase Storage.
+
+    Parameters
+    ----------
+    exog_data : pd.Series | pd.DataFrame | None
+        Variable exógena (ventas_otros) usada en SARIMAX. Se guarda como
+        ``historico_exog.xlsx`` para que Comparativa ML pueda reproducir el
+        mismo modelo que entrenamiento con la misma información de entrada.
+        Si es None (exog descartada por baja correlación), el artefacto no
+        se crea y Comparativa degradará automáticamente a SARIMA puro.
+    """
     p = f"{run_name}/"
     log.info("Guardando artefactos del run '%s' en Supabase", run_name)
 
@@ -229,6 +240,14 @@ def save_to_dashboard(
         df.to_excel(buf, index=with_index, engine="openpyxl")
         _upload(p + name, buf.getvalue(), excel_ct)
 
+    # Guardar variable exógena (ventas_otros) si estuvo disponible en el entrenamiento
+    if exog_data is not None:
+        exog_df = exog_data.to_frame() if isinstance(exog_data, pd.Series) else exog_data
+        buf = io.BytesIO()
+        exog_df.to_excel(buf, index=True, engine="openpyxl")
+        _upload(p + "historico_exog.xlsx", buf.getvalue(), excel_ct)
+        log.debug("Run '%s': exog guardada (%d meses)", run_name, len(exog_df))
+
     _upload(
         p + "metricas_mejoradas.json",
         json.dumps(metricas, indent=2, ensure_ascii=False).encode(),
@@ -240,14 +259,25 @@ def save_to_dashboard(
         fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         _upload(p + name, buf.getvalue(), "image/png")
 
-    log.info("Run '%s' guardado correctamente (%d artefactos)", run_name, 8)
+    n_artefactos = 9 if exog_data is not None else 8
+    log.info("Run '%s' guardado correctamente (%d artefactos)", run_name, n_artefactos)
 
 
 # ── Cargar datos del dashboard ───────────────────────────────────────────────
 
 @st.cache_data(ttl=600)
-def load_precargados(run_name: str) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series]:
-    """Descarga y parsea todos los artefactos de un run (cacheado 10 min)."""
+def load_precargados(
+    run_name: str,
+) -> "tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series | None]":
+    """Descarga y parsea todos los artefactos de un run (cacheado 10 min).
+
+    Returns
+    -------
+    metricas, pred_total, grid_search, walk_forward, hist_total, exog_total
+        ``exog_total`` es la serie ``ventas_otros`` guardada en el momento del
+        entrenamiento, o ``None`` si el run es anterior a esta versión o si la
+        variable exógena fue descartada por baja correlación.
+    """
     p = f"{run_name}/"
 
     metricas: dict = json.loads(_download(p + "metricas_mejoradas.json"))
@@ -273,7 +303,20 @@ def load_precargados(run_name: str) -> tuple[dict, pd.DataFrame, pd.DataFrame, p
     hist_total.index = pd.to_datetime(hist_total.index)
     hist_total = hist_total.squeeze()
 
-    return metricas, pred_total, grid_search, walk_forward, hist_total
+    # Variable exógena — disponible solo en runs generados desde esta versión
+    exog_total = None
+    try:
+        exog_df = pd.read_excel(
+            io.BytesIO(_download(p + "historico_exog.xlsx")),
+            engine="openpyxl", index_col=0
+        )
+        exog_df.index = pd.to_datetime(exog_df.index)
+        exog_total = exog_df.squeeze()
+        log.debug("Run '%s': exog cargada (%d meses)", run_name, len(exog_total))
+    except Exception as e:
+        log.debug("Run '%s': exog no disponible — %s", run_name, e)
+
+    return metricas, pred_total, grid_search, walk_forward, hist_total, exog_total
 
 
 def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:

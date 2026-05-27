@@ -948,7 +948,8 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
                 run_name = datetime.now().strftime('%Y%m%d_%H%M%S')
                 with st.spinner("Guardando en Supabase..."):
                     sio.save_to_dashboard(run_name, model_final, predicciones, df_grid,
-                                          df_wf, ventas_modelo, metricas, fig_acf, fig_pacf)
+                                          df_wf, ventas_modelo, metricas, fig_acf, fig_pacf,
+                                          exog_data=exog_data)
 
                 progress_bar.progress(1.0)
                 status_text.text("✅ ¡Completado!")

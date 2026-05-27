@@ -239,20 +239,24 @@ La **estacionalidad multiplicativa** es apropiada cuando los picos y valles esta
 
 ---
 
-## 6. SARIMA vs Prophet — ¿cuándo gana cada uno?
+## 6. SARIMAX vs Prophet — ¿cuándo gana cada uno?
 
 | Situación | Ventaja |
 |-----------|---------|
-| Serie larga y estable (>5 años, sin quiebres) | SARIMA |
+| Serie larga y estable (>5 años, sin quiebres) | SARIMAX |
 | Tendencia cambiante o quiebres estructurales | Prophet |
 | Festivos con impacto medible | Prophet |
-| Variable exógena relevante disponible | SARIMA (SARIMAX) |
+| Variable exógena relevante disponible (`|r| ≥ 0.3`) | SARIMAX |
 | Datos faltantes o irregulares | Prophet |
 | Interpretación de componentes | Prophet (descomposición visual) |
 | Calibración automática eficiente | Ambos (Prophet requiere menos trials) |
 | Series cortas (< 3 años) | Prophet suele ser más robusto |
 
-**Regla práctica:** si SARIMA y Prophet dan MAPEs similares (diferencia < 1%), conviene usar **Prophet en producción** por su menor necesidad de ajuste manual y su mejor manejo de festivos. Si SARIMA supera a Prophet claramente, probablemente la variable exógena (`ventas_otros`) está aportando información que Prophet no puede capturar.
+**Regla práctica:** si SARIMAX y Prophet dan MAPEs similares (diferencia < 1%), conviene usar **Prophet en producción** por su menor necesidad de ajuste manual y su mejor manejo de festivos. Si SARIMAX supera a Prophet claramente, probablemente la variable exógena (`ventas_otros`) está aportando información que Prophet no puede capturar.
+
+### Nota sobre la Comparativa ML (v22)
+
+La página **4_Comparativa_ML.py** ejecuta desde v22 (2026-05-27) el mismo **SARIMAX** que la página de Entrenamiento: misma variable exógena `ventas_otros`, mismos parámetros (auto-cargados desde `metricas_mejoradas.json`). Antes de esta versión la comparativa ejecutaba SARIMA *sin* exógena, lo que producía un MAPE artificialmente peor para el modelo de serie temporal. La unificación garantiza que todas las métricas comparadas son apples-to-apples.
 
 ---
 

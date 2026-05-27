@@ -57,6 +57,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     grid_search_results.xlsx
     walk_forward_validation.xlsx
     historico_total_mejorado.xlsx
+    historico_exog.xlsx             ← Serie ventas_otros usada como exógena (si |Pearson r| ≥ 0.3)
     modelo_total_mejorado.pkl.gz
     acf_plot.png
     pacf_plot.png
@@ -263,7 +264,7 @@ streamlit run app_principal.py
 12. [Dashboard]     Watcher realtime: notifica via toast si se entrena un modelo nuevo
 13. [Dashboard]     Barra lateral permite cambiar entre cualquier run histórico
 14. [Proyección]    Ajusta precio, margen y tipo de cambio para ver el escenario financiero
-15. [Comparativa]   Carga el mismo histórico y enfrenta 5 modelos en un solo clic
+15. [Comparativa]   Carga el mismo histórico + exog del run activo y enfrenta 5 modelos (SARIMAX idéntico a producción) en un solo clic
 ```
 
 Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase y el dashboard lee desde allí.
@@ -325,13 +326,15 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 
 | Modelo | Tipo | Enfoque |
 |--------|------|---------|
-| **SARIMA** | Serie de tiempo | Parámetros (p,d,q)(P,D,Q)₁₂ configurables |
+| **SARIMAX** | Serie de tiempo | Idéntico al modelo de producción — misma exog `ventas_otros`, parámetros auto-cargados desde el run seleccionado |
 | **Prophet** | Serie de tiempo | Estacionalidad multiplicativa anual + festivos PE |
 | **Regresión Lineal** | ML supervisado | Lag features + rolling stats + calendario |
 | **Random Forest** | ML supervisado | 300 estimadores |
 | **XGBoost** | ML supervisado | Gradient boosting, lr=0.05, max_depth=4 |
 
 **Métricas comparadas:** MAE, RMSE, MAPE (criterio principal), R², Tiempo (s).
+
+> **Apples-to-apples desde v22 (2026-05-27):** la comparativa usa exactamente el mismo SARIMAX que Entrenamiento — misma variable exógena (`ventas_otros`), mismos parámetros Optuna y mismo split hold-out. Los parámetros (p,d,q)(P,D,Q) se auto-completan desde `metricas_mejoradas.json` del run cargado. Para runs anteriores a v22 sin `historico_exog.xlsx`, Comparativa muestra un aviso y ejecuta SARIMAX sin exog; se recomienda reentrenar para obtener la comparación completa.
 
 ---
 

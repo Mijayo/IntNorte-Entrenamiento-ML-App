@@ -68,7 +68,7 @@ st.sidebar.caption("🟢 Activo en producción" if is_latest else "🔵 Versión
 # ── Cargar datos ──────────────────────────────────────────────────────────────
 
 with st.spinner('Cargando datos del modelo...'):
-    metricas, pred_total, _gs, _wf, _hist = sio.load_precargados(selected_run)
+    metricas, pred_total, _gs, _wf, _hist, _exog = sio.load_precargados(selected_run)
 
 # ── Header ────────────────────────────────────────────────────────────────────
 
