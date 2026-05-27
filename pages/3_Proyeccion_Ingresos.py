@@ -4,7 +4,7 @@ PÁGINA: PROYECCIÓN DE INGRESOS
 ============================================================================
 Traduce la predicción SARIMA del modelo activo en cifras financieras en USD.
 Inputs configurables: precio unitario, margen neto y tipo de cambio.
-Disponible para todos los roles autenticados.
+Accesible para roles: admin, analista y financiero (permiso ver_ingresos).
 
 Extraída del Dashboard (tab 3) en 2026-05-27 como página independiente.
 ============================================================================
@@ -38,6 +38,10 @@ if check_session_timeout():
     st.stop()
 if not st.session_state.authenticated:
     show_login_page("💰 Proyección de Ingresos — TIGGO 2")
+    st.stop()
+
+if not has_permission('ver_ingresos'):
+    st.error("🔒 Acceso restringido — Esta página está disponible sólo para **Admin**, **Analista** y **Financiero**.")
     st.stop()
 
 # ── Selector de versión (sidebar) ─────────────────────────────────────────────

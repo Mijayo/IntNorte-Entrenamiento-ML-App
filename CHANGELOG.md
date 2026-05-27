@@ -4,6 +4,17 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-27 (v21)
+
+- **feat(auth)**: Nuevo rol **`financiero`** — usuario `financiero` con icono 💰, badge propio en sidebar y contraseña configurable en `secrets.toml`.
+- **feat(rbac)**: Nuevo permiso `ver_ingresos` — controla el acceso a la página **Proyección de Ingresos**. Habilitado para `admin`, `analyst` y el nuevo rol `financiero`; deshabilitado para `manager` y `viewer`.
+- **refactor(3_Proyeccion_Ingresos)**: Guard de acceso `has_permission('ver_ingresos')` añadido tras el check de autenticación. La página ya no es accesible a todos los roles — muestra `🔒 Acceso restringido` y detiene la ejecución para roles sin permiso.
+- **feat(pages)**: **`pages/3_Proyeccion_Ingresos.py`** extraída del tab 3 de `2_Dashboard.py` como página independiente con navegación propia.
+- **docs**: README, CHANGELOG, `docs/03_guia_usuario.md` y `docs/05_despliegue.md` actualizados para reflejar el nuevo rol, el nuevo permiso y las tablas de acceso revisadas.
+- **chore(secrets)**: `secrets.toml` y `secrets.toml.example` actualizados: `ver_ingresos` añadido a todos los usuarios existentes + bloque `[users.financiero]` nuevo.
+
+---
+
 ### 2026-05-10 (v20)
 - **feat(ui)**: Rediseño visual completo — línea gráfica alineada con la presentación Interamericana Norte / SAA 2025
 - **refactor(styles)**: Paleta global migrada de electric cyan (`#00E0FF`) a naranja vibrante (`#FF4800`) como acento primario; lime-yellow (`#C2FF00`) como secundario; fondos cálidos oscuros (`#0D0C0A`)

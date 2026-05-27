@@ -148,9 +148,14 @@ name     = "Nombre Completo"
 icon     = "👑"
 
 [users.admin.permissions]
-entrenar_modelos = true
-ver_dashboard    = true
-exportar         = true
+entrenar_modelos      = true
+ver_metricas_tecnicas = true
+ver_predicciones      = true
+exportar              = true
+gestionar_usuarios    = true
+ver_grid_search       = true
+ver_acf_pacf          = true
+ver_ingresos          = true   # acceso a Proyección de Ingresos
 
 [users.analista1]
 email    = "analista@tudominio.com"
@@ -159,9 +164,32 @@ name     = "Analista Uno"
 icon     = "📊"
 
 [users.analista1.permissions]
-entrenar_modelos = true
-ver_dashboard    = true
-exportar         = true
+entrenar_modelos      = true
+ver_metricas_tecnicas = true
+ver_predicciones      = true
+exportar              = true
+gestionar_usuarios    = false
+ver_grid_search       = true
+ver_acf_pacf          = true
+ver_ingresos          = true   # acceso a Proyección de Ingresos
+
+# ── Rol Financiero — solo vista financiera ─────────────────────────────────────
+[users.financiero1]
+email    = "financiero@tudominio.com"
+role     = "financiero"
+name     = "Analista Financiero"
+icon     = "💰"
+
+[users.financiero1.permissions]
+entrenar_modelos      = false
+ver_metricas_tecnicas = false
+ver_predicciones      = true
+exportar              = true
+gestionar_usuarios    = false
+ver_grid_search       = false
+ver_acf_pacf          = false
+ver_ingresos          = true   # acceso a Proyección de Ingresos
+# ──────────────────────────────────────────────────────────────────────────────
 
 [users.gerente]
 email    = "gerente@tudominio.com"
@@ -170,8 +198,14 @@ name     = "Nombre Gerente"
 icon     = "💼"
 
 [users.gerente.permissions]
-ver_dashboard = true
-exportar      = false
+entrenar_modelos      = false
+ver_metricas_tecnicas = false
+ver_predicciones      = true
+exportar              = true
+gestionar_usuarios    = false
+ver_grid_search       = false
+ver_acf_pacf          = false
+ver_ingresos          = false  # sin acceso a Proyección de Ingresos
 
 [users.consultor]
 email    = "consultor@tudominio.com"
@@ -180,7 +214,14 @@ name     = "Nombre Consultor"
 icon     = "👁️"
 
 [users.consultor.permissions]
-ver_dashboard = true
+entrenar_modelos      = false
+ver_metricas_tecnicas = false
+ver_predicciones      = true
+exportar              = false
+gestionar_usuarios    = false
+ver_grid_search       = false
+ver_acf_pacf          = false
+ver_ingresos          = false  # sin acceso a Proyección de Ingresos
 ```
 
 > **Importante:** `.streamlit/secrets.toml` está en `.gitignore` y **nunca debe subirse al repositorio**.

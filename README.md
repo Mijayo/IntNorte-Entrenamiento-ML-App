@@ -11,7 +11,7 @@ app_principal.py              ← Entry point (autenticación + página de inici
 pages/
 ├── 1_Entrenamiento.py        ← Entrenamiento SARIMA (Admin / Analista)
 ├── 2_Dashboard.py            ← Dashboard de negocio (todos los roles)
-├── 3_Proyeccion_Ingresos.py  ← Proyección financiera en USD (todos los roles)
+├── 3_Proyeccion_Ingresos.py  ← Proyección financiera en USD (Admin / Analista / Financiero)
 └── 4_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
 core/                         ← Paquete Python de utilidades
 ├── __init__.py
@@ -137,9 +137,14 @@ name     = "Administrador"
 icon     = "👑"
 
 [users.admin.permissions]
-entrenar_modelos = true
-ver_dashboard    = true
-exportar         = true
+entrenar_modelos      = true
+ver_metricas_tecnicas = true
+ver_predicciones      = true
+exportar              = true
+gestionar_usuarios    = true
+ver_grid_search       = true
+ver_acf_pacf          = true
+ver_ingresos          = true
 # ... ver secrets.toml.example para la lista completa
 ```
 
@@ -211,22 +216,33 @@ streamlit run app_principal.py
 |-----|:-------------:|:---------:|:-------------------:|:--------------:|
 | `admin` | ✅ | ✅ (8 tabs) | ✅ | ✅ |
 | `analyst` | ✅ | ✅ (8 tabs) | ✅ | ✅ |
-| `manager` | — | ✅ (5 tabs) | ✅ | — |
-| `viewer` | — | ✅ (2 tabs) | ✅ | — |
+| `financiero` | — | ✅ (2 tabs) | ✅ | — |
+| `manager` | — | ✅ (5 tabs) | — | — |
+| `viewer` | — | ✅ (2 tabs) | — | — |
 
 **Tabs del Dashboard por rol:**
 
-| Tab | Admin | Analista | Gerente | Viewer |
-|-----|:-----:|:--------:|:-------:|:------:|
-| 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
-| 🔮 Predicciones | ✅ | ✅ | ✅ | ✅ |
-| 💼 Recomendaciones de compra | — | — | ✅ | — |
-| 🔬 ACF/PACF | ✅ | ✅ | — | — |
-| 🔍 Grid Search | ✅ | ✅ | — | — |
-| 🔄 Walk-Forward | ✅ | ✅ | — | — |
-| 📋 Métricas técnicas | ✅ | ✅ | — | — |
-| 🤖 Asistente IA (Gemini) | ✅ | ✅ | ✅ | — |
-| 🏪 Concesionarios | ✅ | ✅ | ✅ | — |
+| Tab | Admin | Analista | Financiero | Gerente | Viewer |
+|-----|:-----:|:--------:|:----------:|:-------:|:------:|
+| 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🔮 Predicciones | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 💼 Recomendaciones de compra | — | — | — | ✅ | — |
+| 🔬 ACF/PACF | ✅ | ✅ | — | — | — |
+| 🔍 Grid Search | ✅ | ✅ | — | — | — |
+| 🔄 Walk-Forward | ✅ | ✅ | — | — | — |
+| 📋 Métricas técnicas | ✅ | ✅ | — | — | — |
+| 🤖 Asistente IA (Gemini) | ✅ | ✅ | — | ✅ | — |
+| 🏪 Concesionarios | ✅ | ✅ | — | ✅ | — |
+
+**Página independiente Proyección Ingresos (`pages/3_Proyeccion_Ingresos.py`):**
+
+| Rol | Acceso | Exportar CSV |
+|-----|:------:|:------------:|
+| `admin` | ✅ | ✅ |
+| `analyst` | ✅ | ✅ |
+| `financiero` | ✅ | ✅ |
+| `manager` | — | — |
+| `viewer` | — | — |
 
 ---
 
@@ -358,7 +374,7 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 
 ## App 3 — Proyección de Ingresos (`pages/3_Proyeccion_Ingresos.py`)
 
-Página independiente disponible para **todos los roles** autenticados. Traduce la predicción SARIMA del modelo activo en cifras financieras en dólares.
+Página independiente disponible para **Admin**, **Analista** y **Financiero** (permiso `ver_ingresos`). Traduce la predicción SARIMA del modelo activo en cifras financieras en dólares.
 
 | Elemento | Descripción |
 |----------|-------------|
@@ -372,7 +388,7 @@ Página independiente disponible para **todos los roles** autenticados. Traduce 
 
 Los ingresos se calculan multiplicando la predicción mensual por el precio efectivo (precio × tipo de cambio). El rango IC se traslada a dólares para comunicar la incertidumbre financiera. La visualización usa barras en overlay: la banda IC 95% aparece como capa semitransparente sobre las barras de ingreso central.
 
-> Extraída del tab 3 de `2_Dashboard.py` el 2026-05-27 para mejorar la navegación y separar la vista financiera de la operativa.
+> Extraída del tab 3 de `2_Dashboard.py` el 2026-05-27 para mejorar la navegación y separar la vista financiera de la operativa. Acceso restringido a roles con permiso `ver_ingresos`: admin, analyst y financiero (2026-05-27).
 
 ---
 

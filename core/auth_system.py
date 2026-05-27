@@ -204,10 +204,11 @@ def show_user_info() -> None:
         remaining = max(0, SESSION_TIMEOUT - int(elapsed.total_seconds() / 60))
 
     role_badges = {
-        'admin':   '<span class="role-badge admin-badge">👑 Admin</span>',
-        'manager': '<span class="role-badge manager-badge">💼 Gerente</span>',
-        'analyst': '<span class="role-badge analyst-badge">📊 Analista</span>',
-        'viewer':  '<span class="role-badge viewer-badge">👁 Viewer</span>',
+        'admin':      '<span class="role-badge admin-badge">👑 Admin</span>',
+        'manager':    '<span class="role-badge manager-badge">💼 Gerente</span>',
+        'analyst':    '<span class="role-badge analyst-badge">📊 Analista</span>',
+        'viewer':     '<span class="role-badge viewer-badge">👁 Viewer</span>',
+        'financiero': '<span class="role-badge analyst-badge">💰 Financiero</span>',
     }
     badge = role_badges.get(st.session_state.role, '')
 
