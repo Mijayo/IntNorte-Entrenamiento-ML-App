@@ -11,7 +11,8 @@ app_principal.py              ← Entry point (autenticación + página de inici
 pages/
 ├── 1_Entrenamiento.py        ← Entrenamiento SARIMA (Admin / Analista)
 ├── 2_Dashboard.py            ← Dashboard de negocio (todos los roles)
-└── 3_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
+├── 3_Proyeccion_Ingresos.py  ← Proyección financiera en USD (todos los roles)
+└── 4_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
 core/                         ← Paquete Python de utilidades
 ├── __init__.py
 ├── auth_system.py            ← Autenticación Supabase Auth + fallback local, sesiones, RBAC
@@ -206,12 +207,26 @@ streamlit run app_principal.py
 
 ## Roles y permisos
 
-| Rol | Entrenamiento | Comparativa ML | Tabs del Dashboard |
-|-----|:-------------:|:--------------:|---------------------|
-| `admin` | ✅ | ✅ | Dashboard, Predicciones, **Proyección Ingresos**, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
-| `analyst` | ✅ | ✅ | Dashboard, Predicciones, **Proyección Ingresos**, ACF/PACF, Grid Search, Walk-Forward, Métricas técnicas, **Asistente IA**, Concesionarios |
-| `manager` | — | — | Dashboard, Predicciones, **Proyección Ingresos**, Recomendaciones de compra, **Asistente IA**, Concesionarios |
-| `viewer` | — | — | Dashboard, Predicciones, **Proyección Ingresos** |
+| Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML |
+|-----|:-------------:|:---------:|:-------------------:|:--------------:|
+| `admin` | ✅ | ✅ (8 tabs) | ✅ | ✅ |
+| `analyst` | ✅ | ✅ (8 tabs) | ✅ | ✅ |
+| `manager` | — | ✅ (5 tabs) | ✅ | — |
+| `viewer` | — | ✅ (2 tabs) | ✅ | — |
+
+**Tabs del Dashboard por rol:**
+
+| Tab | Admin | Analista | Gerente | Viewer |
+|-----|:-----:|:--------:|:-------:|:------:|
+| 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
+| 🔮 Predicciones | ✅ | ✅ | ✅ | ✅ |
+| 💼 Recomendaciones de compra | — | — | ✅ | — |
+| 🔬 ACF/PACF | ✅ | ✅ | — | — |
+| 🔍 Grid Search | ✅ | ✅ | — | — |
+| 🔄 Walk-Forward | ✅ | ✅ | — | — |
+| 📋 Métricas técnicas | ✅ | ✅ | — | — |
+| 🤖 Asistente IA (Gemini) | ✅ | ✅ | ✅ | — |
+| 🏪 Concesionarios | ✅ | ✅ | ✅ | — |
 
 ---
 
@@ -231,7 +246,8 @@ streamlit run app_principal.py
 11. [Dashboard]     Carga el modelo activo automáticamente al arrancar
 12. [Dashboard]     Watcher realtime: notifica via toast si se entrena un modelo nuevo
 13. [Dashboard]     Barra lateral permite cambiar entre cualquier run histórico
-14. [Comparativa]   Carga el mismo histórico y enfrenta 5 modelos en un solo clic
+14. [Proyección]    Ajusta precio, margen y tipo de cambio para ver el escenario financiero
+15. [Comparativa]   Carga el mismo histórico y enfrenta 5 modelos en un solo clic
 ```
 
 Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase y el dashboard lee desde allí.
@@ -289,7 +305,7 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 
 ---
 
-## App 3 — Comparativa ML (`pages/3_Comparativa_ML.py`)
+## App 4 — Comparativa ML (`pages/4_Comparativa_ML.py`)
 
 | Modelo | Tipo | Enfoque |
 |--------|------|---------|
@@ -313,16 +329,17 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 
 | Tab | Admin | Analista | Gerente | Viewer |
 |-----|:-----:|:--------:|:-------:|:------:|
-| Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
-| Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
-| **Proyección Ingresos (USD, horizonte 6 meses)** | ✅ | ✅ | ✅ | ✅ |
-| Recomendaciones de compra | — | — | ✅ | — |
-| Análisis ACF/PACF | ✅ | ✅ | — | — |
-| Resultados Grid Search | ✅ | ✅ | — | — |
-| Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — |
-| Métricas técnicas completas | ✅ | ✅ | — | — |
-| **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
-| Ventas por Concesionario | ✅ | ✅ | ✅ | — |
+| 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
+| 🔮 Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
+| 💼 Recomendaciones de compra | — | — | ✅ | — |
+| 🔬 Análisis ACF/PACF | ✅ | ✅ | — | — |
+| 🔍 Resultados Grid Search | ✅ | ✅ | — | — |
+| 🔄 Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — |
+| 📋 Métricas técnicas completas | ✅ | ✅ | — | — |
+| 🤖 **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
+| 🏪 Ventas por Concesionario | ✅ | ✅ | ✅ | — |
+
+> La proyección financiera (💰 Proyección Ingresos) se trasladó a la página independiente `pages/3_Proyeccion_Ingresos.py` (2026-05-27).
 
 ### Tab Predicciones — conceptos y secciones
 
@@ -337,9 +354,11 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 - **Línea futura** (rojo signal): predicción hacia los próximos N meses con banda IC 95%.
 - **KPI "MAPE real (1 mes)"**: precisión del caso de uso real, objetivo < 15%.
 
-### Tab Proyección de Ingresos — USD, Horizonte 6 Meses
+---
 
-Tab dedicado disponible para **todos los roles**. Traduce la predicción SARIMA en cifras financieras en dólares.
+## App 3 — Proyección de Ingresos (`pages/3_Proyeccion_Ingresos.py`)
+
+Página independiente disponible para **todos los roles** autenticados. Traduce la predicción SARIMA del modelo activo en cifras financieras en dólares.
 
 | Elemento | Descripción |
 |----------|-------------|
@@ -352,6 +371,8 @@ Tab dedicado disponible para **todos los roles**. Traduce la predicción SARIMA 
 | **Exportar CSV** | Disponible para roles con permiso `exportar` |
 
 Los ingresos se calculan multiplicando la predicción mensual por el precio efectivo (precio × tipo de cambio). El rango IC se traslada a dólares para comunicar la incertidumbre financiera. La visualización usa barras en overlay: la banda IC 95% aparece como capa semitransparente sobre las barras de ingreso central.
+
+> Extraída del tab 3 de `2_Dashboard.py` el 2026-05-27 para mejorar la navegación y separar la vista financiera de la operativa.
 
 ---
 
