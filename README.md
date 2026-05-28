@@ -4,6 +4,20 @@ Sistema multipage en Streamlit para entrenar modelos SARIMA, comparar múltiples
 
 ---
 
+## Documentación
+
+| Documento | Contenido |
+|-----------|-----------|
+| [01 — Introducción](docs/01_introduccion.md) | Contexto de negocio, objetivos y alcance del proyecto |
+| [02 — Arquitectura](docs/02_arquitectura.md) | Stack técnico, flujo de datos, módulos y decisiones de diseño |
+| [03 — Guía de usuario](docs/03_guia_usuario.md) | Uso paso a paso de cada página de la aplicación |
+| [04 — Modelos ML](docs/04_modelos_ml.md) | SARIMA, Prophet, Optuna TPE, walk-forward validation, métricas |
+| [05 — Despliegue](docs/05_despliegue.md) | Streamlit Cloud, Supabase, configuración de secretos y tablas SQL |
+| [06 — Conclusiones Iteración 1](docs/06_conclusiones_iteracion1.md) | Resultados, aprendizajes y decisiones de la primera iteración |
+| [07 — Conclusiones Iteración 2](docs/07_conclusiones_iteracion2.md) | Resultados, aprendizajes y decisiones de la segunda iteración |
+
+---
+
 ## Arquitectura
 
 ```
@@ -33,7 +47,9 @@ docs/
 ├── 02_arquitectura.md
 ├── 03_guia_usuario.md
 ├── 04_modelos_ml.md          ← Documentación técnica de modelos ML
-└── 05_despliegue.md
+├── 05_despliegue.md
+├── 06_conclusiones_iteracion1.md
+└── 07_conclusiones_iteracion2.md
 requirements.txt
 .streamlit/
 ├── secrets.toml              ← Credenciales reales (NO en el repo)
@@ -329,6 +345,19 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 ---
 
 ## App 4 — Comparativa ML (`pages/4_Comparativa_ML.py`)
+
+**Flujo de la página (6 secciones):**
+
+| # | Sección | Descripción |
+|---|---------|-------------|
+| 1 | Fuente de datos | Carga desde un run de Supabase o sube un Excel manual |
+| 2 | Período de análisis | Selectboxes Desde/Hasta para recortar el histórico antes de comparar |
+| 3 | Configuración | Partición train/test, modelos a activar y parámetros SARIMAX |
+| 4 | Ejecutar comparación | Botón único — entrena todos los modelos seleccionados en paralelo |
+| 5 | Resultados | Tabla de métricas, gráficas, feature importances y tabla detallada |
+| 6 | Publicar modelo ganador | Activa el run ganador en el Dashboard con un clic |
+
+**Modelos comparados:**
 
 | Modelo | Tipo | Enfoque |
 |--------|------|---------|

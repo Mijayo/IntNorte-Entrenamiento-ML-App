@@ -256,9 +256,11 @@ La **estacionalidad multiplicativa** es apropiada cuando los picos y valles esta
 
 **Regla práctica:** si SARIMAX y Prophet dan MAPEs similares (diferencia < 1%), conviene usar **Prophet en producción** por su menor necesidad de ajuste manual y su mejor manejo de festivos. Si SARIMAX supera a Prophet claramente, probablemente la variable exógena (`ventas_otros`) está aportando información que Prophet no puede capturar.
 
-### Nota sobre la Comparativa ML (v22)
+### Notas sobre la Comparativa ML
 
-La página **4_Comparativa_ML.py** ejecuta desde v22 (2026-05-27) el mismo **SARIMAX** que la página de Entrenamiento: misma variable exógena `ventas_otros`, mismos parámetros (auto-cargados desde `metricas_mejoradas.json`). Antes de esta versión la comparativa ejecutaba SARIMA *sin* exógena, lo que producía un MAPE artificialmente peor para el modelo de serie temporal. La unificación garantiza que todas las métricas comparadas son apples-to-apples.
+**v22 (2026-05-27):** La página **4_Comparativa_ML.py** ejecuta el mismo **SARIMAX** que la página de Entrenamiento: misma variable exógena `ventas_otros`, mismos parámetros (auto-cargados desde `metricas_mejoradas.json`). Antes de esta versión la comparativa ejecutaba SARIMA *sin* exógena, lo que producía un MAPE artificialmente peor para el modelo de serie temporal. La unificación garantiza que todas las métricas comparadas son apples-to-apples.
+
+**v25 (2026-05-28):** La sección **Período de análisis** permite filtrar el histórico cargado a un rango de fechas personalizado (selectboxes Desde / Hasta) antes de lanzar la comparativa. Útil cuando el histórico completo incluye períodos de alta volatilidad (COVID, escasez de chips) que no son representativos del comportamiento actual del mercado, o simplemente cuando el usuario quiere evaluar los modelos sobre un subconjunto más reciente.
 
 ---
 

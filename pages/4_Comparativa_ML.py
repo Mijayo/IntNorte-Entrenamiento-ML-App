@@ -303,8 +303,22 @@ else:
             df_raw = pd.read_excel(uploaded, engine="openpyxl")
             st.dataframe(df_raw.head(), use_container_width=True)
             cols       = df_raw.columns.tolist()
-            col_fecha  = st.selectbox("Columna de fecha:", cols)
-            col_ventas = st.selectbox("Columna de ventas:", [c for c in cols if c != col_fecha])
+            col_fecha  = st.selectbox(
+                "Columna de fecha:", cols,
+                help=(
+                    "Columna que contiene el mes/año de cada registro. "
+                    "Ej: 'Fecha', 'Mes', 'Period'. "
+                    "Los valores deben ser fechas reconocibles: '2022-01', 'Ene 2022', '01/2022'."
+                )
+            )
+            col_ventas = st.selectbox(
+                "Columna de ventas:", [c for c in cols if c != col_fecha],
+                help=(
+                    "Columna numérica con las unidades vendidas del Tiggo 2 en cada período. "
+                    "Ej: 'Ventas', 'Unidades', 'Total'. "
+                    "Si el Excel tiene un registro por venta individual, los valores se sumarán por mes."
+                )
+            )
             _NONE_EXOG = "— Sin variable exógena —"
             col_exog   = st.selectbox(
                 "Variable exógena para SARIMAX (ventas_otros u otra):",
@@ -338,9 +352,49 @@ if ventas_series is None:
     st.info("Carga o sube el histórico para continuar.")
     st.stop()
 
-# ── 2. Configuración ──────────────────────────────────────────────────────────
+# ── 2. Período de análisis ────────────────────────────────────────────────────
 
-st.header("2. Configuración", divider="blue")
+st.header("2. Período de análisis", divider="blue")
+
+_all_months  = pd.date_range(ventas_series.index.min(), ventas_series.index.max(), freq='MS')
+_month_labels = [d.strftime('%b %Y') for d in _all_months]
+_n_total      = len(_all_months)
+
+col_fi, col_ff = st.columns(2)
+with col_fi:
+    idx_inicio = st.selectbox(
+        "Desde:",
+        options=list(range(_n_total)),
+        format_func=lambda i: _month_labels[i],
+        index=0,
+        help=f"Primer mes incluido en el análisis. El histórico disponible comienza en {_month_labels[0]}."
+    )
+with col_ff:
+    idx_fin = st.selectbox(
+        "Hasta:",
+        options=list(range(_n_total)),
+        format_func=lambda i: _month_labels[i],
+        index=_n_total - 1,
+        help=f"Último mes incluido en el análisis. El histórico disponible termina en {_month_labels[-1]}."
+    )
+
+if idx_inicio >= idx_fin:
+    st.error("La fecha de inicio debe ser anterior a la fecha de fin.")
+    st.stop()
+
+_fecha_ini = _all_months[idx_inicio]
+_fecha_fin = _all_months[idx_fin]
+ventas_series = ventas_series[
+    (ventas_series.index >= _fecha_ini) & (ventas_series.index <= _fecha_fin)
+]
+st.caption(
+    f"Período activo: **{_fecha_ini.strftime('%b %Y')} → {_fecha_fin.strftime('%b %Y')}** "
+    f"· {len(ventas_series)} meses"
+)
+
+# ── 3. Configuración ──────────────────────────────────────────────────────────
+
+st.header("3. Configuración", divider="blue")
 
 col_cfg1, col_cfg2 = st.columns(2)
 
@@ -405,7 +459,7 @@ if (usar_lr or usar_rf or (usar_xgb and XGBOOST_OK)) and not hay_suficientes:
 
 # ── 3. Ejecutar ───────────────────────────────────────────────────────────────
 
-st.header("3. Ejecutar comparación", divider="blue")
+st.header("4. Ejecutar comparación", divider="blue")
 
 if not any([usar_sarima, usar_prophet, usar_lr, usar_rf, usar_xgb and XGBOOST_OK]):
     st.warning("Selecciona al menos un modelo.")
@@ -534,7 +588,7 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
 
     # ── 4. Resultados ─────────────────────────────────────────────────────────
 
-    st.header("4. Resultados", divider="blue")
+    st.header("5. Resultados", divider="blue")
 
     df_met = pd.DataFrame(resultados).set_index("Modelo")
 
@@ -705,7 +759,7 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
 
 # ── 5. Publicar en producción ─────────────────────────────────────────────────
 
-st.header("5. Publicar modelo ganador en producción", divider="green")
+st.header("6. Publicar modelo ganador en producción", divider="green")
 
 if "cml_resultados" not in st.session_state:
     st.info("Ejecuta primero la comparación para ver las opciones de publicación.")

@@ -4,6 +4,15 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-28 (v25)
+
+- **feat(comparativa)**: Nueva sección **2. Período de análisis** en `4_Comparativa_ML.py`. Dos selectboxes "Desde / Hasta" con etiquetas mes/año permiten filtrar el histórico cargado antes de comparar modelos — ya no es obligatorio usar el histórico completo (ej. 111 meses). El filtro aplica al split train/test y a todos los modelos antes de que el usuario configure la partición.
+- **ux(comparativa)**: Tooltips (`help=`) añadidos a los selectboxes "Columna de fecha" y "Columna de ventas" en el flujo de carga manual de Excel. Explican qué tipo de columna elegir y muestran ejemplos de nombres habituales (`'Fecha'`, `'Mes'`, `'Ventas'`, `'Unidades'`).
+- **refactor(comparativa)**: Renumeración de secciones: Configuración 2→3, Ejecutar comparación 3→4, Resultados 4→5, Publicar 5→6.
+- **docs**: README, CHANGELOG y `docs/04_modelos_ml.md` actualizados. README añade sección **Documentación** con enlaces directos a todos los docs desde la página principal de GitHub.
+
+---
+
 ### 2026-05-28 (v24)
 
 - **fix(data)**: `data/processed/veh_ml_features.xlsx` ahora incluye la columna **`ventas_otros`** pre-computada. Para cada fila de transacción, `ventas_otros` contiene el conteo mensual de ventas de **otros modelos de la misma marca** vendidos ese mes (total marca – modelo propio). Antes, la columna no existía en el archivo, lo que impedía seleccionarla como variable exógena al subir el archivo manualmente en la página **Comparativa ML**. Ahora está disponible directamente como columna seleccionable (`0–202 uds/mes`, 0 nulos).
