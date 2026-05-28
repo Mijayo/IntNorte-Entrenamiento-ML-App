@@ -232,8 +232,8 @@ streamlit run app_principal.py
 
 | Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML | Concesionarios |
 |-----|:-------------:|:---------:|:-------------------:|:--------------:|:--------------:|
-| `admin` | ✅ | ✅ (8 tabs) | ✅ | ✅ | ✅ |
-| `analyst` | ✅ | ✅ (8 tabs) | ✅ | ✅ | ✅ |
+| `admin` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ |
+| `analyst` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ |
 | `financiero` | — | ✅ (2 tabs) | ✅ | — | — |
 | `manager` | — | ✅ (4 tabs) | — | — | ✅ |
 | `viewer` | — | ✅ (2 tabs) | — | — | — |
@@ -245,13 +245,12 @@ streamlit run app_principal.py
 | 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 🔮 Predicciones | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 💼 Recomendaciones de compra | ✅ | ✅ | — | ✅ | — |
-| 🔬 ACF/PACF | ✅ | ✅ | — | — | — |
-| 🔍 Grid Search | ✅ | ✅ | — | — | — |
 | 🔄 Walk-Forward | ✅ | ✅ | — | — | — |
-| 📋 Métricas técnicas | ✅ | ✅ | — | — | — |
+| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search) | ✅ | ✅ | — | — | — |
 | 🤖 Asistente IA (Gemini) | ✅ | ✅ | — | ✅ | — |
 
 > El tab 🏪 Concesionarios se trasladó a la página independiente `pages/4_Concesionarios.py` (2026-05-28).
+> Los tabs 🔬 ACF/PACF y 🔍 Grid Search se integraron como sub-pestañas de 📋 Métricas Técnicas (2026-05-28).
 
 **Página independiente Proyección Ingresos (`pages/5_Proyeccion_Ingresos.py`):**
 
@@ -387,15 +386,14 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 |-----|:-----:|:--------:|:-------:|:------:|
 | 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
 | 🔮 Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
-| 💼 Recomendaciones de compra | ✅ | — | ✅ | — |
-| 🔬 Análisis ACF/PACF | ✅ | ✅ | — | — |
-| 🔍 Resultados Grid Search | ✅ | ✅ | — | — |
+| 💼 Recomendaciones de compra | ✅ | ✅ | ✅ | — |
 | 🔄 Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — |
-| 📋 Métricas técnicas completas | ✅ | ✅ | — | — |
+| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search) | ✅ | ✅ | — | — |
 | 🤖 **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
-| 🏪 Ventas por Concesionario | ✅ | ✅ | ✅ | — |
 
 > La proyección financiera (💰 Proyección Ingresos) se trasladó a la página independiente `pages/5_Proyeccion_Ingresos.py` (2026-05-27).
+> El tab 🏪 Concesionarios se trasladó a la página independiente `pages/4_Concesionarios.py` (2026-05-28).
+> Los tabs 🔬 ACF/PACF y 🔍 Grid Search se consolidaron como sub-pestañas de 📋 Métricas Técnicas (2026-05-28).
 
 ### Tab Predicciones — conceptos y secciones
 

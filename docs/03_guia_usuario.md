@@ -170,32 +170,15 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 
 ### Tabs disponibles según rol
 
-#### Admin (8 tabs en Dashboard + páginas independientes)
+#### Admin / Analista (6 tabs en Dashboard + páginas independientes)
 
 | Tab / Página | Descripción |
 |---|---|
 | 📊 Dashboard | KPIs: ventas del último mes, MAPE, horizonte. Gráfico del histórico completo. |
 | 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + validación walk-forward. |
 | 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante + marco teórico (Newsvendor Problem, stock de seguridad, nivel de servicio Tipo I). |
-| 🔬 ACF/PACF | Gráficos de autocorrelación para interpretar la estructura de la serie. |
-| 🔍 Grid Search | Resultados de la búsqueda Optuna: top modelos, scatter AIC vs MAPE. |
 | 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
-| 📋 Métricas técnicas | Parámetros completos del modelo, AIC, BIC, residuos. |
-| 🤖 Asistente IA | Chat con Gemini sobre el modelo (ver sección abajo). |
-| 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares. |
-| 🏪 **Concesionarios** *(página independiente)* | Análisis histórico + predicciones desagregadas por tienda. |
-
-#### Analista (8 tabs en Dashboard + páginas independientes)
-
-| Tab / Página | Descripción |
-|---|---|
-| 📊 Dashboard | KPIs: ventas del último mes, MAPE, horizonte. Gráfico del histórico completo. |
-| 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + validación walk-forward. |
-| 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante + marco teórico académico. |
-| 🔬 ACF/PACF | Gráficos de autocorrelación para interpretar la estructura de la serie. |
-| 🔍 Grid Search | Resultados de la búsqueda Optuna: top modelos, scatter AIC vs MAPE. |
-| 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
-| 📋 Métricas técnicas | Parámetros completos del modelo, AIC, BIC, residuos. |
+| 📋 Métricas Técnicas | Tres sub-pestañas: **📊 Resumen** (parámetros SARIMA, AIC/BIC, MAPE), **🔬 ACF/PACF** (gráficos de autocorrelación), **🔍 Grid Search** (top modelos Optuna, scatter AIC vs MAPE). |
 | 🤖 Asistente IA | Chat con Gemini sobre el modelo (ver sección abajo). |
 | 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares. |
 | 🏪 **Concesionarios** *(página independiente)* | Análisis histórico + predicciones desagregadas por tienda. |

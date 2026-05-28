@@ -4,6 +4,13 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-28 (v29)
+
+- **refactor(dashboard)**: Tabs **🔬 ACF/PACF** y **🔍 Grid Search** eliminados de la barra principal de admin/analyst. Ambas vistas se integran como sub-pestañas dentro de **📋 Métricas Técnicas** (sub-tabs: `📊 Resumen · 🔬 ACF/PACF · 🔍 Grid Search`). La barra de tabs pasa de 8 → **6 pestañas** para admin/analyst. Nuevos índices: Walk-Forward → `tabs[3]`, Métricas Técnicas → `tabs[4]`, Asistente IA → `tabs[5]`.
+- **docs**: README, CHANGELOG y `docs/03_guia_usuario.md` actualizados para reflejar la nueva estructura de tabs.
+
+---
+
 ### 2026-05-28 (v28)
 
 - **refactor(pages)**: Reordenación del menú de navegación — nuevo orden: **1 Entrenamiento → 2 Comparativa ML → 3 Dashboard → 4 Concesionarios → 5 Ingresos**. Archivos renombrados: `4_Comparativa_ML.py` → `2_Comparativa_ML.py`, `2_Dashboard.py` → `3_Dashboard.py`, `5_Concesionarios.py` → `4_Concesionarios.py`, `3_Proyeccion_Ingresos.py` → `5_Proyeccion_Ingresos.py`.

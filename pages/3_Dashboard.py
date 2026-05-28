@@ -3,14 +3,14 @@
 PÁGINA: DASHBOARD DE NEGOCIO
 ============================================================================
 Tabs disponibles según rol:
-  admin / analyst : Dashboard · Predicciones · Recomendaciones · ACF/PACF · Grid Search ·
-                    Walk-Forward · Métricas Técnicas · Asistente IA · Concesionarios
-  manager         : Dashboard · Predicciones · Recomendaciones · Asistente IA ·
-                    Concesionarios
+  admin / analyst : Dashboard · Predicciones · Recomendaciones · Walk-Forward ·
+                    Métricas Técnicas (sub-tabs: Resumen · ACF/PACF · Grid Search) ·
+                    Asistente IA
+  manager         : Dashboard · Predicciones · Recomendaciones · Asistente IA
   viewer          : Dashboard · Predicciones
 
 La proyección financiera (💰 Proyección Ingresos) se trasladó a la página
-independiente pages/3_Proyeccion_Ingresos.py (2026-05-27).
+independiente pages/5_Proyeccion_Ingresos.py (2026-05-27).
 ============================================================================
 """
 
@@ -162,7 +162,7 @@ context_tiggo = (
 
 if st.session_state.role in ['admin', 'analyst']:
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones",
-                    "💼 Recomendaciones", "🔬 ACF/PACF", "🔍 Grid Search", "🔄 Walk-Forward",
+                    "💼 Recomendaciones", "🔄 Walk-Forward",
                     "📋 Métricas Técnicas", "🤖 Asistente IA"])
 elif st.session_state.role == 'manager':
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones",
@@ -580,53 +580,8 @@ if st.session_state.role == 'manager':
 
 if st.session_state.role in ['admin', 'analyst']:
 
-    # ACF / PACF
-    with tabs[3]:
-        st.header("🔬 Análisis ACF/PACF", divider='blue')
-        acf_bytes, pacf_bytes = sio.load_acf_pacf_images(selected_run)
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("ACF - Autocorrelación")
-            if acf_bytes:
-                st.image(acf_bytes, use_container_width=True)
-            else:
-                st.warning("Imagen ACF no disponible")
-        with col2:
-            st.subheader("PACF - Autocorrelación Parcial")
-            if pacf_bytes:
-                st.image(pacf_bytes, use_container_width=True)
-            else:
-                st.warning("Imagen PACF no disponible")
-
-    # Grid Search
-    with tabs[4]:
-        st.markdown(section_header("Grid Search de Parámetros", "🔍"), unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
-        col1.markdown(kpi_card("Combinaciones", len(grid_search), "🔢"), unsafe_allow_html=True)
-        col2.markdown(kpi_card("Mejor MAPE", f"{grid_search['mape'].min():.2f}%", "🎯", "amber"), unsafe_allow_html=True)
-        col3.markdown(kpi_card("AIC seleccionado", f"{grid_search.loc[grid_search['mape'].idxmin(), 'aic']:.0f}", "📐", "blue"), unsafe_allow_html=True)
-
-        st.subheader("Top 10 Modelos por MAPE")
-        top10 = grid_search.nsmallest(10, 'mape')[
-            ['p', 'd', 'q', 'P', 'D', 'Q', 'mape', 'mae', 'rmse', 'aic', 'bic']
-        ]
-        st.dataframe(
-            top10.style
-                 .background_gradient(subset=['mape'], cmap='RdYlGn_r')
-                 .background_gradient(subset=['aic'], cmap='Greens_r')
-                 .format({'aic': '{:.2f}', 'bic': '{:.2f}',
-                          'mape': '{:.2f}%', 'mae': '{:.2f}', 'rmse': '{:.2f}'}),
-            use_container_width=True, hide_index=True
-        )
-
-        fig_grid = px.scatter(grid_search, x='aic', y='mape', color='p', size='mae',
-                              hover_data=['p', 'd', 'q', 'P', 'D', 'Q'],
-                              color_continuous_scale='Teal')
-        apply_chart_theme(fig_grid, height=480, title='Grid Search — AIC vs MAPE')
-        st.plotly_chart(fig_grid, use_container_width=True, config={'displayModeBar': False})
-
     # Walk-Forward
-    with tabs[5]:
+    with tabs[3]:
         st.markdown(section_header("Walk-Forward Validation", "🔄"), unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         col1.markdown(kpi_card("MAPE Promedio",   f"{walk_forward['error_pct'].mean():.2f}%", "📊", "amber"), unsafe_allow_html=True)
@@ -662,34 +617,83 @@ if st.session_state.role in ['admin', 'analyst']:
             use_container_width=True, hide_index=True
         )
 
-    # Métricas Técnicas
-    with tabs[6]:
+    # Métricas Técnicas (con sub-tabs: Resumen · ACF/PACF · Grid Search)
+    with tabs[4]:
         st.header("📋 Métricas Técnicas Completas", divider='gray')
-        col1, col2 = st.columns(2)
-        orden = metricas['mejor_modelo']['order']
-        orden_est = metricas['mejor_modelo']['seasonal_order']
-        with col1:
-            st.markdown("**Parámetros SARIMA:**")
-            st.code(f"order = ({orden[0]}, {orden[1]}, {orden[2]})\n"
-                    f"seasonal_order = ({orden_est[0]}, {orden_est[1]}, {orden_est[2]}, 12)\n\n"
-                    f"p={orden[0]} (AR)  d={orden[1]} (dif)  q={orden[2]} (MA)\n"
-                    f"P={orden_est[0]} (AR_s)  D={orden_est[1]} (dif_s)  "
-                    f"Q={orden_est[2]} (MA_s)  m=12")
-        with col2:
-            st.markdown("**Métricas de Ajuste:**")
-            cfg = metricas.get('configuracion', {})
-            st.code(f"AIC: {metricas['mejor_modelo']['aic']:.2f}\n"
-                    f"BIC: {metricas['mejor_modelo']['bic']:.2f}\n\n"
-                    f"MAPE (walk-forward): {metricas['walk_forward_validation']['mape']:.2f}%\n\n"
-                    f"Ventas: {metricas['datos_limpios']['total_ventas']:,}\n"
-                    f"Meses:  {metricas['datos_limpios']['meses_datos']}\n"
-                    f"Período: {metricas['datos_limpios']['periodo']}\n"
-                    f"Horizonte: {cfg.get('horizonte', 6)} meses")
+        sub_tabs = st.tabs(["📊 Resumen", "🔬 ACF/PACF", "🔍 Grid Search"])
+
+        # ── Sub-tab 1: Resumen ────────────────────────────────────────────────
+        with sub_tabs[0]:
+            col1, col2 = st.columns(2)
+            orden = metricas['mejor_modelo']['order']
+            orden_est = metricas['mejor_modelo']['seasonal_order']
+            with col1:
+                st.markdown("**Parámetros SARIMA:**")
+                st.code(f"order = ({orden[0]}, {orden[1]}, {orden[2]})\n"
+                        f"seasonal_order = ({orden_est[0]}, {orden_est[1]}, {orden_est[2]}, 12)\n\n"
+                        f"p={orden[0]} (AR)  d={orden[1]} (dif)  q={orden[2]} (MA)\n"
+                        f"P={orden_est[0]} (AR_s)  D={orden_est[1]} (dif_s)  "
+                        f"Q={orden_est[2]} (MA_s)  m=12")
+            with col2:
+                st.markdown("**Métricas de Ajuste:**")
+                cfg = metricas.get('configuracion', {})
+                st.code(f"AIC: {metricas['mejor_modelo']['aic']:.2f}\n"
+                        f"BIC: {metricas['mejor_modelo']['bic']:.2f}\n\n"
+                        f"MAPE (walk-forward): {metricas['walk_forward_validation']['mape']:.2f}%\n\n"
+                        f"Ventas: {metricas['datos_limpios']['total_ventas']:,}\n"
+                        f"Meses:  {metricas['datos_limpios']['meses_datos']}\n"
+                        f"Período: {metricas['datos_limpios']['periodo']}\n"
+                        f"Horizonte: {cfg.get('horizonte', 6)} meses")
+
+        # ── Sub-tab 2: ACF/PACF ───────────────────────────────────────────────
+        with sub_tabs[1]:
+            st.subheader("🔬 Análisis ACF/PACF")
+            acf_bytes, pacf_bytes = sio.load_acf_pacf_images(selected_run)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("ACF — Autocorrelación")
+                if acf_bytes:
+                    st.image(acf_bytes, use_container_width=True)
+                else:
+                    st.warning("Imagen ACF no disponible")
+            with col2:
+                st.subheader("PACF — Autocorrelación Parcial")
+                if pacf_bytes:
+                    st.image(pacf_bytes, use_container_width=True)
+                else:
+                    st.warning("Imagen PACF no disponible")
+
+        # ── Sub-tab 3: Grid Search ────────────────────────────────────────────
+        with sub_tabs[2]:
+            st.markdown(section_header("Grid Search de Parámetros", "🔍"), unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            col1.markdown(kpi_card("Combinaciones", len(grid_search), "🔢"), unsafe_allow_html=True)
+            col2.markdown(kpi_card("Mejor MAPE", f"{grid_search['mape'].min():.2f}%", "🎯", "amber"), unsafe_allow_html=True)
+            col3.markdown(kpi_card("AIC seleccionado", f"{grid_search.loc[grid_search['mape'].idxmin(), 'aic']:.0f}", "📐", "blue"), unsafe_allow_html=True)
+
+            st.subheader("Top 10 Modelos por MAPE")
+            top10 = grid_search.nsmallest(10, 'mape')[
+                ['p', 'd', 'q', 'P', 'D', 'Q', 'mape', 'mae', 'rmse', 'aic', 'bic']
+            ]
+            st.dataframe(
+                top10.style
+                     .background_gradient(subset=['mape'], cmap='RdYlGn_r')
+                     .background_gradient(subset=['aic'], cmap='Greens_r')
+                     .format({'aic': '{:.2f}', 'bic': '{:.2f}',
+                              'mape': '{:.2f}%', 'mae': '{:.2f}', 'rmse': '{:.2f}'}),
+                use_container_width=True, hide_index=True
+            )
+
+            fig_grid = px.scatter(grid_search, x='aic', y='mape', color='p', size='mae',
+                                  hover_data=['p', 'd', 'q', 'P', 'D', 'Q'],
+                                  color_continuous_scale='Teal')
+            apply_chart_theme(fig_grid, height=480, title='Grid Search — AIC vs MAPE')
+            st.plotly_chart(fig_grid, use_container_width=True, config={'displayModeBar': False})
 
 # ── Tab LLM (admin / analyst) ────────────────────────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst']:
-    with tabs[7]:
+    with tabs[5]:
         st.header("🤖 Asistente IA", divider='violet')
         st.markdown(
             "Consulta al asistente sobre las predicciones, el modelo SARIMA o las métricas de validación. "
