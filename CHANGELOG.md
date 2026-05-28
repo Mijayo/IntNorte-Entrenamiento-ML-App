@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-28 (v26)
+
+- **fix(supabase_io)**: `load_current_model()` ahora detecta correctamente el modelo de producción cuando `latest.txt` no existe o está desactualizado. La función ahora sigue el mismo orden de prioridad que `get_default_run()`: primero consulta `activo=TRUE` en PostgreSQL, y solo si falla cae a `latest.txt` como backup. Antes solo leía `latest.txt`, lo que hacía que el tab **Comparación: Nuevo vs Actual** mostrara "No hay modelo previo" aunque hubiera un run activo en DB.
+
+---
+
 ### 2026-05-28 (v25)
 
 - **feat(comparativa)**: Nueva sección **2. Período de análisis** en `4_Comparativa_ML.py`. Dos selectboxes "Desde / Hasta" con etiquetas mes/año permiten filtrar el histórico cargado antes de comparar modelos — ya no es obligatorio usar el histórico completo (ej. 111 meses). El filtro aplica al split train/test y a todos los modelos antes de que el usuario configure la partición.

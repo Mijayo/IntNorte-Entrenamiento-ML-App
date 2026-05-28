@@ -334,11 +334,26 @@ def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:
 
 def load_current_model() -> dict | None:
     """Carga métricas del modelo activo. Devuelve None si no existe."""
+    run_name = None
+    # 1. Buscar en DB (activo=TRUE)
     try:
-        run_name = _download("latest.txt").decode().strip()
+        rows = _db().select("run_name").eq("activo", True).limit(1).execute().data
+        if rows:
+            run_name = rows[0]["run_name"]
+    except Exception as e:
+        log.debug("No se pudo consultar activo en DB: %s", e)
+    # 2. Fallback: latest.txt en Storage
+    if not run_name:
+        try:
+            run_name = _download("latest.txt").decode().strip()
+        except Exception as e:
+            log.debug("latest.txt no disponible: %s", e)
+    if not run_name:
+        return None
+    try:
         return json.loads(_download(f"{run_name}/metricas_mejoradas.json"))
     except Exception as e:
-        log.debug("No se pudo cargar el modelo actual: %s", e)
+        log.debug("No se pudo cargar métricas del modelo activo '%s': %s", run_name, e)
         return None
 
 

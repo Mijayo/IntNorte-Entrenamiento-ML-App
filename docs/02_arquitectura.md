@@ -127,6 +127,7 @@ Toda la comunicación con Supabase pasa por este módulo. Ninguna página import
 | `load_precargados(run_name)` | Descarga y parsea artefactos de un run (cacheado 10 min) |
 | `get_available_runs()` | Lista runs desde PostgreSQL (fallback: `training_log.json`), filtrando los que tienen artefactos en Storage |
 | `get_default_run(runs)` | Run activo: primero `activo=TRUE` en DB, luego `latest.txt` |
+| `load_current_model()` | Métricas del modelo activo: misma prioridad que `get_default_run` (DB → `latest.txt`) |
 | `approve_model(run_name, usuario)` | Marca `activo=TRUE` en DB + actualiza `latest.txt` + registra en audit log |
 | `delete_run(run_name, usuario)` | Elimina de DB + registra en audit log |
 | `save_training_log(entry)` | Upsert en `training_runs` + backup en `training_log.json` |
