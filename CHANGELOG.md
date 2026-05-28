@@ -4,6 +4,13 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-28 (v24)
+
+- **fix(data)**: `data/processed/veh_ml_features.xlsx` ahora incluye la columna **`ventas_otros`** pre-computada. Para cada fila de transacción, `ventas_otros` contiene el conteo mensual de ventas de **otros modelos de la misma marca** vendidos ese mes (total marca – modelo propio). Antes, la columna no existía en el archivo, lo que impedía seleccionarla como variable exógena al subir el archivo manualmente en la página **Comparativa ML**. Ahora está disponible directamente como columna seleccionable (`0–202 uds/mes`, 0 nulos).
+- **docs**: README, CHANGELOG y `docs/04_modelos_ml.md` actualizados para documentar la columna `ventas_otros` en `veh_ml_features.xlsx` y su uso en el flujo de subida manual de Comparativa ML.
+
+---
+
 ### 2026-05-28 (v23)
 
 - **config(auth)**: `SESSION_TIMEOUT` aumentado de 30 → **60 minutos** en `core/auth_system.py`. Reduce interrupciones de sesión para flujos de trabajo de entrenamiento largos.

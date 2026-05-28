@@ -24,7 +24,7 @@ tests/
 └── test_validacion.py        ← 17 tests unitarios de utils_validacion
 data/                         ← Datos locales — gitignored, nunca en el repo
 ├── raw/                      ← Excel histórico de ventas (fuente)
-├── processed/                ← Datasets transformados (veh_ml_features.xlsx)
+├── processed/                ← Datasets transformados (veh_ml_features.xlsx — incluye columna ventas_otros)
 ├── monthly/                  ← Ventas mensuales reales para actualización
 └── artifacts/                ← Artefactos del modelo generados localmente
 docs/
@@ -287,6 +287,12 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 | `FECHA-VENTA` | Fecha de venta (parseable por pandas) |
 | `MARCA` | Marca del vehículo |
 | `MODELO3` | Nombre del modelo |
+
+**Columna adicional en `data/processed/veh_ml_features.xlsx`:**
+
+| Columna | Descripción |
+|---------|-------------|
+| `ventas_otros` | Conteo mensual de ventas de **otros modelos de la misma marca** ese mes (`total_marca – modelo_propio`). Rango 0–202 uds/mes. Permite seleccionarla directamente como variable exógena al subir este archivo en la página Comparativa ML. |
 
 ### Pestañas de la app de Entrenamiento
 

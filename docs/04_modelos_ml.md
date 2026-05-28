@@ -59,6 +59,8 @@ Se escribe como **SARIMA(p, d, q)(P, D, Q, m)** donde cada letra es un hiperpar�
 
 En este sistema se usa la variante **SARIMAX** (la X es de e**X**ógena), que añade una variable externa como señal adicional. La variable exógena es el **total mensual de ventas de los demás modelos de la misma marca**.
 
+> **`data/processed/veh_ml_features.xlsx`** incluye la columna `ventas_otros` pre-computada en cada fila de transacción (conteo mensual de otros modelos de la misma marca ese mes). Esto permite seleccionarla directamente como variable exógena al subir el archivo manualmente en la página Comparativa ML, replicando el mismo cálculo que realiza internamente la página de Entrenamiento.
+
 La intuición es que si en un mes se venden muchas unidades de otros modelos CHERY, es probable que el contexto de mercado (campañas, eventos) también favorezca las ventas del TIGGO 2. Esta señal ayuda al modelo a capturar efectos que la propia serie del TIGGO 2 no tiene suficiente historia para detectar.
 
 #### Proyección de la variable exógena en el horizonte
