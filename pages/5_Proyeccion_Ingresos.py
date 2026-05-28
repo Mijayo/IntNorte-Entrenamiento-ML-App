@@ -100,7 +100,7 @@ inp_col1, inp_col2, inp_col3 = st.columns(3)
 with inp_col1:
     precio_usd = st.number_input(
         "Precio medio por unidad (USD $)",
-        min_value=1_000, max_value=500_000, value=27_000, step=500,
+        min_value=1_000, max_value=500_000, value=15_000, step=500,
         format="%d",
         help="Precio de venta neto por unidad en dólares.",
     )

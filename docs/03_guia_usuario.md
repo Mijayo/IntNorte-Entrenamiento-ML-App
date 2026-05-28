@@ -275,7 +275,7 @@ Página independiente que traduce la predicción SARIMA en cifras financieras en
 
 | Campo | Por defecto | Descripción |
 |-------|-------------|-------------|
-| Precio medio por unidad (USD $) | 27 000 $ | Precio neto de venta por vehículo en dólares |
+| Precio medio por unidad (USD $) | 15 000 $ | Precio neto de venta por vehículo en dólares |
 | Margen neto estimado (%) | 8 % | Porcentaje de beneficio neto; pon 0 para omitirlo |
 | Tipo de cambio | 1.00 | Multiplica el precio para convertir a moneda local si aplica |
 

@@ -277,7 +277,7 @@ with tab_evo:
                 mode='lines', name=col_name,
                 stackgroup='one',
                 line=dict(color=COLORS['series'][i % len(COLORS['series'])], width=0),
-                fillcolor=COLORS['series'][i % len(COLORS['series'])].replace('#', 'rgba(') + ',0.75)',
+                fillcolor='rgba({},{},{},0.75)'.format(*bytes.fromhex(COLORS['series'][i % len(COLORS['series'])].lstrip('#'))),
                 hovertemplate='%{y:.1f}%<extra>' + col_name + '</extra>',
             ))
         apply_chart_theme(fig_share, height=320, title='Share de Mercado Mensual (%)')

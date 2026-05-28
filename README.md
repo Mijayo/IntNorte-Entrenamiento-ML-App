@@ -24,10 +24,10 @@ Sistema multipage en Streamlit para entrenar modelos SARIMA, comparar múltiples
 app_principal.py              ← Entry point (autenticación + página de inicio)
 pages/
 ├── 1_Entrenamiento.py        ← Entrenamiento SARIMA (Admin / Analista)
-├── 2_Dashboard.py            ← Dashboard de negocio (todos los roles)
-├── 3_Proyeccion_Ingresos.py  ← Proyección financiera en USD (Admin / Analista / Financiero)
-├── 4_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
-└── 5_Concesionarios.py       ← Análisis histórico + predicciones por tienda (Admin / Analista / Manager)
+├── 2_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
+├── 3_Dashboard.py            ← Dashboard de negocio (todos los roles)
+├── 4_Concesionarios.py       ← Análisis histórico + predicciones por tienda (Admin / Analista / Manager)
+└── 5_Proyeccion_Ingresos.py  ← Proyección financiera en USD (Admin / Analista / Financiero)
 core/                         ← Paquete Python de utilidades
 ├── __init__.py
 ├── auth_system.py            ← Autenticación Supabase Auth + fallback local, sesiones, RBAC
@@ -251,9 +251,9 @@ streamlit run app_principal.py
 | 📋 Métricas técnicas | ✅ | ✅ | — | — | — |
 | 🤖 Asistente IA (Gemini) | ✅ | ✅ | — | ✅ | — |
 
-> El tab 🏪 Concesionarios se trasladó a la página independiente `pages/5_Concesionarios.py` (2026-05-28).
+> El tab 🏪 Concesionarios se trasladó a la página independiente `pages/4_Concesionarios.py` (2026-05-28).
 
-**Página independiente Proyección Ingresos (`pages/3_Proyeccion_Ingresos.py`):**
+**Página independiente Proyección Ingresos (`pages/5_Proyeccion_Ingresos.py`):**
 
 | Rol | Acceso | Exportar CSV |
 |-----|:------:|:------------:|
@@ -346,7 +346,7 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 
 ---
 
-## App 4 — Comparativa ML (`pages/4_Comparativa_ML.py`)
+## App 2 — Comparativa ML (`pages/2_Comparativa_ML.py`)
 
 **Flujo de la página (6 secciones):**
 
@@ -375,7 +375,7 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 
 ---
 
-## App 2 — Dashboard (`pages/2_Dashboard.py`)
+## App 3 — Dashboard (`pages/3_Dashboard.py`)
 
 ### Selector de versión y Realtime
 
@@ -395,7 +395,7 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 | 🤖 **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
 | 🏪 Ventas por Concesionario | ✅ | ✅ | ✅ | — |
 
-> La proyección financiera (💰 Proyección Ingresos) se trasladó a la página independiente `pages/3_Proyeccion_Ingresos.py` (2026-05-27).
+> La proyección financiera (💰 Proyección Ingresos) se trasladó a la página independiente `pages/5_Proyeccion_Ingresos.py` (2026-05-27).
 
 ### Tab Predicciones — conceptos y secciones
 
@@ -412,13 +412,13 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 
 ---
 
-## App 3 — Proyección de Ingresos (`pages/3_Proyeccion_Ingresos.py`)
+## App 5 — Proyección de Ingresos (`pages/5_Proyeccion_Ingresos.py`)
 
 Página independiente disponible para **Admin**, **Analista** y **Financiero** (permiso `ver_ingresos`). Traduce la predicción SARIMA del modelo activo en cifras financieras en dólares.
 
 | Elemento | Descripción |
 |----------|-------------|
-| **Precio por unidad (USD $)** | Input configurable (default 27 000 $) |
+| **Precio por unidad (USD $)** | Input configurable (default 15 000 $) |
 | **Margen neto (%)** | Input opcional — si > 0 añade KPI y columna de beneficio |
 | **Tipo de cambio** | Factor multiplicador para convertir a moneda local (default 1.0) |
 | **KPIs** | Unidades totales, Ingresos centrales, Rango IC 95% en $, Beneficio estimado (si margen > 0) |
@@ -432,7 +432,7 @@ Los ingresos se calculan multiplicando la predicción mensual por el precio efec
 
 ---
 
-## App 5 — Concesionarios (`pages/5_Concesionarios.py`)
+## App 4 — Concesionarios (`pages/4_Concesionarios.py`)
 
 Página independiente disponible para **Admin**, **Analista** y **Manager**. Combina el análisis histórico de ventas desagregado por tienda con predicciones SARIMA distribuidas mediante shares.
 
