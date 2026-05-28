@@ -7,7 +7,14 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 ### 2026-05-28 (v23)
 
 - **config(auth)**: `SESSION_TIMEOUT` aumentado de 30 → **60 minutos** en `core/auth_system.py`. Reduce interrupciones de sesión para flujos de trabajo de entrenamiento largos.
-- **docs**: README, CHANGELOG, `docs/02_arquitectura.md`, `docs/03_guia_usuario.md` y `docs/05_despliegue.md` actualizados para reflejar el nuevo timeout de sesión.
+- **feat(dashboard)**: Tab **💼 Recomendaciones de Compra** ahora accesible también para el rol `admin` (antes exclusivo de `manager`). El rol admin dispone de 9 tabs en Dashboard (antes 8); índices de ACF/PACF, Grid Search, Walk-Forward, Métricas Técnicas, Asistente IA y Concesionarios desplazados +1.
+- **feat(recomendaciones)**: Nuevo expander **📚 Marco teórico — ¿Por qué estas estrategias?** dentro del tab Recomendaciones. Explica el fundamento académico de cada estrategia de compra:
+  - **Newsvendor Problem** (Scarf, 1958): justifica usar el percentil 97.5 (IC superior 95%) como base del pedido cuando `c_u > c_o`.
+  - **Estrategia Conservadora (+10%)**: stock de seguridad `SS = z · σ_L` (Silver, Pyke & Thomas, 1998) para absorber el error residual del modelo y variabilidad exógena no capturada.
+  - **Estrategia Agresiva (+20%)**: nivel de servicio Tipo I ~99%, apropiado cuando el lead time de importación es largo (60–90 días) o la tendencia reciente es creciente.
+  - **Señal de tendencia**: fórmula de variación relativa 3 meses vs histórico y sus umbrales de decisión (±10%).
+  - **Tabla de limitaciones**: condiciones de validez de los supuestos SARIMA (gaussianidad, estacionariedad, MAPE < 15%).
+- **docs**: README, CHANGELOG, `docs/02_arquitectura.md`, `docs/03_guia_usuario.md` y `docs/05_despliegue.md` actualizados para reflejar el nuevo timeout, el acceso extendido al tab Recomendaciones y el marco teórico.
 
 ---
 

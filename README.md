@@ -215,8 +215,8 @@ streamlit run app_principal.py
 
 | Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML |
 |-----|:-------------:|:---------:|:-------------------:|:--------------:|
-| `admin` | ✅ | ✅ (8 tabs) | ✅ | ✅ |
-| `analyst` | ✅ | ✅ (8 tabs) | ✅ | ✅ |
+| `admin` | ✅ | ✅ (9 tabs) | ✅ | ✅ |
+| `analyst` | ✅ | ✅ (9 tabs) | ✅ | ✅ |
 | `financiero` | — | ✅ (2 tabs) | ✅ | — |
 | `manager` | — | ✅ (5 tabs) | — | — |
 | `viewer` | — | ✅ (2 tabs) | — | — |
@@ -227,7 +227,7 @@ streamlit run app_principal.py
 |-----|:-----:|:--------:|:----------:|:-------:|:------:|
 | 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 🔮 Predicciones | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 💼 Recomendaciones de compra | — | — | — | ✅ | — |
+| 💼 Recomendaciones de compra | ✅ | — | — | ✅ | — |
 | 🔬 ACF/PACF | ✅ | ✅ | — | — | — |
 | 🔍 Grid Search | ✅ | ✅ | — | — | — |
 | 🔄 Walk-Forward | ✅ | ✅ | — | — | — |
@@ -350,7 +350,7 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 |-----|:-----:|:--------:|:-------:|:------:|
 | 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
 | 🔮 Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
-| 💼 Recomendaciones de compra | — | — | ✅ | — |
+| 💼 Recomendaciones de compra | ✅ | — | ✅ | — |
 | 🔬 Análisis ACF/PACF | ✅ | ✅ | — | — |
 | 🔍 Resultados Grid Search | ✅ | ✅ | — | — |
 | 🔄 Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — |

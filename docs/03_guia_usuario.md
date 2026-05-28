@@ -170,7 +170,22 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 
 ### Tabs disponibles según rol
 
-#### Admin y Analista (8 tabs en Dashboard + página Proyección Ingresos)
+#### Admin (9 tabs en Dashboard + página Proyección Ingresos)
+
+| Tab / Página | Descripción |
+|---|---|
+| 📊 Dashboard | KPIs: ventas del último mes, MAPE, horizonte. Gráfico del histórico completo. |
+| 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + validación walk-forward. |
+| 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante + marco teórico (Newsvendor Problem, stock de seguridad, nivel de servicio Tipo I). |
+| 🔬 ACF/PACF | Gráficos de autocorrelación para interpretar la estructura de la serie. |
+| 🔍 Grid Search | Resultados de la búsqueda Optuna: top modelos, scatter AIC vs MAPE. |
+| 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
+| 📋 Métricas técnicas | Parámetros completos del modelo, AIC, BIC, residuos. |
+| 🤖 Asistente IA | Chat con Gemini sobre el modelo (ver sección abajo). |
+| 🏪 Concesionarios | Análisis de ventas por distribuidor (requiere cargar Excel en el sidebar). |
+| 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares. |
+
+#### Analista (8 tabs en Dashboard + página Proyección Ingresos)
 
 | Tab / Página | Descripción |
 |---|---|
@@ -200,13 +215,38 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 |-----|-------------|
 | 📊 Dashboard | KPIs e histórico. |
 | 🔮 Predicciones | Predicciones mes a mes con IC 95% + validación walk-forward. |
-| 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante. |
+| 💼 Recomendaciones | Escenarios conservador (+10%) y agresivo (+20%) de compra al fabricante, análisis de tendencia y expander con marco teórico académico. |
 | 🤖 Asistente IA | Chat orientado a decisiones de negocio. |
 | 🏪 Concesionarios | Análisis por distribuidor. |
 
 #### Viewer (2 tabs)
 
 Dashboard básico y predicciones, sin métricas técnicas ni IA ni proyección financiera.
+
+---
+
+### Tab Recomendaciones de Compra
+
+> Disponible para: `admin`, `manager`
+
+Muestra el análisis de demanda del próximo mes y dos escenarios de pedido al fabricante.
+
+**Métricas mostradas:**
+- Predicción puntual y rango IC 95% para el mes siguiente.
+- **Estrategia Conservadora** — IC superior + 10%: minimiza sobrestock; recomendada cuando la tendencia es estable o decreciente.
+- **Estrategia Agresiva** — IC superior + 20%: maximiza cobertura; recomendada cuando la tendencia es creciente o el lead time de importación es largo.
+- **Señal de tendencia** — comparación de los últimos 3 meses vs el promedio histórico (umbral ±10%).
+
+**Expander "📚 Marco teórico — ¿Por qué estas estrategias?"** *(disponible para profundizar)*
+
+Explica el fundamento académico de cada recomendación:
+
+| Concepto | Referencia |
+|----------|-----------|
+| Newsvendor Problem | Scarf (1958) — uso del percentil alto como base cuando el coste de rotura supera al de sobrestock |
+| Stock de seguridad (+10%) | Silver, Pyke & Thomas (1998) — `SS = z · σ_L` para absorber error residual del modelo |
+| Nivel de servicio Tipo I (+20%) | Zipkin (2000) — cubre ~99% de los escenarios cuando lead time > 60 días |
+| Tabla de limitaciones | Condiciones de validez: gaussianidad, estacionariedad, MAPE < 15% |
 
 ---
 
