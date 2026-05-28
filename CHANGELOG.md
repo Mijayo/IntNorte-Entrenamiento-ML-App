@@ -4,6 +4,18 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-28 (v27)
+
+- **feat(pages)**: **`pages/5_Concesionarios.py`** — nueva página independiente de análisis y predicciones por concesionario. Accesible para los roles `admin`, `analyst` y `manager`.
+- **feat(concesionarios)**: 4 tabs — **📊 Resumen** (barras horizontales de ventas totales + mix de modelos por concesionario), **📈 Evolución Mensual** (líneas por concesionario, share % 100% stacked area, variación MoM), **🔮 Predicciones por Tienda** (shares de los últimos 12 meses aplicados sobre la predicción SARIMA total + IC 95% desagregados por tienda), **📋 Detalle** (ranking + pivot mensual exportable).
+- **feat(concesionarios)**: Editor inline de shares (`st.data_editor`) para simular cambios en la distribución (apertura/cierre de tiendas, campañas locales). Los shares editados se renormalizan y se aplican inmediatamente a la predicción.
+- **feat(concesionarios)**: KPIs del próximo mes por concesionario — una tarjeta por tienda con predicción central e IC 95%.
+- **feat(concesionarios)**: Gráfico histórico + predicción por concesionario con banda IC 95% semitransparente por tienda y línea vertical de corte histó­rico/predicción.
+- **feat(concesionarios)**: Barras apiladas de horizonte completo con hover IC 95%, y tabla de predicciones con gradiente de color; exportar CSV para roles con permiso `exportar`.
+- **refactor(dashboard)**: Tab **🏪 Concesionarios** eliminado de `2_Dashboard.py` — la funcionalidad se traslada completa a la nueva página propia. Dashboard queda en **8 tabs** para admin/analyst (elimina Concesionarios), **4 tabs** para manager, **2 tabs** para viewer/financiero.
+
+---
+
 ### 2026-05-28 (v26)
 
 - **fix(supabase_io)**: `load_current_model()` ahora detecta correctamente el modelo de producción cuando `latest.txt` no existe o está desactualizado. La función ahora sigue el mismo orden de prioridad que `get_default_run()`: primero consulta `activo=TRUE` en PostgreSQL, y solo si falla cae a `latest.txt` como backup. Antes solo leía `latest.txt`, lo que hacía que el tab **Comparación: Nuevo vs Actual** mostrara "No hay modelo previo" aunque hubiera un run activo en DB.

@@ -26,7 +26,8 @@ pages/
 ├── 1_Entrenamiento.py        ← Entrenamiento SARIMA (Admin / Analista)
 ├── 2_Dashboard.py            ← Dashboard de negocio (todos los roles)
 ├── 3_Proyeccion_Ingresos.py  ← Proyección financiera en USD (Admin / Analista / Financiero)
-└── 4_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
+├── 4_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
+└── 5_Concesionarios.py       ← Análisis histórico + predicciones por tienda (Admin / Analista / Manager)
 core/                         ← Paquete Python de utilidades
 ├── __init__.py
 ├── auth_system.py            ← Autenticación Supabase Auth + fallback local, sesiones, RBAC
@@ -46,7 +47,7 @@ docs/
 ├── 01_introduccion.md
 ├── 02_arquitectura.md
 ├── 03_guia_usuario.md
-├── 04_modelos_ml.md          ← Documentación técnica de modelos ML
+├── 04_modelos_ml.md
 ├── 05_despliegue.md
 ├── 06_conclusiones_iteracion1.md
 └── 07_conclusiones_iteracion2.md
@@ -229,13 +230,13 @@ streamlit run app_principal.py
 
 ## Roles y permisos
 
-| Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML |
-|-----|:-------------:|:---------:|:-------------------:|:--------------:|
-| `admin` | ✅ | ✅ (9 tabs) | ✅ | ✅ |
-| `analyst` | ✅ | ✅ (9 tabs) | ✅ | ✅ |
-| `financiero` | — | ✅ (2 tabs) | ✅ | — |
-| `manager` | — | ✅ (5 tabs) | — | — |
-| `viewer` | — | ✅ (2 tabs) | — | — |
+| Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML | Concesionarios |
+|-----|:-------------:|:---------:|:-------------------:|:--------------:|:--------------:|
+| `admin` | ✅ | ✅ (8 tabs) | ✅ | ✅ | ✅ |
+| `analyst` | ✅ | ✅ (8 tabs) | ✅ | ✅ | ✅ |
+| `financiero` | — | ✅ (2 tabs) | ✅ | — | — |
+| `manager` | — | ✅ (4 tabs) | — | — | ✅ |
+| `viewer` | — | ✅ (2 tabs) | — | — | — |
 
 **Tabs del Dashboard por rol:**
 
@@ -243,13 +244,14 @@ streamlit run app_principal.py
 |-----|:-----:|:--------:|:----------:|:-------:|:------:|
 | 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 🔮 Predicciones | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 💼 Recomendaciones de compra | ✅ | — | — | ✅ | — |
+| 💼 Recomendaciones de compra | ✅ | ✅ | — | ✅ | — |
 | 🔬 ACF/PACF | ✅ | ✅ | — | — | — |
 | 🔍 Grid Search | ✅ | ✅ | — | — | — |
 | 🔄 Walk-Forward | ✅ | ✅ | — | — | — |
 | 📋 Métricas técnicas | ✅ | ✅ | — | — | — |
 | 🤖 Asistente IA (Gemini) | ✅ | ✅ | — | ✅ | — |
-| 🏪 Concesionarios | ✅ | ✅ | — | ✅ | — |
+
+> El tab 🏪 Concesionarios se trasladó a la página independiente `pages/5_Concesionarios.py` (2026-05-28).
 
 **Página independiente Proyección Ingresos (`pages/3_Proyeccion_Ingresos.py`):**
 
@@ -427,6 +429,23 @@ Página independiente disponible para **Admin**, **Analista** y **Financiero** (
 Los ingresos se calculan multiplicando la predicción mensual por el precio efectivo (precio × tipo de cambio). El rango IC se traslada a dólares para comunicar la incertidumbre financiera. La visualización usa barras en overlay: la banda IC 95% aparece como capa semitransparente sobre las barras de ingreso central.
 
 > Extraída del tab 3 de `2_Dashboard.py` el 2026-05-27 para mejorar la navegación y separar la vista financiera de la operativa. Acceso restringido a roles con permiso `ver_ingresos`: admin, analyst y financiero (2026-05-27).
+
+---
+
+## App 5 — Concesionarios (`pages/5_Concesionarios.py`)
+
+Página independiente disponible para **Admin**, **Analista** y **Manager**. Combina el análisis histórico de ventas desagregado por tienda con predicciones SARIMA distribuidas mediante shares.
+
+**Metodología:** el modelo SARIMA predice el total nacional de ventas TIGGO 2. Para desglosar por concesionario se calcula el share de los últimos 12 meses de cada tienda y se aplica como ponderación sobre la predicción total y sus IC 95%.
+
+| Tab | Descripción |
+|-----|-------------|
+| 📊 Resumen | Barras horizontales de ventas totales + mix de modelos apilado por concesionario |
+| 📈 Evolución Mensual | Líneas por concesionario, share % 100% stacked area, variación MoM agrupada |
+| 🔮 Predicciones por Tienda | KPIs próximo mes, gráfico histórico + predicción con IC 95%, barras de horizonte completo, tabla exportable |
+| 📋 Detalle | Ranking acumulado + pivot mensual exportable |
+
+**Editor de shares:** expander inline con `st.data_editor` para ajustar el % de cada concesionario y simular escenarios (apertura/cierre de tiendas, campañas locales). Los shares editados se renormalizan automáticamente y se aplican a todas las predicciones.
 
 ---
 

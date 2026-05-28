@@ -170,7 +170,7 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 
 ### Tabs disponibles según rol
 
-#### Admin (9 tabs en Dashboard + página Proyección Ingresos)
+#### Admin (8 tabs en Dashboard + páginas independientes)
 
 | Tab / Página | Descripción |
 |---|---|
@@ -182,22 +182,23 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 | 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
 | 📋 Métricas técnicas | Parámetros completos del modelo, AIC, BIC, residuos. |
 | 🤖 Asistente IA | Chat con Gemini sobre el modelo (ver sección abajo). |
-| 🏪 Concesionarios | Análisis de ventas por distribuidor (requiere cargar Excel en el sidebar). |
 | 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares. |
+| 🏪 **Concesionarios** *(página independiente)* | Análisis histórico + predicciones desagregadas por tienda. |
 
-#### Analista (8 tabs en Dashboard + página Proyección Ingresos)
+#### Analista (8 tabs en Dashboard + páginas independientes)
 
 | Tab / Página | Descripción |
 |---|---|
 | 📊 Dashboard | KPIs: ventas del último mes, MAPE, horizonte. Gráfico del histórico completo. |
 | 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + validación walk-forward. |
+| 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante + marco teórico académico. |
 | 🔬 ACF/PACF | Gráficos de autocorrelación para interpretar la estructura de la serie. |
 | 🔍 Grid Search | Resultados de la búsqueda Optuna: top modelos, scatter AIC vs MAPE. |
 | 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
 | 📋 Métricas técnicas | Parámetros completos del modelo, AIC, BIC, residuos. |
 | 🤖 Asistente IA | Chat con Gemini sobre el modelo (ver sección abajo). |
-| 🏪 Concesionarios | Análisis de ventas por distribuidor (requiere cargar Excel en el sidebar). |
 | 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares. |
+| 🏪 **Concesionarios** *(página independiente)* | Análisis histórico + predicciones desagregadas por tienda. |
 
 #### Financiero (2 tabs en Dashboard + página Proyección Ingresos)
 
@@ -209,15 +210,15 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 | 🔮 Predicciones | Predicciones mes a mes con IC 95% + validación walk-forward. |
 | 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares con exportación CSV. |
 
-#### Gerente (5 tabs)
+#### Gerente (4 tabs en Dashboard + página Concesionarios)
 
-| Tab | Descripción |
+| Tab / Página | Descripción |
 |-----|-------------|
 | 📊 Dashboard | KPIs e histórico. |
 | 🔮 Predicciones | Predicciones mes a mes con IC 95% + validación walk-forward. |
 | 💼 Recomendaciones | Escenarios conservador (+10%) y agresivo (+20%) de compra al fabricante, análisis de tendencia y expander con marco teórico académico. |
 | 🤖 Asistente IA | Chat orientado a decisiones de negocio. |
-| 🏪 Concesionarios | Análisis por distribuidor. |
+| 🏪 **Concesionarios** *(página independiente)* | Análisis histórico + predicciones desagregadas por tienda. |
 
 #### Viewer (2 tabs)
 
@@ -227,7 +228,7 @@ Dashboard básico y predicciones, sin métricas técnicas ni IA ni proyección f
 
 ### Tab Recomendaciones de Compra
 
-> Disponible para: `admin`, `manager`
+> Disponible para: `admin`, `analyst`, `manager`
 
 Muestra el análisis de demanda del próximo mes y dos escenarios de pedido al fabricante.
 
@@ -289,17 +290,27 @@ Página independiente que traduce la predicción SARIMA en cifras financieras en
 
 ---
 
-### Tab Concesionarios
+### Página Concesionarios
 
-Requiere subir un Excel desde el expander **📂 Datos de Concesionarios** en la barra lateral. El sistema normaliza automáticamente los nombres de columnas (acepta `FECHA-VENTA`, `FECHA_VENTA` o `FECHA VENTA`, por ejemplo).
+> Disponible para: `admin`, `analyst`, `manager`
 
-Los filtros disponibles son: año, modelo de vehículo y ciudad.
+Página independiente que combina el análisis histórico de ventas por tienda con predicciones SARIMA desagregadas. Para comenzar, carga el Excel de ventas desde el expander **📂 Cargar datos de ventas**. El sistema normaliza los nombres de columnas automáticamente (acepta `FECHA-VENTA`, `FECHA_VENTA`, `FECHA VENTA`, `CONCESIONARIO`, `DET_CC`, `AGE` o `SUCURSAL`).
 
-Las visualizaciones incluyen:
-- Barras horizontales por concesionario, coloreadas por ciudad
-- Evolución mensual de los 5 concesionarios con más ventas
-- Barras apiladas de modelos por concesionario
-- Tabla de ranking con % acumulado (análisis ABC)
+**Filtros disponibles (barra lateral):** año, modelo de vehículo, concesionarios a incluir.
+
+**Tab 📊 Resumen:** barras horizontales de ventas totales por tienda con porcentaje del total + gráfico de mix de modelos apilado por concesionario.
+
+**Tab 📈 Evolución Mensual:** evolución mensual con líneas por tienda, gráfico de share de mercado mensual en área 100% apilada, y barras de variación MoM agrupada por concesionario.
+
+**Tab 🔮 Predicciones por Tienda:**
+- **Metodología:** el modelo SARIMA predice el total nacional. El share de los últimos 12 meses de cada concesionario se usa para repartir esa predicción (y sus IC 95%) entre las tiendas.
+- **Editor de shares:** expander que permite ajustar el % de cada tienda para simular escenarios (apertura/cierre, campaña local). Los shares se renormalizan automáticamente.
+- **KPIs próximo mes:** una tarjeta por concesionario con las unidades predichas y el rango IC 95%.
+- **Gráfico histórico + predicción:** líneas de histórico real continuadas con línea punteada de predicción y banda IC 95% por tienda.
+- **Barras de horizonte:** barras apiladas para todos los meses del horizonte con hover de IC 95%.
+- **Tabla de predicciones:** exportable vía CSV para roles con permiso `exportar`.
+
+**Tab 📋 Detalle:** ranking acumulado (% y % acumulado) + pivot mensual exportable.
 
 ---
 
