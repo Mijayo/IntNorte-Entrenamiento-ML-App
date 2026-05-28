@@ -336,7 +336,7 @@ modelos-ml/
 
 ### La sesión expira muy rápido
 
-**Causa:** Timeout configurado a 30 minutos en `auth_system.py`.
+**Causa:** Timeout configurado a 60 minutos en `auth_system.py`.
 
 **Solución:** Modificar `SESSION_TIMEOUT` en `core/auth_system.py`:
 

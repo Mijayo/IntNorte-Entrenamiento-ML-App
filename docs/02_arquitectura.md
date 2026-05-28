@@ -85,7 +85,7 @@ Los roles y permisos se leen siempre de `secrets.toml`, no de Supabase Auth, par
 | `init_session_state()` | Inicializa `authenticated`, `username`, `role`, `permissions` |
 | `login(username, password)` | Intenta Supabase Auth; fallback a credenciales locales |
 | `logout()` | Llama a `supabase.auth.sign_out()`, registra en audit log, limpia session_state |
-| `check_session_timeout()` | Invalida la sesión si supera 30 minutos de inactividad |
+| `check_session_timeout()` | Invalida la sesión si supera 60 minutos de inactividad |
 | `has_permission(name)` | Retorna `True/False` para un permiso específico |
 | `show_header(title, subtitle)` | Renderiza el encabezado corporativo |
 | `show_login_page(title)` | Renderiza el formulario de login con logo corporativo |
@@ -295,5 +295,5 @@ Al detectar un run nuevo, muestra un `st.toast()` y fuerza un `st.rerun()` para 
 - Todas las acciones críticas quedan registradas en `audit_log` con usuario, timestamp y detalle JSON.
 - El fichero `.streamlit/secrets.toml` está en `.gitignore` y nunca se sube al repositorio.
 - El bucket de Supabase debe ser **privado** — el acceso se realiza exclusivamente con la anon key del SDK.
-- El timeout de sesión (30 min) limita la exposición de sesiones inactivas.
+- El timeout de sesión (60 min) limita la exposición de sesiones inactivas.
 - El sistema no expone datos de ventas individualmente — solo series temporales agregadas por mes.

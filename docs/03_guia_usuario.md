@@ -8,7 +8,7 @@ Esta guía explica cómo usar el sistema paso a paso, sin necesidad de conocimie
 
 Al entrar a la URL de la aplicación se muestra el formulario de login. Introduce tu usuario y contraseña. Si introduces mal la contraseña tres veces, la cuenta se bloquea temporalmente.
 
-La sesión expira automáticamente tras **30 minutos de inactividad**. El sistema te avisará y pedirá que vuelvas a iniciar sesión.
+La sesión expira automáticamente tras **60 minutos de inactividad**. El sistema te avisará y pedirá que vuelvas a iniciar sesión.
 
 ---
 

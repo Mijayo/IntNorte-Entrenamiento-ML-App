@@ -27,7 +27,7 @@ LOGO_URL = "https://cdn.brandfetch.io/idbC6t7DJN/w/904/h/196/theme/light/logo.pn
 
 USERS_CONFIG = st.secrets["users"]
 
-SESSION_TIMEOUT = 30  # minutos
+SESSION_TIMEOUT = 60  # minutos
 MAX_LOGIN_ATTEMPTS = 3
 
 # ============================================================================

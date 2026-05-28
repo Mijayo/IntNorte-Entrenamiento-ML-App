@@ -411,7 +411,7 @@ Los ingresos se calculan multiplicando la predicción mensual por el precio efec
 
 - Autenticación vía **Supabase Auth** (email + password gestionado por Supabase); fallback a hash SHA-256 en `secrets.toml`
 - Todas las acciones críticas (login, logout, aprobación, borrado) quedan registradas en la tabla `audit_log`
-- Timeout de sesión configurable (30 min por defecto)
+- Timeout de sesión configurable (60 min por defecto)
 - Credenciales nunca en el código fuente — solo en `st.secrets`
 - Bucket de Supabase **privado** — acceso exclusivamente vía anon key del SDK
 

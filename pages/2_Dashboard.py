@@ -3,7 +3,7 @@
 PÁGINA: DASHBOARD DE NEGOCIO
 ============================================================================
 Tabs disponibles según rol:
-  admin / analyst : Dashboard · Predicciones · ACF/PACF · Grid Search ·
+  admin / analyst : Dashboard · Predicciones · Recomendaciones · ACF/PACF · Grid Search ·
                     Walk-Forward · Métricas Técnicas · Asistente IA · Concesionarios
   manager         : Dashboard · Predicciones · Recomendaciones · Asistente IA ·
                     Concesionarios
@@ -171,7 +171,7 @@ context_tiggo = (
 
 if st.session_state.role in ['admin', 'analyst']:
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones",
-                    "🔬 ACF/PACF", "🔍 Grid Search", "🔄 Walk-Forward",
+                    "💼 Recomendaciones", "🔬 ACF/PACF", "🔍 Grid Search", "🔄 Walk-Forward",
                     "📋 Métricas Técnicas", "🤖 Asistente IA", "🏪 Concesionarios"])
 elif st.session_state.role == 'manager':
     tabs = st.tabs(["📊 Dashboard", "🔮 Predicciones",
@@ -382,9 +382,9 @@ Es la estimación más honesta del error real del sistema.
                            f"predicciones_{datetime.now().strftime('%Y%m%d')}.csv",
                            "text/csv")
 
-# ── Tab 3: Recomendaciones (manager) ─────────────────────────────────────────
+# ── Tab 3: Recomendaciones (admin + manager) ──────────────────────────────────
 
-if st.session_state.role == 'manager':
+if st.session_state.role in ['admin', 'manager']:
     with tabs[2]:
         st.header("💼 Recomendaciones de Compra", divider='orange')
 
@@ -427,6 +427,110 @@ if st.session_state.role == 'manager':
         if abs(proximo - prom_hist) / prom_hist > 0.3:
             st.warning(f"⚠️ La predicción ({proximo:.0f}) difiere >30% del promedio histórico "
                        f"({prom_hist:.1f}). Revisa factores externos.")
+
+        # ── Explicación académica ──────────────────────────────────────────────
+        with st.expander("📚 Marco teórico — ¿Por qué estas estrategias?", expanded=False):
+            st.markdown("""
+### Fundamentos teóricos de las estrategias de compra
+
+---
+
+#### 1. Por qué se usa el intervalo de confianza superior como base
+
+El sistema construye la recomendación a partir del **límite superior del IC 95%** del modelo SARIMA,
+no de la predicción puntual. La razón es asimétrica por naturaleza:
+
+> *El coste de quedarse sin stock (venta perdida, daño a la relación con el cliente) supera
+> habitualmente al coste de mantener unidades adicionales en inventario.*
+
+Este principio está formalizado en el **Problema del Vendedor de Periódicos** (*Newsvendor Problem*,
+Scarf, 1958): la cantidad óptima de pedido se desplaza hacia el percentil más alto cuando el
+*ratio crítico* `c_u / (c_u + c_o)` es elevado, donde `c_u` = coste de sub-stock y `c_o` = coste
+de sobrestock. En el sector automotriz, un `c_u` alto es habitual dado el tiempo de reposición
+de unidades importadas.
+
+El IC 95% de SARIMA corresponde aproximadamente al **percentil 97.5 de la distribución
+predictiva**, asumiendo innovaciones gaussianas (Box & Jenkins, 1976). Usarlo como base
+garantiza que el pedido cubre la demanda real en ~97 de cada 100 meses bajo los supuestos
+del modelo.
+
+---
+
+#### 2. Estrategia Conservadora — IC superior × 1.10
+
+El buffer del **+10%** sobre el IC superior actúa como **stock de seguridad** para absorber:
+
+- **Error residual del modelo**: el MAPE walk-forward indica la desviación media esperada entre
+  predicción y demanda real. Un buffer del 10% es coherente con errores de modelo del orden
+  del 5–15%.
+- **Variabilidad no capturada**: factores exógenos puntuales (campañas, tipo de cambio) no
+  modelados por SARIMA.
+
+**Marco de referencia:** Fórmula clásica de stock de seguridad de Silver, Pyke & Thomas (1998):
+
+```
+SS = z · σ_L
+```
+
+donde `z` es el factor de servicio (z = 1.65 para nivel de servicio del 95%) y `σ_L` la
+desviación estándar de la demanda durante el lead time. El +10% es una aproximación práctica
+cuando no se dispone de `σ_L` directa pero sí de un IC estadístico del modelo.
+
+**Cuándo aplicarla:** tendencia estable o decreciente, capacidad de almacenamiento limitada,
+alto coste financiero del inventario.
+
+---
+
+#### 3. Estrategia Agresiva — IC superior × 1.20
+
+El buffer del **+20%** corresponde a una política de **nivel de servicio tipo I** más exigente,
+apuntando a cubrir prácticamente todos los escenarios de demanda del mes siguiente.
+
+**Marco de referencia:** En gestión de inventarios, el *fill rate* objetivo determina el
+percentil de la distribución de demanda que se debe cubrir. Un buffer del +20% sobre el percentil
+97.5 del modelo equivale a apuntar a un nivel de servicio del orden del **99%**, apropiado cuando:
+
+- La tendencia reciente es **creciente** (la demanda puede superar la distribución histórica).
+- El tiempo de reposición es largo (importaciones: 60–90 días), haciendo costoso un stockout.
+- La elasticidad precio-demanda del Tiggo 2 es baja (el cliente espera la unidad en vez de
+  sustituir el modelo).
+
+**Coste de oportunidad vs. coste de sobrestock:** si el margen bruto por unidad vendida supera
+al coste mensual de financiar el inventario sobrante, la estrategia agresiva maximiza el
+beneficio esperado (principio del *expected profit maximization*, Zipkin, 2000).
+
+---
+
+#### 4. Cómo leer la señal de tendencia
+
+El cálculo compara la **media de los últimos 3 meses** con el **promedio histórico completo**:
+
+```
+tendencia (%) = (media_3m − media_histórica) / media_histórica × 100
+```
+
+- **> +10 %** → la demanda reciente supera la media histórica → el modelo puede estar
+  subestimando; la estrategia agresiva cubre ese riesgo.
+- **< −10 %** → la demanda reciente está por debajo de la media → riesgo de sobrestock;
+  la estrategia conservadora protege el capital circulante.
+- **Entre ±10 %** → el modelo está bien calibrado con el ciclo histórico; la predicción
+  puntual es referencia suficiente.
+
+---
+
+#### 5. Limitaciones y condiciones de validez
+
+| Condición | Impacto si no se cumple |
+|-----------|------------------------|
+| Innovaciones SARIMA gaussianas | Los IC 95% pueden ser más amplios de lo necesario o insuficientes ante colas pesadas |
+| Estacionariedad tras diferenciación | Si la serie tiene cambios estructurales recientes, la predicción se sesga |
+| Ausencia de outliers no tratados | Un mes atípico no depurado distorsiona el IC y las recomendaciones |
+| MAPE walk-forward < 15 % | Con errores > 15 %, añadir un buffer adicional del 5–10 % sobre las estrategias es prudente |
+
+> **Referencia principal:** Box, G.E.P., Jenkins, G.M. & Reinsel, G.C. (1976).
+> *Time Series Analysis: Forecasting and Control*. Prentice Hall.
+""")
+
 
 # ── Tab LLM (manager) ────────────────────────────────────────────────────────
 
@@ -486,7 +590,7 @@ if st.session_state.role == 'manager':
 if st.session_state.role in ['admin', 'analyst']:
 
     # ACF / PACF
-    with tabs[2]:
+    with tabs[3]:
         st.header("🔬 Análisis ACF/PACF", divider='blue')
         acf_bytes, pacf_bytes = sio.load_acf_pacf_images(selected_run)
         col1, col2 = st.columns(2)
@@ -504,7 +608,7 @@ if st.session_state.role in ['admin', 'analyst']:
                 st.warning("Imagen PACF no disponible")
 
     # Grid Search
-    with tabs[3]:
+    with tabs[4]:
         st.markdown(section_header("Grid Search de Parámetros", "🔍"), unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.markdown(kpi_card("Combinaciones", len(grid_search), "🔢"), unsafe_allow_html=True)
@@ -531,7 +635,7 @@ if st.session_state.role in ['admin', 'analyst']:
         st.plotly_chart(fig_grid, use_container_width=True, config={'displayModeBar': False})
 
     # Walk-Forward
-    with tabs[4]:
+    with tabs[5]:
         st.markdown(section_header("Walk-Forward Validation", "🔄"), unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         col1.markdown(kpi_card("MAPE Promedio",   f"{walk_forward['error_pct'].mean():.2f}%", "📊", "amber"), unsafe_allow_html=True)
@@ -568,7 +672,7 @@ if st.session_state.role in ['admin', 'analyst']:
         )
 
     # Métricas Técnicas
-    with tabs[5]:
+    with tabs[6]:
         st.header("📋 Métricas Técnicas Completas", divider='gray')
         col1, col2 = st.columns(2)
         orden = metricas['mejor_modelo']['order']
@@ -594,7 +698,7 @@ if st.session_state.role in ['admin', 'analyst']:
 # ── Tab LLM (admin / analyst) ────────────────────────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst']:
-    with tabs[6]:
+    with tabs[7]:
         st.header("🤖 Asistente IA", divider='violet')
         st.markdown(
             "Consulta al asistente sobre las predicciones, el modelo SARIMA o las métricas de validación. "
@@ -648,7 +752,7 @@ if st.session_state.role in ['admin', 'analyst']:
 # ── Tab Concesionarios (admin / analyst / manager) ────────────────────────────
 
 if st.session_state.role in ['admin', 'analyst', 'manager']:
-    con_idx = 7 if st.session_state.role in ['admin', 'analyst'] else 4
+    con_idx = 8 if st.session_state.role in ['admin', 'analyst'] else 4
 
     with tabs[con_idx]:
         st.header("🏪 Ventas CHERY por Concesionario", divider='violet')

@@ -4,6 +4,13 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-28 (v23)
+
+- **config(auth)**: `SESSION_TIMEOUT` aumentado de 30 → **60 minutos** en `core/auth_system.py`. Reduce interrupciones de sesión para flujos de trabajo de entrenamiento largos.
+- **docs**: README, CHANGELOG, `docs/02_arquitectura.md`, `docs/03_guia_usuario.md` y `docs/05_despliegue.md` actualizados para reflejar el nuevo timeout de sesión.
+
+---
+
 ### 2026-05-27 (v22)
 
 - **refactor(comparativa + entrenamiento)**: Unificación total — ambas páginas usan ahora **SARIMAX** (con variable exógena `ventas_otros`) idéntico al modelo de producción. Antes, Comparativa ML ejecutaba SARIMA *sin* exógena, produciendo una comparación no equitativa que inflaba el MAPE del modelo de serie temporal frente a los algoritmos ML supervisados.
