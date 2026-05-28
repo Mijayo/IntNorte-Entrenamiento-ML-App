@@ -1,0 +1,625 @@
+"""
+============================================================================
+PÁGINA: CONCESIONARIOS — Análisis histórico + predicciones por tienda
+Metodología de predicción: shares históricos aplicados sobre predicción SARIMA
+============================================================================
+"""
+
+import io
+import warnings
+warnings.filterwarnings('ignore')
+
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+import streamlit as st
+from datetime import datetime
+
+import core.supabase_io as sio
+from core.auth_system import (init_session_state, show_login_page, show_user_info,
+                               check_session_timeout, has_permission, show_header)
+from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
+
+# ── Config ────────────────────────────────────────────────────────────────────
+
+st.set_page_config(
+    page_title="Concesionarios TIGGO 2", page_icon="🏪",
+    layout="wide", initial_sidebar_state="expanded"
+)
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+init_session_state()
+
+if check_session_timeout():
+    st.warning("⏱️ Tu sesión ha expirado.")
+    st.stop()
+if not st.session_state.authenticated:
+    show_login_page("🏪 Concesionarios TIGGO 2")
+    st.stop()
+
+if st.session_state.role not in ['admin', 'analyst', 'manager']:
+    st.error("❌ No tienes permiso para acceder a esta sección.")
+    st.stop()
+
+# ── Selector de versión del modelo (sidebar) ──────────────────────────────────
+
+available_runs = sio.get_available_runs()
+if not available_runs:
+    st.error("❌ No hay modelos entrenados. Ejecuta primero la página de Entrenamiento.")
+    st.stop()
+
+default_run = sio.get_default_run(available_runs)
+selected_run = st.sidebar.selectbox(
+    "📦 Versión del modelo",
+    options=available_runs,
+    index=available_runs.index(default_run) if default_run in available_runs else 0,
+    format_func=sio.format_run_label,
+)
+is_latest = sio.get_default_run(available_runs) == selected_run
+st.sidebar.caption("🟢 Activo en producción" if is_latest else "🔵 Versión histórica")
+
+# ── Cargar predicción SARIMA total ────────────────────────────────────────────
+
+with st.spinner("Cargando modelo SARIMA..."):
+    _metricas, pred_total, _grid, _wf, hist_total, _exog = sio.load_precargados(selected_run)
+
+# ── Header ────────────────────────────────────────────────────────────────────
+
+show_header(
+    "Concesionarios — Análisis y Predicciones",
+    f"Desglose por tienda  |  Modelo: {sio.format_run_label(selected_run)} {'🟢' if is_latest else '🔵'}"
+)
+show_user_info()
+
+# ── Upload de datos ───────────────────────────────────────────────────────────
+
+with st.expander("📂 Cargar datos de ventas", expanded='df_concesionarios' not in st.session_state):
+    st.caption("Columnas mínimas: MARCA · MODELO3 · FECHA-VENTA · CONCESIONARIO")
+    if 'df_concesionarios' in st.session_state:
+        col_reset, col_info = st.columns([1, 3])
+        with col_reset:
+            if st.button("🗑 Limpiar y cargar nuevo archivo"):
+                del st.session_state['df_concesionarios']
+                st.rerun()
+        with col_info:
+            st.caption(f"✅ Archivo cargado — {len(st.session_state['df_concesionarios']):,} registros")
+    con_file = st.file_uploader("Excel histórico de ventas", type=['xlsx', 'xls'], key="conc_page_uploader")
+    if con_file and 'df_concesionarios' not in st.session_state:
+        with st.spinner("Procesando..."):
+            try:
+                raw = pd.read_excel(con_file, engine='openpyxl')
+                raw.columns = [str(c).strip() for c in raw.columns]
+                if len(raw) > 0 and raw.iloc[0].apply(lambda x: isinstance(x, str)).all():
+                    raw = raw.iloc[1:].reset_index(drop=True)
+                errors = []
+                # Fecha
+                for fc in ['FECHA_VENTA', 'FECHA-VENTA', 'FECHA VENTA']:
+                    if fc in raw.columns:
+                        raw[fc] = pd.to_datetime(raw[fc], errors='coerce')
+                        bad = raw[fc].isna().sum()
+                        if bad:
+                            errors.append(f"⚠️ {bad} fechas no parseables en `{fc}`.")
+                        if fc != 'FECHA_VENTA':
+                            raw = raw.rename(columns={fc: 'FECHA_VENTA'})
+                        break
+                else:
+                    errors.append("❌ Columna de fecha no encontrada.")
+                # Modelo
+                for mc in ['MODELO2', 'MODELO3', 'MODELO']:
+                    if mc in raw.columns:
+                        raw = raw.rename(columns={mc: 'MODELO_NORM'})
+                        break
+                for msg in errors:
+                    (st.error if msg.startswith("❌") else st.warning)(msg)
+                if not any(m.startswith("❌") for m in errors):
+                    st.session_state['df_concesionarios'] = raw
+                    n_ch = len(raw[raw['MARCA'] == 'CHERY']) if 'MARCA' in raw.columns else len(raw)
+                    st.success(f"✅ {len(raw):,} registros · {n_ch:,} CHERY")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error al leer el archivo: {e}")
+
+if 'df_concesionarios' not in st.session_state:
+    st.info("Carga el Excel de ventas usando el expander de arriba para ver el análisis.")
+    st.stop()
+
+# ── Preparar DataFrame ────────────────────────────────────────────────────────
+
+df_raw = st.session_state['df_concesionarios'].copy()
+if 'MARCA' in df_raw.columns:
+    df_raw = df_raw[df_raw['MARCA'] == 'CHERY']
+
+# Detectar columnas
+conc_col   = next((c for c in ['CONCESIONARIO', 'DET_CC', 'AGE', 'SUCURSAL'] if c in df_raw.columns), None)
+modelo_col = 'MODELO_NORM' if 'MODELO_NORM' in df_raw.columns else None
+fecha_col  = 'FECHA_VENTA' if 'FECHA_VENTA' in df_raw.columns else None
+
+if not conc_col or len(df_raw) == 0:
+    st.error("⚠️ No se encontró columna CONCESIONARIO o no hay registros CHERY.")
+    st.stop()
+
+# ── Filtros sidebar ───────────────────────────────────────────────────────────
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Filtros**")
+
+df = df_raw.copy()
+
+if fecha_col:
+    years_all = sorted(df[fecha_col].dt.year.dropna().unique().astype(int), reverse=True)
+    years_sel = st.sidebar.multiselect("Año", years_all, default=years_all)
+    if years_sel:
+        df = df[df[fecha_col].dt.year.isin(years_sel)]
+
+if modelo_col:
+    modelos_all = ['Todos'] + sorted(df[modelo_col].dropna().unique())
+    modelo_sel = st.sidebar.selectbox("Modelo", modelos_all)
+    if modelo_sel != 'Todos':
+        df = df[df[modelo_col] == modelo_sel]
+
+concs_all = sorted(df[conc_col].dropna().unique())
+concs_sel = st.sidebar.multiselect("Concesionarios", concs_all, default=concs_all)
+if concs_sel:
+    df = df[df[conc_col].isin(concs_sel)]
+
+if len(df) == 0:
+    st.warning("No hay datos con los filtros seleccionados.")
+    st.stop()
+
+# ── KPIs globales ─────────────────────────────────────────────────────────────
+
+ventas_por_conc = df.groupby(conc_col).size().sort_values(ascending=False)
+top_conc        = ventas_por_conc.index[0]
+top_modelo      = df[modelo_col].value_counts().index[0] if modelo_col else '—'
+last_month_str  = df[fecha_col].max().strftime('%b %Y') if fecha_col else '—'
+
+k1, k2, k3, k4 = st.columns(4)
+k1.markdown(kpi_card("Total Ventas CHERY", f"{len(df):,}", "📦"), unsafe_allow_html=True)
+k2.markdown(kpi_card("Concesionarios", len(ventas_por_conc), "🏪", "blue"), unsafe_allow_html=True)
+k3.markdown(kpi_card("Top Concesionario", top_conc, "🥇", "amber"), unsafe_allow_html=True)
+k4.markdown(kpi_card("Último Dato", last_month_str, "📅"), unsafe_allow_html=True)
+
+# ── Tabs ──────────────────────────────────────────────────────────────────────
+
+tab_hist, tab_evo, tab_pred, tab_tabla = st.tabs([
+    "📊 Resumen", "📈 Evolución Mensual", "🔮 Predicciones por Tienda", "📋 Detalle"
+])
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 1 — RESUMEN HISTÓRICO
+# ══════════════════════════════════════════════════════════════════════════════
+
+with tab_hist:
+    st.markdown(section_header("Ventas Históricas por Concesionario", "📊"), unsafe_allow_html=True)
+
+    # Barras horizontales
+    df_bar = ventas_por_conc.reset_index()
+    df_bar.columns = ['Concesionario', 'Ventas']
+    df_bar['% Total'] = (df_bar['Ventas'] / df_bar['Ventas'].sum() * 100).round(1)
+    df_bar['Label'] = df_bar.apply(lambda r: f"{r['Ventas']:,}  ({r['% Total']:.1f}%)", axis=1)
+
+    fig_bar = go.Figure(go.Bar(
+        y=df_bar['Concesionario'], x=df_bar['Ventas'],
+        orientation='h',
+        text=df_bar['Label'],
+        textposition='outside',
+        textfont=dict(color='#94A3B8', size=11),
+        marker=dict(
+            color=COLORS['series'][:len(df_bar)],
+            line=dict(width=0),
+        ),
+    ))
+    apply_chart_theme(fig_bar, height=max(280, 60 + len(df_bar) * 52),
+                      title='Ventas Totales por Concesionario')
+    fig_bar.update_layout(
+        yaxis={'categoryorder': 'total ascending'},
+        xaxis_title='Unidades vendidas',
+        margin=dict(r=160),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+
+    # Distribución de modelos por concesionario
+    if modelo_col:
+        st.markdown(section_header("Distribución de Modelos por Concesionario", "🚗"), unsafe_allow_html=True)
+        df_mod = df.groupby([conc_col, modelo_col]).size().reset_index(name='Ventas')
+        fig_mod = px.bar(
+            df_mod, x=conc_col, y='Ventas', color=modelo_col,
+            barmode='stack',
+            color_discrete_sequence=COLORS['series'],
+        )
+        apply_chart_theme(fig_mod, height=400, title='Mix de Modelos por Concesionario')
+        fig_mod.update_layout(
+            xaxis_tickangle=-20, xaxis_title='', yaxis_title='Unidades',
+            legend_title='Modelo',
+        )
+        st.plotly_chart(fig_mod, use_container_width=True, config={'displayModeBar': False})
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 2 — EVOLUCIÓN MENSUAL
+# ══════════════════════════════════════════════════════════════════════════════
+
+with tab_evo:
+    st.markdown(section_header("Evolución Mensual por Concesionario", "📈"), unsafe_allow_html=True)
+
+    if not fecha_col:
+        st.warning("Se requiere columna FECHA-VENTA para este gráfico.")
+    else:
+        df_ts = (
+            df.groupby([pd.Grouper(key=fecha_col, freq='ME'), conc_col])
+            .size().reset_index(name='Ventas')
+        )
+
+        fig_evo = px.line(
+            df_ts, x=fecha_col, y='Ventas', color=conc_col,
+            markers=True,
+            color_discrete_sequence=COLORS['series'],
+        )
+        apply_chart_theme(fig_evo, height=480, title='Ventas Mensuales por Concesionario')
+        fig_evo.update_layout(
+            hovermode='x unified',
+            xaxis_title='Mes', yaxis_title='Unidades',
+            legend_title='Concesionario',
+        )
+        st.plotly_chart(fig_evo, use_container_width=True, config={'displayModeBar': False})
+
+        # Share mensual (100% stacked area)
+        st.markdown(section_header("Share Mensual por Concesionario (%)", "📐"), unsafe_allow_html=True)
+        df_pivot = df_ts.pivot_table(index=fecha_col, columns=conc_col, values='Ventas', fill_value=0)
+        df_pct   = df_pivot.div(df_pivot.sum(axis=1), axis=0) * 100
+
+        fig_share = go.Figure()
+        for i, col_name in enumerate(df_pct.columns):
+            fig_share.add_trace(go.Scatter(
+                x=df_pct.index, y=df_pct[col_name],
+                mode='lines', name=col_name,
+                stackgroup='one',
+                line=dict(color=COLORS['series'][i % len(COLORS['series'])], width=0),
+                fillcolor=COLORS['series'][i % len(COLORS['series'])].replace('#', 'rgba(') + ',0.75)',
+                hovertemplate='%{y:.1f}%<extra>' + col_name + '</extra>',
+            ))
+        apply_chart_theme(fig_share, height=320, title='Share de Mercado Mensual (%)')
+        fig_share.update_layout(
+            hovermode='x unified',
+            xaxis_title='Mes', yaxis_title='%',
+            yaxis=dict(range=[0, 100]),
+        )
+        st.plotly_chart(fig_share, use_container_width=True, config={'displayModeBar': False})
+
+        # Crecimiento MoM
+        if len(df_pivot) >= 2:
+            st.markdown(section_header("Crecimiento Mes a Mes (%)", "🔺"), unsafe_allow_html=True)
+            df_mom = df_pivot.pct_change() * 100
+            fig_mom = go.Figure()
+            for i, col_name in enumerate(df_mom.columns):
+                fig_mom.add_trace(go.Bar(
+                    x=df_mom.index, y=df_mom[col_name],
+                    name=col_name,
+                    marker_color=COLORS['series'][i % len(COLORS['series'])],
+                ))
+            apply_chart_theme(fig_mom, height=320, title='Variación MoM por Concesionario')
+            fig_mom.update_layout(
+                barmode='group',
+                hovermode='x unified',
+                xaxis_title='Mes', yaxis_title='%',
+                yaxis_ticksuffix='%',
+            )
+            st.plotly_chart(fig_mom, use_container_width=True, config={'displayModeBar': False})
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 3 — PREDICCIONES POR CONCESIONARIO
+# ══════════════════════════════════════════════════════════════════════════════
+
+with tab_pred:
+    st.markdown(section_header("Predicciones por Concesionario", "🔮"), unsafe_allow_html=True)
+
+    # ── Banner metodología ────────────────────────────────────────────────────
+    st.markdown("""
+<div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.25);
+            border-radius:10px;padding:16px 20px;margin-bottom:18px;">
+<span style="font-size:1.05rem;font-weight:600;color:#A78BFA;">Metodología — Asignación por shares históricos</span><br>
+<span style="color:#94A3B8;font-size:0.92rem;">
+El modelo SARIMA predice el <strong style="color:#C9D8E6;">total nacional</strong> de ventas TIGGO 2.
+Para desglosar por concesionario se calcula el <strong style="color:#C9D8E6;">share de los últimos 12 meses</strong>
+de cada tienda y se aplica como ponderación sobre la predicción total y sus intervalos de confianza.<br>
+<strong style="color:#A78BFA;">Supuesto:</strong> la distribución relativa entre concesionarios se mantiene estable
+en el horizonte de predicción. Si hay cambios estructurales (apertura/cierre de tiendas, campañas locales),
+ajusta los shares manualmente en la tabla de abajo.
+</span>
+</div>
+""", unsafe_allow_html=True)
+
+    if not fecha_col:
+        st.warning("Se requiere columna FECHA-VENTA para calcular predicciones por concesionario.")
+    else:
+        # ── Calcular shares ───────────────────────────────────────────────────
+        last_date    = df_raw[fecha_col].max()
+        cutoff_12m   = last_date - pd.DateOffset(months=12)
+        # Filtrar últimos 12 meses de todos los concesionarios (sin filtro de conc)
+        df_12m = df_raw[df_raw[fecha_col] >= cutoff_12m]
+        if 'MARCA' in df_raw.columns:
+            df_12m = df_12m[df_12m['MARCA'] == 'CHERY']
+        if modelo_col and modelo_sel != 'Todos':
+            df_12m = df_12m[df_12m[modelo_col] == modelo_sel]
+
+        n_12m = len(df_12m)
+        if n_12m == 0:
+            st.warning("No hay datos en los últimos 12 meses para calcular shares.")
+            st.stop()
+
+        shares_raw  = df_12m.groupby(conc_col).size()
+        shares_pct  = (shares_raw / shares_raw.sum())
+
+        # Filtrar solo concesionarios seleccionados en sidebar
+        if concs_sel:
+            shares_pct = shares_pct[shares_pct.index.isin(concs_sel)]
+            shares_pct = shares_pct / shares_pct.sum()   # renormalizar
+
+        # ── Editor de shares ──────────────────────────────────────────────────
+        with st.expander("⚙️ Ajustar shares manualmente"):
+            st.caption("Edita el share (%) para simular cambios en la distribución. Deben sumar 100%.")
+            shares_edit_df = pd.DataFrame({
+                'Concesionario': shares_pct.index,
+                'Share (%) — últimos 12 m': (shares_pct.values * 100).round(2),
+                'Share ajustado (%)': (shares_pct.values * 100).round(2),
+            })
+            edited = st.data_editor(shares_edit_df, hide_index=True, use_container_width=True,
+                                    column_config={
+                                        'Share (%) — últimos 12 m': st.column_config.NumberColumn(disabled=True, format="%.2f%%"),
+                                        'Share ajustado (%)': st.column_config.NumberColumn(min_value=0, max_value=100, format="%.2f%%"),
+                                    })
+            total_adj = edited['Share ajustado (%)'].sum()
+            if abs(total_adj - 100) > 0.5:
+                st.warning(f"Los shares suman {total_adj:.1f}% — deben sumar 100%.")
+            else:
+                shares_pct = pd.Series(
+                    edited['Share ajustado (%)'].values / 100,
+                    index=edited['Concesionario'].values
+                )
+
+        # ── Construir tabla de predicciones por concesionario ─────────────────
+        pred_rows = []
+        for conc, share in shares_pct.items():
+            for _, row in pred_total.iterrows():
+                pred_rows.append({
+                    'Fecha':          row['Fecha'],
+                    'Mes':            row['Mes'],
+                    'Concesionario':  conc,
+                    'Share (%)':      round(share * 100, 1),
+                    'Predicción':     row['Predicción'] * share,
+                    'IC_Inferior':    row['IC_Inferior'] * share,
+                    'IC_Superior':    row['IC_Superior'] * share,
+                })
+        df_pred_conc = pd.DataFrame(pred_rows)
+
+        # ── KPIs del próximo mes ──────────────────────────────────────────────
+        pred_next   = df_pred_conc[df_pred_conc['Fecha'] == df_pred_conc['Fecha'].min()]
+        pred_total_next = int(pred_next['Predicción'].sum())
+
+        st.markdown(f"### Predicción próximo mes — **{pred_next['Mes'].iloc[0]}**")
+
+        cols_kpi = st.columns(len(pred_next))
+        for idx, (_, row) in enumerate(pred_next.sort_values('Predicción', ascending=False).iterrows()):
+            cols_kpi[idx].markdown(
+                kpi_card(
+                    row['Concesionario'],
+                    f"{row['Predicción']:.0f} uds",
+                    "🏪",
+                    "blue" if idx == 0 else ("amber" if idx == 1 else ""),
+                    sub=f"IC 95%: {row['IC_Inferior']:.0f}–{row['IC_Superior']:.0f}",
+                ),
+                unsafe_allow_html=True,
+            )
+
+        # ── Gráfico: histórico + predicción por concesionario ─────────────────
+        st.markdown(section_header("Histórico + Predicción por Concesionario", "📊"), unsafe_allow_html=True)
+
+        if fecha_col:
+            df_hist_ts = (
+                df.groupby([pd.Grouper(key=fecha_col, freq='ME'), conc_col])
+                .size().reset_index(name='Ventas')
+            )
+        else:
+            df_hist_ts = pd.DataFrame()
+
+        fig_main = go.Figure()
+
+        # Línea vertical: inicio predicción
+        if not df_hist_ts.empty:
+            last_hist_date = df_hist_ts[fecha_col].max()
+            fig_main.add_shape(
+                type="line",
+                x0=last_hist_date, x1=last_hist_date,
+                y0=0, y1=1, yref="paper",
+                line=dict(color='rgba(100,116,139,0.5)', width=1.5, dash="dot"),
+            )
+            fig_main.add_annotation(
+                x=last_hist_date, y=1, yref="paper",
+                text="Predicción ▶", showarrow=False,
+                font=dict(color='#64748B', size=10),
+                xshift=8, xanchor='left',
+            )
+
+        _IC_FILLS = [
+            'rgba(0,115,255,0.08)', 'rgba(194,255,0,0.08)', 'rgba(0,245,160,0.08)',
+            'rgba(255,58,92,0.08)', 'rgba(167,139,250,0.08)', 'rgba(249,115,22,0.08)',
+            'rgba(56,189,248,0.08)', 'rgba(251,113,133,0.08)',
+        ]
+
+        for i, conc in enumerate(shares_pct.index):
+            color    = COLORS['series'][i % len(COLORS['series'])]
+            ic_fill  = _IC_FILLS[i % len(_IC_FILLS)]
+
+            # Histórico
+            if not df_hist_ts.empty:
+                hist_conc = df_hist_ts[df_hist_ts[conc_col] == conc]
+                if not hist_conc.empty:
+                    fig_main.add_trace(go.Scatter(
+                        x=hist_conc[fecha_col], y=hist_conc['Ventas'],
+                        mode='lines+markers', name=f'{conc} — Real',
+                        line=dict(color=color, width=2),
+                        marker=dict(size=5, color=color),
+                        legendgroup=conc,
+                    ))
+
+            # Predicción + IC band
+            pred_conc = df_pred_conc[df_pred_conc['Concesionario'] == conc]
+
+            # Banda IC
+            fig_main.add_trace(go.Scatter(
+                x=pred_conc['Fecha'].tolist() + pred_conc['Fecha'].tolist()[::-1],
+                y=pred_conc['IC_Superior'].tolist() + pred_conc['IC_Inferior'].tolist()[::-1],
+                fill='toself',
+                fillcolor=ic_fill,
+                line=dict(color='rgba(0,0,0,0)'),
+                name=f'{conc} — IC 95%',
+                legendgroup=conc,
+                showlegend=False,
+            ))
+
+            # Línea de predicción
+            fig_main.add_trace(go.Scatter(
+                x=pred_conc['Fecha'], y=pred_conc['Predicción'],
+                mode='lines+markers', name=f'{conc} — Predicción',
+                line=dict(color=color, width=2.5, dash='dot'),
+                marker=dict(size=9, symbol='diamond', color=color,
+                            line=dict(color='#080D18', width=1.5)),
+                legendgroup=conc,
+                hovertemplate=(
+                    f'<b>{conc}</b><br>'
+                    'Predicción: %{y:.0f} uds<br>'
+                    'Fecha: %{x|%b %Y}<extra></extra>'
+                ),
+            ))
+
+        apply_chart_theme(fig_main, height=540,
+                          title='Histórico + Predicción SARIMA — Por Concesionario')
+        fig_main.update_layout(
+            hovermode='x unified',
+            xaxis_title='Fecha', yaxis_title='Unidades',
+            legend=dict(groupclick='toggleitem'),
+        )
+        st.plotly_chart(fig_main, use_container_width=True, config={'displayModeBar': False})
+
+        # ── Barras agrupadas: horizonte completo ──────────────────────────────
+        st.markdown(section_header("Horizonte de Predicción — Barras por Mes", "📅"), unsafe_allow_html=True)
+
+        fig_hor = go.Figure()
+        for i, conc in enumerate(shares_pct.index):
+            pred_conc = df_pred_conc[df_pred_conc['Concesionario'] == conc]
+            fig_hor.add_trace(go.Bar(
+                x=pred_conc['Mes'], y=pred_conc['Predicción'].round(1),
+                name=conc,
+                marker_color=COLORS['series'][i % len(COLORS['series'])],
+                text=pred_conc['Predicción'].round(0).astype(int),
+                textposition='inside',
+                textfont=dict(size=10, color='#080D18'),
+                hovertemplate=(
+                    f'<b>{conc}</b><br>%{{x}}<br>'
+                    'Predicción: %{y:.0f} uds<br>'
+                    'IC 95%: %{customdata[0]:.0f}–%{customdata[1]:.0f}<extra></extra>'
+                ),
+                customdata=np.column_stack([
+                    pred_conc['IC_Inferior'].round(0).values,
+                    pred_conc['IC_Superior'].round(0).values,
+                ]),
+            ))
+        apply_chart_theme(fig_hor, height=420,
+                          title='Predicción Mensual por Concesionario — Horizonte Completo')
+        fig_hor.update_layout(
+            barmode='stack',
+            xaxis_title='Mes', yaxis_title='Unidades',
+            legend_title='Concesionario',
+        )
+        st.plotly_chart(fig_hor, use_container_width=True, config={'displayModeBar': False})
+
+        # ── Tabla resumen ─────────────────────────────────────────────────────
+        st.markdown(section_header("Tabla de Predicciones", "📋"), unsafe_allow_html=True)
+
+        df_tabla_pred = df_pred_conc[['Mes', 'Concesionario', 'Share (%)', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
+        df_tabla_pred['Predicción']  = df_tabla_pred['Predicción'].round(1)
+        df_tabla_pred['IC_Inferior'] = df_tabla_pred['IC_Inferior'].round(1)
+        df_tabla_pred['IC_Superior'] = df_tabla_pred['IC_Superior'].round(1)
+        df_tabla_pred = df_tabla_pred.sort_values(['Mes', 'Predicción'], ascending=[True, False])
+
+        # Agregar fila de totales por mes
+        totales = df_pred_conc.groupby('Mes').agg(
+            Predicción=('Predicción', 'sum'),
+            IC_Inferior=('IC_Inferior', 'sum'),
+            IC_Superior=('IC_Superior', 'sum'),
+        ).reset_index()
+        totales['Concesionario'] = 'TOTAL'
+        totales['Share (%)'] = 100.0
+        totales['Predicción']  = totales['Predicción'].round(1)
+        totales['IC_Inferior'] = totales['IC_Inferior'].round(1)
+        totales['IC_Superior'] = totales['IC_Superior'].round(1)
+
+        df_tabla_final = pd.concat(
+            [df_tabla_pred, totales[df_tabla_pred.columns]],
+            ignore_index=True
+        ).sort_values(['Mes', 'Concesionario'])
+
+        st.dataframe(
+            df_tabla_final.style
+                .background_gradient(subset=['Predicción'], cmap='Blues')
+                .format({'Predicción': '{:.1f}', 'IC_Inferior': '{:.1f}',
+                         'IC_Superior': '{:.1f}', 'Share (%)': '{:.1f}%'}),
+            use_container_width=True, hide_index=True,
+        )
+
+        if has_permission('exportar'):
+            csv_out = df_tabla_final.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 Exportar predicciones CSV",
+                csv_out,
+                f"pred_concesionarios_{datetime.now().strftime('%Y%m%d')}.csv",
+                "text/csv",
+            )
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 4 — DETALLE HISTÓRICO
+# ══════════════════════════════════════════════════════════════════════════════
+
+with tab_tabla:
+    st.markdown(section_header("Ranking y Detalle por Concesionario", "📋"), unsafe_allow_html=True)
+
+    df_rank = ventas_por_conc.reset_index()
+    df_rank.columns = ['Concesionario', 'Ventas']
+    df_rank['% Total']     = (df_rank['Ventas'] / df_rank['Ventas'].sum() * 100).round(1)
+    df_rank['Acumulado %'] = df_rank['% Total'].cumsum().round(1)
+    st.dataframe(
+        df_rank.style
+               .background_gradient(subset=['Ventas'], cmap='Blues')
+               .format({'% Total': '{:.1f}%', 'Acumulado %': '{:.1f}%'}),
+        use_container_width=True, hide_index=True,
+    )
+
+    if fecha_col:
+        st.markdown(section_header("Ventas Mensuales por Concesionario", "📅"), unsafe_allow_html=True)
+        df_monthly = (
+            df.groupby([pd.Grouper(key=fecha_col, freq='ME'), conc_col])
+            .size().unstack(fill_value=0)
+        )
+        df_monthly.index = df_monthly.index.strftime('%b %Y')
+        st.dataframe(
+            df_monthly.style.background_gradient(cmap='Blues', axis=None),
+            use_container_width=True,
+        )
+
+        if has_permission('exportar'):
+            csv_hist = df_monthly.reset_index().to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "📥 Exportar histórico CSV",
+                csv_hist,
+                f"historico_concesionarios_{datetime.now().strftime('%Y%m%d')}.csv",
+                "text/csv",
+            )
+
+# ── Footer ────────────────────────────────────────────────────────────────────
+
+st.markdown(
+    '<div class="app-footer">Sistema TIGGO 2 &nbsp;·&nbsp; ISDI &nbsp;·&nbsp; Concesionarios</div>',
+    unsafe_allow_html=True,
+)
