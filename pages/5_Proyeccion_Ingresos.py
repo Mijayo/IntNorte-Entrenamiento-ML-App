@@ -349,9 +349,10 @@ fig_roi = go.Figure(go.Waterfall(
     textposition="outside",
     textfont=dict(family="JetBrains Mono, monospace", size=12, color="#7A95A8"),
     connector=dict(line=dict(color="rgba(0,115,255,0.25)", width=1.5)),
-    increasing=dict(marker=dict(color=COLORS['success'], opacity=0.85)),
-    decreasing=dict(marker=dict(color=COLORS['accent'], opacity=0.85)),
-    totals=dict(marker=dict(color=COLORS['primary'], opacity=0.9)),
+    increasing=dict(marker=dict(color=COLORS['success'])),
+    decreasing=dict(marker=dict(color=COLORS['accent'])),
+    totals=dict(marker=dict(color=COLORS['primary'])),
+    opacity=0.85,
 ))
 apply_chart_theme(fig_roi, height=400, title="Valor anual del sistema — Waterfall ($USD)")
 fig_roi.update_layout(yaxis_title="USD ($)", yaxis_tickprefix="$", yaxis_tickformat=",.0f")
