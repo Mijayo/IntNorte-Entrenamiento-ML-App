@@ -27,7 +27,8 @@ pages/
 ├── 2_Comparativa_ML.py       ← Comparativa de 5 modelos ML (Admin / Analista)
 ├── 3_Dashboard.py            ← Dashboard de negocio (todos los roles)
 ├── 4_Concesionarios.py       ← Análisis histórico + predicciones por tienda (Admin / Analista / Manager)
-└── 5_Proyeccion_Ingresos.py  ← Proyección financiera en USD (Admin / Analista / Financiero)
+├── 5_Proyeccion_Ingresos.py  ← Proyección financiera en USD (Admin / Analista / Financiero)
+└── 6_Escalabilidad.py        ← Hoja de ruta multi-marca: portafolio, líneas de negocio, onboarding, LatAm (todos)
 core/                         ← Paquete Python de utilidades
 ├── __init__.py
 ├── auth_system.py            ← Autenticación Supabase Auth + fallback local, sesiones, RBAC
@@ -230,13 +231,13 @@ streamlit run app_principal.py
 
 ## Roles y permisos
 
-| Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML | Concesionarios |
-|-----|:-------------:|:---------:|:-------------------:|:--------------:|:--------------:|
-| `admin` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ |
-| `analyst` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ |
-| `financiero` | — | ✅ (2 tabs) | ✅ | — | — |
-| `manager` | — | ✅ (4 tabs) | — | — | ✅ |
-| `viewer` | — | ✅ (2 tabs) | — | — | — |
+| Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML | Concesionarios | Escalabilidad |
+|-----|:-------------:|:---------:|:-------------------:|:--------------:|:--------------:|:-------------:|
+| `admin` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ | ✅ |
+| `analyst` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ | ✅ |
+| `financiero` | — | ✅ (2 tabs) | ✅ | — | — | ✅ |
+| `manager` | — | ✅ (4 tabs) | — | — | ✅ | ✅ |
+| `viewer` | — | ✅ (2 tabs) | — | — | — | ✅ |
 
 **Tabs del Dashboard por rol:**
 

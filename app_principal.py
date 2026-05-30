@@ -185,6 +185,53 @@ with col3:
 </div>
 """, unsafe_allow_html=True)
 
+col4, col5, col6 = st.columns(3)
+
+with col4:
+    st.markdown("""
+<div class="feature-card blue">
+  <span class="fc-number">04 / CONCESIONARIOS</span>
+  <h3>Concesionarios</h3>
+  <p>Analiza ventas históricas y predicciones distribuidas por tienda.
+     Simula escenarios de apertura, cierre y campañas locales.</p>
+  <div class="card-kpi">
+    <div class="card-kpi-value">Shares</div>
+    <div class="card-kpi-label">Distribución por tienda · IC 95%</div>
+  </div>
+  <span class="feature-card-badge badge-tech">Admin · Analista · Manager</span>
+</div>
+""", unsafe_allow_html=True)
+
+with col5:
+    st.markdown("""
+<div class="feature-card green">
+  <span class="fc-number">05 / PROYECCIÓN</span>
+  <h3>Proyección Ingresos</h3>
+  <p>Traduce la predicción SARIMA en cifras financieras en USD.
+     Configura precio, margen neto y tipo de cambio.</p>
+  <div class="card-kpi">
+    <div class="card-kpi-value lime">USD</div>
+    <div class="card-kpi-label">Ingresos proyectados · IC 95%</div>
+  </div>
+  <span class="feature-card-badge badge-tech">Admin · Analista · Financiero</span>
+</div>
+""", unsafe_allow_html=True)
+
+with col6:
+    st.markdown("""
+<div class="feature-card amber">
+  <span class="fc-number">06 / ESCALABILIDAD</span>
+  <h3>Escalabilidad</h3>
+  <p>Hoja de ruta para exportar el pipeline a otras marcas,
+     líneas de negocio y mercados geográficos de LatAm.</p>
+  <div class="card-kpi">
+    <div class="card-kpi-value violet">Multi-Marca</div>
+    <div class="card-kpi-label">Portafolio · Onboarding · LatAm</div>
+  </div>
+  <span class="feature-card-badge badge-all">Todos los roles</span>
+</div>
+""", unsafe_allow_html=True)
+
 st.markdown("""
 <div style="
   margin-top: 48px;
