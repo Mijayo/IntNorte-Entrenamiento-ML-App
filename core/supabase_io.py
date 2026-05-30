@@ -10,6 +10,7 @@ import gzip
 import io
 import json
 import pickle
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 import matplotlib.figure
@@ -23,6 +24,19 @@ log = get_logger("supabase_io")
 
 _TABLE       = "training_runs"
 _AUDIT_TABLE = "audit_log"
+
+_ARTIFACT_NAMES = [
+    "modelo_total_mejorado.pkl.gz",
+    "prediccion_total_mejorada.xlsx",
+    "grid_search_results.xlsx",
+    "walk_forward_validation.xlsx",
+    "historico_total_mejorado.xlsx",
+    "historico_exog.xlsx",
+    "metricas_mejoradas.json",
+    "acf_plot.png",
+    "pacf_plot.png",
+    "llm_cache.json",
+]
 
 
 # ── Clientes ─────────────────────────────────────────────────────────────────
@@ -41,7 +55,12 @@ def _get_service_client():
     """Cliente con service role key — bypasea RLS para Storage y DB.
     Seguro en Streamlit porque es server-side y nunca llega al navegador."""
     cfg = st.secrets["supabase"]
-    service_key = cfg.get("service_key") or cfg.get("key")
+    service_key = cfg.get("service_key")
+    if not service_key:
+        raise RuntimeError(
+            "supabase.service_key no está configurado en secrets.toml. "
+            "Las operaciones de Storage y DB requieren la service role key."
+        )
     return create_client(cfg["url"], service_key)
 
 
@@ -62,14 +81,9 @@ def _audit():
 # ── Primitivas de I/O (Storage) ──────────────────────────────────────────────
 
 def _upload(path: str, data: bytes, content_type: str = "application/octet-stream") -> None:
-    """Sube bytes a Supabase Storage (sobreescribe si existe)."""
-    sb = _get_service_client()
-    try:
-        sb.storage.from_(_bucket()).remove([path])
-    except Exception as e:
-        log.debug("Pre-remove skipped for '%s': %s", path, e)
-    sb.storage.from_(_bucket()).upload(
-        path, data, {"content-type": content_type}
+    """Sube bytes a Supabase Storage (sobrescribe atómicamente con upsert)."""
+    _get_service_client().storage.from_(_bucket()).upload(
+        path, data, {"content-type": content_type, "upsert": "true"}
     )
     log.debug("Upload OK: %s (%d bytes)", path, len(data))
 
@@ -96,7 +110,7 @@ def _run_exists(run_name: str) -> bool:
 def get_available_runs() -> list[str]:
     """Lista de runs disponibles (más reciente primero).
     Fuente primaria: tabla DB. Fallback: training_log.json.
-    En ambos casos filtra runs sin artefactos en Storage."""
+    Filtra runs sin artefactos en Storage con una sola llamada al bucket."""
     try:
         rows = (
             _db()
@@ -106,7 +120,6 @@ def get_available_runs() -> list[str]:
             .data
         )
         runs = [r["run_name"] for r in rows]
-        return [rn for rn in runs if _run_exists(rn)]
     except Exception as e:
         log.warning("DB no disponible, usando training_log.json: %s", e)
         try:
@@ -116,10 +129,19 @@ def get_available_runs() -> list[str]:
                 rn = entry.get("run_name")
                 if rn and rn not in seen:
                     seen[rn] = True
-            return [rn for rn in seen.keys() if _run_exists(rn)]
+            runs = list(seen.keys())
         except Exception as e2:
             log.debug("training_log.json tampoco disponible: %s", e2)
             return []
+
+    # Una sola llamada al bucket en lugar de N+1 llamadas individuales
+    try:
+        items = _get_service_client().storage.from_(_bucket()).list("")
+        existing = {item["name"] for item in items if item.get("name")}
+        return [rn for rn in runs if rn in existing]
+    except Exception as e:
+        log.warning("No se pudo listar bucket, usando _run_exists: %s", e)
+        return [rn for rn in runs if _run_exists(rn)]
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -146,8 +168,9 @@ def approve_model(run_name: str, usuario: str | None = None) -> None:
     """Activa un run como modelo de producción.
     Marca activo=TRUE en DB y actualiza latest.txt en Storage."""
     try:
-        _db().update({"activo": False}).neq("run_name", run_name).execute()
+        # Activar el target primero — si falla el segundo UPDATE, al menos hay un modelo activo
         _db().update({"activo": True}).eq("run_name", run_name).execute()
+        _db().update({"activo": False}).neq("run_name", run_name).execute()
         log.info("Modelo activado en DB: run='%s'", run_name)
     except Exception as e:
         log.warning("No se pudo actualizar activo en DB: %s", e)
@@ -158,7 +181,16 @@ def approve_model(run_name: str, usuario: str | None = None) -> None:
 
 
 def delete_run(run_name: str, usuario: str | None = None) -> None:
-    """Elimina un run de la tabla DB (los artefactos en Storage se borran manualmente)."""
+    """Elimina un run de DB y sus artefactos en Storage."""
+    # 1. Borrar artefactos de Storage
+    try:
+        paths = [f"{run_name}/{name}" for name in _ARTIFACT_NAMES]
+        _get_service_client().storage.from_(_bucket()).remove(paths)
+        log.info("Artefactos de Storage eliminados: run='%s'", run_name)
+    except Exception as e:
+        log.warning("No se pudieron eliminar artefactos de Storage para run='%s': %s", run_name, e)
+
+    # 2. Borrar de DB
     try:
         _db().delete().eq("run_name", run_name).execute()
         log_audit(usuario, "DELETE_RUN", run_name=run_name)
@@ -226,12 +258,19 @@ def save_to_dashboard(
     """
     p = f"{run_name}/"
     log.info("Guardando artefactos del run '%s' en Supabase", run_name)
+    failed: list[str] = []
 
-    buf = io.BytesIO()
-    with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
-        pickle.dump(modelo, gz)
-    _upload(p + "modelo_total_mejorado.pkl.gz", buf.getvalue())
+    # Modelo (pickle comprimido)
+    try:
+        buf = io.BytesIO()
+        with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+            pickle.dump(modelo, gz)
+        _upload(p + "modelo_total_mejorado.pkl.gz", buf.getvalue())
+    except Exception as e:
+        log.error("Run '%s': fallo al guardar modelo: %s", run_name, e)
+        failed.append("modelo_total_mejorado.pkl.gz")
 
+    # Archivos Excel
     excel_ct = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     for df, name, with_index in [
         (predicciones,  "prediccion_total_mejorada.xlsx",  False),
@@ -240,32 +279,55 @@ def save_to_dashboard(
         (historico.to_frame() if hasattr(historico, "to_frame") else historico,
                         "historico_total_mejorado.xlsx",   True),
     ]:
-        buf = io.BytesIO()
-        df.to_excel(buf, index=with_index, engine="openpyxl")
-        _upload(p + name, buf.getvalue(), excel_ct)
+        try:
+            buf = io.BytesIO()
+            df.to_excel(buf, index=with_index, engine="openpyxl")
+            _upload(p + name, buf.getvalue(), excel_ct)
+        except Exception as e:
+            log.error("Run '%s': fallo al guardar '%s': %s", run_name, name, e)
+            failed.append(name)
 
-    # Guardar variable exógena (ventas_otros) si estuvo disponible en el entrenamiento
+    # Variable exógena (ventas_otros) si estuvo disponible en el entrenamiento
     if exog_data is not None:
-        exog_df = exog_data.to_frame() if isinstance(exog_data, pd.Series) else exog_data
-        buf = io.BytesIO()
-        exog_df.to_excel(buf, index=True, engine="openpyxl")
-        _upload(p + "historico_exog.xlsx", buf.getvalue(), excel_ct)
-        log.debug("Run '%s': exog guardada (%d meses)", run_name, len(exog_df))
+        try:
+            exog_df = exog_data.to_frame() if isinstance(exog_data, pd.Series) else exog_data
+            buf = io.BytesIO()
+            exog_df.to_excel(buf, index=True, engine="openpyxl")
+            _upload(p + "historico_exog.xlsx", buf.getvalue(), excel_ct)
+            log.debug("Run '%s': exog guardada (%d meses)", run_name, len(exog_df))
+        except Exception as e:
+            log.error("Run '%s': fallo al guardar exog: %s", run_name, e)
+            failed.append("historico_exog.xlsx")
 
-    _upload(
-        p + "metricas_mejoradas.json",
-        json.dumps(metricas, indent=2, ensure_ascii=False).encode(),
-        "application/json"
-    )
+    # Métricas JSON
+    try:
+        _upload(
+            p + "metricas_mejoradas.json",
+            json.dumps(metricas, indent=2, ensure_ascii=False).encode(),
+            "application/json"
+        )
+    except Exception as e:
+        log.error("Run '%s': fallo al guardar métricas: %s", run_name, e)
+        failed.append("metricas_mejoradas.json")
 
+    # Imágenes ACF/PACF
     for fig, name in [(acf_fig, "acf_plot.png"), (pacf_fig, "pacf_plot.png")]:
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
-        _upload(p + name, buf.getvalue(), "image/png")
+        try:
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+            _upload(p + name, buf.getvalue(), "image/png")
+        except Exception as e:
+            log.error("Run '%s': fallo al guardar '%s': %s", run_name, name, e)
+            failed.append(name)
 
-    n_artefactos = 9 if exog_data is not None else 8
+    if failed:
+        log.error("Run '%s': artefactos con error: %s", run_name, failed)
+        st.warning(f"Algunos artefactos no se guardaron correctamente: {', '.join(failed)}")
+
+    n_esperados = 9 if exog_data is not None else 8
+    n_guardados = n_esperados - len(failed)
     st.cache_data.clear()
-    log.info("Run '%s' guardado correctamente (%d artefactos)", run_name, n_artefactos)
+    log.info("Run '%s' guardado (%d/%d artefactos)", run_name, n_guardados, n_esperados)
 
 
 # ── Cargar datos del dashboard ───────────────────────────────────────────────
@@ -274,7 +336,7 @@ def save_to_dashboard(
 def load_precargados(
     run_name: str,
 ) -> "tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series | None]":
-    """Descarga y parsea todos los artefactos de un run (cacheado 10 min).
+    """Descarga y parsea todos los artefactos de un run en paralelo (cacheado 10 min).
 
     Returns
     -------
@@ -285,41 +347,54 @@ def load_precargados(
     """
     p = f"{run_name}/"
 
-    metricas: dict = json.loads(_download(p + "metricas_mejoradas.json"))
+    # Descargar todos los archivos en paralelo
+    file_paths = {
+        "metricas": p + "metricas_mejoradas.json",
+        "pred":     p + "prediccion_total_mejorada.xlsx",
+        "grid":     p + "grid_search_results.xlsx",
+        "walk":     p + "walk_forward_validation.xlsx",
+        "hist":     p + "historico_total_mejorado.xlsx",
+        "exog":     p + "historico_exog.xlsx",
+    }
+    raw: dict[str, bytes | None] = {}
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {executor.submit(_download, path): key for key, path in file_paths.items()}
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                raw[key] = future.result()
+            except Exception as e:
+                raw[key] = None
+                if key != "exog":
+                    log.warning("Run '%s': no se pudo descargar '%s': %s", run_name, key, e)
 
-    pred_total = pd.read_excel(
-        io.BytesIO(_download(p + "prediccion_total_mejorada.xlsx")), engine="openpyxl"
-    )
+    metricas: dict = json.loads(raw["metricas"])
+
+    pred_total = pd.read_excel(io.BytesIO(raw["pred"]), engine="openpyxl")
     pred_total["Fecha"] = pd.to_datetime(pred_total["Fecha"])
 
-    grid_search = pd.read_excel(
-        io.BytesIO(_download(p + "grid_search_results.xlsx")), engine="openpyxl"
-    )
+    grid_search = pd.read_excel(io.BytesIO(raw["grid"]), engine="openpyxl")
 
-    walk_forward = pd.read_excel(
-        io.BytesIO(_download(p + "walk_forward_validation.xlsx")), engine="openpyxl"
-    )
+    walk_forward = pd.read_excel(io.BytesIO(raw["walk"]), engine="openpyxl")
     walk_forward["fecha"] = pd.to_datetime(walk_forward["fecha"])
 
     hist_total = pd.read_excel(
-        io.BytesIO(_download(p + "historico_total_mejorado.xlsx")),
-        engine="openpyxl", index_col=0
+        io.BytesIO(raw["hist"]), engine="openpyxl", index_col=0
     )
     hist_total.index = pd.to_datetime(hist_total.index)
     hist_total = hist_total.squeeze()
 
-    # Variable exógena — disponible solo en runs generados desde esta versión
     exog_total = None
-    try:
-        exog_df = pd.read_excel(
-            io.BytesIO(_download(p + "historico_exog.xlsx")),
-            engine="openpyxl", index_col=0
-        )
-        exog_df.index = pd.to_datetime(exog_df.index)
-        exog_total = exog_df.squeeze()
-        log.debug("Run '%s': exog cargada (%d meses)", run_name, len(exog_total))
-    except Exception as e:
-        log.debug("Run '%s': exog no disponible — %s", run_name, e)
+    if raw.get("exog") is not None:
+        try:
+            exog_df = pd.read_excel(
+                io.BytesIO(raw["exog"]), engine="openpyxl", index_col=0
+            )
+            exog_df.index = pd.to_datetime(exog_df.index)
+            exog_total = exog_df.squeeze()
+            log.debug("Run '%s': exog cargada (%d meses)", run_name, len(exog_total))
+        except Exception as e:
+            log.debug("Run '%s': exog no disponible — %s", run_name, e)
 
     return metricas, pred_total, grid_search, walk_forward, hist_total, exog_total
 
@@ -393,7 +468,9 @@ def save_training_log(entry: dict) -> None:
         log.error("No se pudo guardar en DB: %s", e)
         st.warning(f"No se pudo guardar en base de datos: {e}")
 
-    # 2. Backup en training_log.json (fallback)
+    # 2. Backup en training_log.json (best-effort, fuente secundaria)
+    # NOTA: este patrón read-modify-write puede perder entradas si dos entrenamientos
+    # ocurren simultáneamente. La DB (paso 1) es la fuente de verdad.
     try:
         try:
             existing = json.loads(_download("training_log.json"))
