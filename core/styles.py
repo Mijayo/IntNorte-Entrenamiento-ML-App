@@ -527,11 +527,15 @@ def get_home_css():
 }
 .contexto-kpis {
   display: grid !important;
-  grid-template-columns: repeat(4, auto) !important;
-  gap: 24px !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 16px !important;
   align-items: center !important;
-  flex-shrink: 0 !important;
-  white-space: nowrap !important;
+}
+@media (max-width: 640px) {
+  .contexto-kpis {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 20px 12px !important;
+  }
 }
 </style>"""
 
