@@ -78,11 +78,19 @@ show_header(
 )
 show_user_info()
 
-# ── Contenido ────────────────────────────────────────────────────────────────
+# ── Pestañas ──────────────────────────────────────────────────────────────────
 
-st.markdown(section_header("Proyección de Ingresos · Horizonte 6 Meses", "💰"), unsafe_allow_html=True)
+tab1, tab2 = st.tabs(["💰 Proyección de Ingresos", "💎 Valor Estratégico del Sistema"])
 
-st.markdown("""
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 1 — PROYECCIÓN DE INGRESOS
+# ══════════════════════════════════════════════════════════════════════════════
+
+with tab1:
+
+    st.markdown(section_header("Proyección de Ingresos · Horizonte 6 Meses", "💰"), unsafe_allow_html=True)
+
+    st.markdown("""
 <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);
             border-radius:10px;padding:14px 20px;margin-bottom:18px;">
 <span style="font-size:1.0rem;font-weight:600;color:#4ADE80;">Escenario financiero basado en predicción SARIMA</span><br>
@@ -94,163 +102,162 @@ Ajusta el precio unitario y el margen neto para tu escenario real.
 </div>
 """, unsafe_allow_html=True)
 
-# ── Inputs de escenario ───────────────────────────────────────────────────────
+    # ── Inputs de escenario ───────────────────────────────────────────────────
 
-inp_col1, inp_col2, inp_col3 = st.columns(3)
-with inp_col1:
-    precio_usd = st.number_input(
-        "Precio medio por unidad (USD $)",
-        min_value=1_000, max_value=500_000, value=15_000, step=500,
-        format="%d",
-        help="Precio de venta neto por unidad en dólares.",
-    )
-with inp_col2:
-    margen_usd_pct = st.number_input(
-        "Margen neto estimado (%)",
-        min_value=0.0, max_value=100.0, value=8.0, step=0.5,
-        format="%.1f",
-        help="Porcentaje de beneficio neto sobre ingresos. 0 = omitir.",
-    )
-with inp_col3:
-    tc = st.number_input(
-        "Tipo de cambio (USD / moneda local)",
-        min_value=0.01, max_value=10000.0, value=1.0, step=0.01,
-        format="%.2f",
-        help="Factor para convertir el precio a moneda local si aplica. Deja en 1 si ya está en USD.",
-    )
+    inp_col1, inp_col2, inp_col3 = st.columns(3)
+    with inp_col1:
+        precio_usd = st.number_input(
+            "Precio medio por unidad (USD $)",
+            min_value=1_000, max_value=500_000, value=15_000, step=500,
+            format="%d",
+            help="Precio de venta neto por unidad en dólares.",
+        )
+    with inp_col2:
+        margen_usd_pct = st.number_input(
+            "Margen neto estimado (%)",
+            min_value=0.0, max_value=100.0, value=8.0, step=0.5,
+            format="%.1f",
+            help="Porcentaje de beneficio neto sobre ingresos. 0 = omitir.",
+        )
+    with inp_col3:
+        tc = st.number_input(
+            "Tipo de cambio (USD / moneda local)",
+            min_value=0.01, max_value=10000.0, value=1.0, step=0.01,
+            format="%.2f",
+            help="Factor para convertir el precio a moneda local si aplica. Deja en 1 si ya está en USD.",
+        )
 
-# ── Cálculo de ingresos ───────────────────────────────────────────────────────
+    # ── Cálculo de ingresos ───────────────────────────────────────────────────
 
-df_usd = pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
-precio_efectivo      = precio_usd * tc
-df_usd['Ingresos ($)'] = (df_usd['Predicción'] * precio_efectivo).round(0).astype(int)
-df_usd['IC Inf ($)']   = (df_usd['IC_Inferior'] * precio_efectivo).round(0).astype(int)
-df_usd['IC Sup ($)']   = (df_usd['IC_Superior'] * precio_efectivo).round(0).astype(int)
-if margen_usd_pct > 0:
-    df_usd['Beneficio ($)'] = (df_usd['Ingresos ($)'] * margen_usd_pct / 100).round(0).astype(int)
+    df_usd = pred_total[['Mes', 'Predicción', 'IC_Inferior', 'IC_Superior']].copy()
+    precio_efectivo      = precio_usd * tc
+    df_usd['Ingresos ($)'] = (df_usd['Predicción'] * precio_efectivo).round(0).astype(int)
+    df_usd['IC Inf ($)']   = (df_usd['IC_Inferior'] * precio_efectivo).round(0).astype(int)
+    df_usd['IC Sup ($)']   = (df_usd['IC_Superior'] * precio_efectivo).round(0).astype(int)
+    if margen_usd_pct > 0:
+        df_usd['Beneficio ($)'] = (df_usd['Ingresos ($)'] * margen_usd_pct / 100).round(0).astype(int)
 
-total_uds_usd  = int(df_usd['Predicción'].sum())
-total_ing_usd  = int(df_usd['Ingresos ($)'].sum())
-ic_inf_usd     = int(df_usd['IC Inf ($)'].sum())
-ic_sup_usd     = int(df_usd['IC Sup ($)'].sum())
+    total_uds_usd  = int(df_usd['Predicción'].sum())
+    total_ing_usd  = int(df_usd['Ingresos ($)'].sum())
+    ic_inf_usd     = int(df_usd['IC Inf ($)'].sum())
+    ic_sup_usd     = int(df_usd['IC Sup ($)'].sum())
 
-# ── KPIs ──────────────────────────────────────────────────────────────────────
+    # ── KPIs ──────────────────────────────────────────────────────────────────
 
-ku1, ku2, ku3 = st.columns(3)
-ku1.markdown(kpi_card("Unidades (6 meses)", f"{total_uds_usd:,} uds", "📦", "blue"), unsafe_allow_html=True)
-ku2.markdown(kpi_card("Ingresos centrales (6 m)", f"${total_ing_usd:,.0f}", "💵"), unsafe_allow_html=True)
-ku3.markdown(kpi_card("Rango IC 95% (6 m)", f"${ic_inf_usd:,.0f} – ${ic_sup_usd:,.0f}", "📐", "amber"), unsafe_allow_html=True)
+    ku1, ku2, ku3 = st.columns(3)
+    ku1.markdown(kpi_card("Unidades (6 meses)", f"{total_uds_usd:,} uds", "📦", "blue"), unsafe_allow_html=True)
+    ku2.markdown(kpi_card("Ingresos centrales (6 m)", f"${total_ing_usd:,.0f}", "💵"), unsafe_allow_html=True)
+    ku3.markdown(kpi_card("Rango IC 95% (6 m)", f"${ic_inf_usd:,.0f} – ${ic_sup_usd:,.0f}", "📐", "amber"), unsafe_allow_html=True)
 
-if margen_usd_pct > 0:
-    total_ben_usd = int(df_usd['Beneficio ($)'].sum())
-    kb1, kb2, _ = st.columns(3)
-    kb1.markdown(kpi_card("Beneficio neto (6 m)", f"${total_ben_usd:,.0f}", "💹"), unsafe_allow_html=True)
-    kb2.markdown(kpi_card("Margen aplicado", f"{margen_usd_pct:.1f}%", "📊"), unsafe_allow_html=True)
+    if margen_usd_pct > 0:
+        total_ben_usd = int(df_usd['Beneficio ($)'].sum())
+        kb1, kb2, _ = st.columns(3)
+        kb1.markdown(kpi_card("Beneficio neto (6 m)", f"${total_ben_usd:,.0f}", "💹"), unsafe_allow_html=True)
+        kb2.markdown(kpi_card("Margen aplicado", f"{margen_usd_pct:.1f}%", "📊"), unsafe_allow_html=True)
 
-# ── Gráfico: barras de ingresos con rango IC ──────────────────────────────────
+    # ── Gráfico: barras de ingresos con rango IC ──────────────────────────────
 
-fig_rev = go.Figure()
+    fig_rev = go.Figure()
 
-# Banda IC (área semitransparente en overlay)
-fig_rev.add_trace(go.Bar(
-    x=df_usd['Mes'], y=df_usd['IC Sup ($)'] - df_usd['IC Inf ($)'],
-    base=df_usd['IC Inf ($)'],
-    name='Rango IC 95%',
-    marker=dict(color='rgba(251,191,36,0.18)', line=dict(width=0)),
-    hovertemplate='IC 95%: $%{base:,.0f} – $%{customdata:,.0f}<extra></extra>',
-    customdata=df_usd['IC Sup ($)'],
-))
-
-# Barras de ingresos centrales
-fig_rev.add_trace(go.Bar(
-    x=df_usd['Mes'], y=df_usd['Ingresos ($)'],
-    name='Ingresos proyectados',
-    marker=dict(
-        color=COLORS['primary'],
-        line=dict(color=COLORS['primary'], width=0),
-    ),
-    text=[f"${v:,.0f}" for v in df_usd['Ingresos ($)']],
-    textposition='outside',
-    textfont=dict(color='#94A3B8', size=11),
-    hovertemplate='%{x}<br>Ingresos: $%{y:,.0f}<extra></extra>',
-))
-
-# Línea de beneficio neto (si aplica)
-if margen_usd_pct > 0:
-    fig_rev.add_trace(go.Scatter(
-        x=df_usd['Mes'], y=df_usd['Beneficio ($)'],
-        mode='lines+markers', name='Beneficio neto',
-        line=dict(color=COLORS['accent'], width=2.5, dash='dot'),
-        marker=dict(size=8, color=COLORS['accent'], symbol='diamond',
-                    line=dict(color='#080D18', width=1.5)),
-        hovertemplate='%{x}<br>Beneficio: $%{y:,.0f}<extra></extra>',
+    fig_rev.add_trace(go.Bar(
+        x=df_usd['Mes'], y=df_usd['IC Sup ($)'] - df_usd['IC Inf ($)'],
+        base=df_usd['IC Inf ($)'],
+        name='Rango IC 95%',
+        marker=dict(color='rgba(251,191,36,0.18)', line=dict(width=0)),
+        hovertemplate='IC 95%: $%{base:,.0f} – $%{customdata:,.0f}<extra></extra>',
+        customdata=df_usd['IC Sup ($)'],
     ))
 
-apply_chart_theme(fig_rev, height=480,
-                  title='Proyección de Ingresos en USD — Horizonte 6 Meses')
-fig_rev.update_layout(
-    barmode='overlay',
-    hovermode='x unified',
-    xaxis_title='Mes',
-    yaxis_title='USD ($)',
-    yaxis_tickprefix='$',
-    yaxis_tickformat=',.0f',
-)
-st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False})
+    fig_rev.add_trace(go.Bar(
+        x=df_usd['Mes'], y=df_usd['Ingresos ($)'],
+        name='Ingresos proyectados',
+        marker=dict(
+            color=COLORS['primary'],
+            line=dict(color=COLORS['primary'], width=0),
+        ),
+        text=[f"${v:,.0f}" for v in df_usd['Ingresos ($)']],
+        textposition='outside',
+        textfont=dict(color='#94A3B8', size=11),
+        hovertemplate='%{x}<br>Ingresos: $%{y:,.0f}<extra></extra>',
+    ))
 
-# ── Tabla detallada ───────────────────────────────────────────────────────────
+    if margen_usd_pct > 0:
+        fig_rev.add_trace(go.Scatter(
+            x=df_usd['Mes'], y=df_usd['Beneficio ($)'],
+            mode='lines+markers', name='Beneficio neto',
+            line=dict(color=COLORS['accent'], width=2.5, dash='dot'),
+            marker=dict(size=8, color=COLORS['accent'], symbol='diamond',
+                        line=dict(color='#080D18', width=1.5)),
+            hovertemplate='%{x}<br>Beneficio: $%{y:,.0f}<extra></extra>',
+        ))
 
-st.subheader("📋 Detalle mensual")
-disp_cols_usd = ['Mes', 'Predicción', 'Ingresos ($)', 'IC Inf ($)', 'IC Sup ($)']
-fmt_usd = {
-    'Predicción':  '{:.0f}',
-    'Ingresos ($)': '${:,}',
-    'IC Inf ($)':  '${:,}',
-    'IC Sup ($)':  '${:,}',
-}
-if margen_usd_pct > 0:
-    disp_cols_usd.append('Beneficio ($)')
-    fmt_usd['Beneficio ($)'] = '${:,}'
+    apply_chart_theme(fig_rev, height=480,
+                      title='Proyección de Ingresos en USD — Horizonte 6 Meses')
+    fig_rev.update_layout(
+        barmode='overlay',
+        hovermode='x unified',
+        xaxis_title='Mes',
+        yaxis_title='USD ($)',
+        yaxis_tickprefix='$',
+        yaxis_tickformat=',.0f',
+    )
+    st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False})
 
-# Fila de totales
-totals_row = {
-    'Mes': 'TOTAL',
-    'Predicción': df_usd['Predicción'].sum(),
-    'Ingresos ($)': total_ing_usd,
-    'IC Inf ($)': ic_inf_usd,
-    'IC Sup ($)': ic_sup_usd,
-}
-if margen_usd_pct > 0:
-    totals_row['Beneficio ($)'] = total_ben_usd
+    # ── Tabla detallada ───────────────────────────────────────────────────────
 
-df_usd_show = pd.concat(
-    [df_usd[disp_cols_usd], pd.DataFrame([totals_row])[disp_cols_usd]],
-    ignore_index=True
-)
+    st.subheader("📋 Detalle mensual")
+    disp_cols_usd = ['Mes', 'Predicción', 'Ingresos ($)', 'IC Inf ($)', 'IC Sup ($)']
+    fmt_usd = {
+        'Predicción':  '{:.0f}',
+        'Ingresos ($)': '${:,}',
+        'IC Inf ($)':  '${:,}',
+        'IC Sup ($)':  '${:,}',
+    }
+    if margen_usd_pct > 0:
+        disp_cols_usd.append('Beneficio ($)')
+        fmt_usd['Beneficio ($)'] = '${:,}'
 
-st.dataframe(
-    df_usd_show.style
-               .background_gradient(subset=['Ingresos ($)'], cmap='Greens')
-               .format(fmt_usd),
-    use_container_width=True, hide_index=True,
-)
+    totals_row = {
+        'Mes': 'TOTAL',
+        'Predicción': df_usd['Predicción'].sum(),
+        'Ingresos ($)': total_ing_usd,
+        'IC Inf ($)': ic_inf_usd,
+        'IC Sup ($)': ic_sup_usd,
+    }
+    if margen_usd_pct > 0:
+        totals_row['Beneficio ($)'] = total_ben_usd
 
-if has_permission('exportar'):
-    csv_usd = df_usd[disp_cols_usd].to_csv(index=False).encode('utf-8')
-    st.download_button(
-        "📥 Exportar CSV proyección USD",
-        csv_usd,
-        f"proyeccion_ingresos_usd_{datetime.now().strftime('%Y%m%d')}.csv",
-        "text/csv",
+    df_usd_show = pd.concat(
+        [df_usd[disp_cols_usd], pd.DataFrame([totals_row])[disp_cols_usd]],
+        ignore_index=True
     )
 
-# ── Valor Estratégico del Sistema — Show Me The Money ─────────────────────────
+    st.dataframe(
+        df_usd_show.style
+                   .background_gradient(subset=['Ingresos ($)'], cmap='Greens')
+                   .format(fmt_usd),
+        use_container_width=True, hide_index=True,
+    )
 
-st.markdown("---")
-st.markdown(section_header("Valor Estratégico del Sistema — ¿Cuánto vale predecir bien?", "💎"),
-            unsafe_allow_html=True)
+    if has_permission('exportar'):
+        csv_usd = df_usd[disp_cols_usd].to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "📥 Exportar CSV proyección USD",
+            csv_usd,
+            f"proyeccion_ingresos_usd_{datetime.now().strftime('%Y%m%d')}.csv",
+            "text/csv",
+        )
 
-st.markdown("""
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 2 — VALOR ESTRATÉGICO DEL SISTEMA
+# ══════════════════════════════════════════════════════════════════════════════
+
+with tab2:
+
+    st.markdown(section_header("Valor Estratégico del Sistema — ¿Cuánto vale predecir bien?", "💎"),
+                unsafe_allow_html=True)
+
+    st.markdown("""
 <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.22);
             border-radius:10px;padding:14px 20px;margin-bottom:20px;">
 <span style="font-size:.95rem;font-weight:600;color:#A78BFA;">Cuantificación del impacto económico del sistema de predicción</span><br>
@@ -260,109 +267,109 @@ Ajusta los parámetros de negocio para calcular el ahorro anual estimado vs. ges
 </div>
 """, unsafe_allow_html=True)
 
-roi_c1, roi_c2, roi_c3 = st.columns(3)
-with roi_c1:
-    st.markdown("**Parámetros de inventario**")
-    sobrestock_actual = st.number_input(
-        "Sobrestock promedio sin predicción (uds/mes)",
-        min_value=0, max_value=50, value=5, step=1,
-        help="Unidades extra compradas por encima de la demanda real, por mes, sin sistema de predicción.",
+    roi_c1, roi_c2, roi_c3 = st.columns(3)
+    with roi_c1:
+        st.markdown("**Parámetros de inventario**")
+        sobrestock_actual = st.number_input(
+            "Sobrestock promedio sin predicción (uds/mes)",
+            min_value=0, max_value=50, value=5, step=1,
+            help="Unidades extra compradas por encima de la demanda real, por mes, sin sistema de predicción.",
+        )
+        costo_fin_pct = st.number_input(
+            "Costo mensual de capital inmovilizado (% del precio/ud)",
+            min_value=0.5, max_value=5.0, value=1.5, step=0.1, format="%.1f",
+            help="Costo financiero + almacenamiento mensual por unidad en inventario (típico: 1–2%).",
+        )
+    with roi_c2:
+        st.markdown("**Parámetros de venta perdida**")
+        stockout_mes = st.number_input(
+            "Ventas perdidas por mes sin predicción (uds/mes)",
+            min_value=0, max_value=20, value=2, step=1,
+            help="Unidades que no se vendieron por quiebre de stock estimado sin el sistema.",
+        )
+        reduccion_stockout_pct = st.number_input(
+            "Reducción de stockout con el sistema (%)",
+            min_value=0, max_value=100, value=70, step=5,
+            help="Porcentaje de stockouts evitados gracias a la predicción (estimación conservadora: 60–80%).",
+        )
+    with roi_c3:
+        st.markdown("**Parámetros del sistema**")
+        reduccion_sobrestock_pct = st.number_input(
+            "Reducción de sobrestock con el sistema (%)",
+            min_value=0, max_value=100, value=60, step=5,
+            help="Porcentaje de unidades sobrestock evitadas con mejor previsión (estimación: 50–70%).",
+        )
+        costo_sistema_anual = st.number_input(
+            "Costo anual del sistema (USD $)",
+            min_value=0, max_value=50_000, value=1_200, step=100,
+            help="Coste total anual: Streamlit Cloud + Supabase + mantenimiento (~$100/mes).",
+        )
+
+    # ── Cálculos ──────────────────────────────────────────────────────────────
+
+    costo_por_ud_mes = precio_usd * (costo_fin_pct / 100)
+
+    ahorro_sobrestock_anual = (
+        sobrestock_actual
+        * (reduccion_sobrestock_pct / 100)
+        * costo_por_ud_mes
+        * 12
     )
-    costo_fin_pct = st.number_input(
-        "Costo mensual de capital inmovilizado (% del precio/ud)",
-        min_value=0.5, max_value=5.0, value=1.5, step=0.1, format="%.1f",
-        help="Costo financiero + almacenamiento mensual por unidad en inventario (típico: 1–2%).",
-    )
-with roi_c2:
-    st.markdown("**Parámetros de venta perdida**")
-    stockout_mes = st.number_input(
-        "Ventas perdidas por mes sin predicción (uds/mes)",
-        min_value=0, max_value=20, value=2, step=1,
-        help="Unidades que no se vendieron por quiebre de stock estimado sin el sistema.",
-    )
-    reduccion_stockout_pct = st.number_input(
-        "Reducción de stockout con el sistema (%)",
-        min_value=0, max_value=100, value=70, step=5,
-        help="Porcentaje de stockouts evitados gracias a la predicción (estimación conservadora: 60–80%).",
-    )
-with roi_c3:
-    st.markdown("**Parámetros del sistema**")
-    reduccion_sobrestock_pct = st.number_input(
-        "Reducción de sobrestock con el sistema (%)",
-        min_value=0, max_value=100, value=60, step=5,
-        help="Porcentaje de unidades sobrestock evitadas con mejor previsión (estimación: 50–70%).",
-    )
-    costo_sistema_anual = st.number_input(
-        "Costo anual del sistema (USD $)",
-        min_value=0, max_value=50_000, value=1_200, step=100,
-        help="Coste total anual: Streamlit Cloud + Supabase + mantenimiento (~$100/mes).",
+
+    margen_por_ud = precio_usd * (margen_usd_pct / 100)
+    ahorro_stockout_anual = (
+        stockout_mes
+        * (reduccion_stockout_pct / 100)
+        * margen_por_ud
+        * 12
     )
 
-# ── Cálculos ──────────────────────────────────────────────────────────────────
+    valor_bruto_anual = ahorro_sobrestock_anual + ahorro_stockout_anual
+    roi_neto = valor_bruto_anual - costo_sistema_anual
+    roi_ratio = (valor_bruto_anual / costo_sistema_anual) if costo_sistema_anual > 0 else float('inf')
+    payback_meses = (costo_sistema_anual / (valor_bruto_anual / 12)) if valor_bruto_anual > 0 else float('inf')
 
-costo_por_ud_mes = precio_usd * (costo_fin_pct / 100)
+    # ── KPIs del ROI ──────────────────────────────────────────────────────────
 
-ahorro_sobrestock_anual = (
-    sobrestock_actual
-    * (reduccion_sobrestock_pct / 100)
-    * costo_por_ud_mes
-    * 12
-)
+    r1, r2, r3, r4 = st.columns(4)
+    r1.markdown(kpi_card("Ahorro sobrestock/año",
+                         f"${ahorro_sobrestock_anual:,.0f}", "📦"), unsafe_allow_html=True)
+    r2.markdown(kpi_card("Ingresos recuperados/año",
+                         f"${ahorro_stockout_anual:,.0f}", "💹", "green"), unsafe_allow_html=True)
+    r3.markdown(kpi_card("Valor neto anual del sistema",
+                         f"${roi_neto:,.0f}", "💎", "blue"), unsafe_allow_html=True)
+    r4.markdown(kpi_card("ROI del sistema",
+                         f"{roi_ratio:.0f}x", "🚀", "amber"), unsafe_allow_html=True)
 
-margen_por_ud = precio_usd * (margen_usd_pct / 100)
-ahorro_stockout_anual = (
-    stockout_mes
-    * (reduccion_stockout_pct / 100)
-    * margen_por_ud
-    * 12
-)
+    # ── Gráfico waterfall ─────────────────────────────────────────────────────
 
-valor_bruto_anual = ahorro_sobrestock_anual + ahorro_stockout_anual
-roi_neto = valor_bruto_anual - costo_sistema_anual
-roi_ratio = (valor_bruto_anual / costo_sistema_anual) if costo_sistema_anual > 0 else float('inf')
-payback_meses = (costo_sistema_anual / (valor_bruto_anual / 12)) if valor_bruto_anual > 0 else float('inf')
+    fig_roi = go.Figure(go.Waterfall(
+        orientation="v",
+        measure=["relative", "relative", "total", "relative", "total"],
+        x=["Ahorro<br>sobrestock", "Ingresos<br>recuperados",
+           "Valor bruto", "Costo<br>del sistema", "Valor neto"],
+        y=[ahorro_sobrestock_anual, ahorro_stockout_anual, 0,
+           -costo_sistema_anual, 0],
+        text=[f"${ahorro_sobrestock_anual:,.0f}", f"${ahorro_stockout_anual:,.0f}",
+              f"${valor_bruto_anual:,.0f}", f"-${costo_sistema_anual:,.0f}",
+              f"${roi_neto:,.0f}"],
+        textposition="outside",
+        textfont=dict(family="JetBrains Mono, monospace", size=12, color="#7A95A8"),
+        connector=dict(line=dict(color="rgba(0,115,255,0.25)", width=1.5)),
+        increasing=dict(marker=dict(color=COLORS['success'])),
+        decreasing=dict(marker=dict(color=COLORS['accent'])),
+        totals=dict(marker=dict(color=COLORS['primary'])),
+        opacity=0.85,
+    ))
+    apply_chart_theme(fig_roi, height=400, title="Valor anual del sistema — Waterfall ($USD)")
+    fig_roi.update_layout(yaxis_title="USD ($)", yaxis_tickprefix="$", yaxis_tickformat=",.0f")
+    st.plotly_chart(fig_roi, use_container_width=True, config={"displayModeBar": False})
 
-# ── KPIs del ROI ──────────────────────────────────────────────────────────────
+    # ── Tabla resumen ─────────────────────────────────────────────────────────
 
-r1, r2, r3, r4 = st.columns(4)
-r1.markdown(kpi_card("Ahorro sobrestock/año",
-                     f"${ahorro_sobrestock_anual:,.0f}", "📦"), unsafe_allow_html=True)
-r2.markdown(kpi_card("Ingresos recuperados/año",
-                     f"${ahorro_stockout_anual:,.0f}", "💹", "green"), unsafe_allow_html=True)
-r3.markdown(kpi_card("Valor neto anual del sistema",
-                     f"${roi_neto:,.0f}", "💎", "blue"), unsafe_allow_html=True)
-r4.markdown(kpi_card("ROI del sistema",
-                     f"{roi_ratio:.0f}x", "🚀", "amber"), unsafe_allow_html=True)
-
-# ── Gráfico waterfall ─────────────────────────────────────────────────────────
-
-fig_roi = go.Figure(go.Waterfall(
-    orientation="v",
-    measure=["relative", "relative", "total", "relative", "total"],
-    x=["Ahorro<br>sobrestock", "Ingresos<br>recuperados",
-       "Valor bruto", "Costo<br>del sistema", "Valor neto"],
-    y=[ahorro_sobrestock_anual, ahorro_stockout_anual, 0,
-       -costo_sistema_anual, 0],
-    text=[f"${ahorro_sobrestock_anual:,.0f}", f"${ahorro_stockout_anual:,.0f}",
-          f"${valor_bruto_anual:,.0f}", f"-${costo_sistema_anual:,.0f}",
-          f"${roi_neto:,.0f}"],
-    textposition="outside",
-    textfont=dict(family="JetBrains Mono, monospace", size=12, color="#7A95A8"),
-    connector=dict(line=dict(color="rgba(0,115,255,0.25)", width=1.5)),
-    increasing=dict(marker=dict(color=COLORS['success'])),
-    decreasing=dict(marker=dict(color=COLORS['accent'])),
-    totals=dict(marker=dict(color=COLORS['primary'])),
-    opacity=0.85,
-))
-apply_chart_theme(fig_roi, height=400, title="Valor anual del sistema — Waterfall ($USD)")
-fig_roi.update_layout(yaxis_title="USD ($)", yaxis_tickprefix="$", yaxis_tickformat=",.0f")
-st.plotly_chart(fig_roi, use_container_width=True, config={"displayModeBar": False})
-
-# ── Tabla resumen ─────────────────────────────────────────────────────────────
-
-col_ta, col_tb = st.columns(2)
-with col_ta:
-    st.markdown(f"""
+    col_ta, col_tb = st.columns(2)
+    with col_ta:
+        st.markdown(f"""
 <div style="background:#0D1117;border:1px solid rgba(0,245,160,0.2);border-radius:8px;padding:18px 20px;">
 <div style="font-family:'Rajdhani',sans-serif;font-size:.75rem;font-weight:700;
             color:#00F5A0;text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px;">
@@ -383,8 +390,8 @@ with col_ta:
 </div>
 """, unsafe_allow_html=True)
 
-with col_tb:
-    st.markdown(f"""
+    with col_tb:
+        st.markdown(f"""
 <div style="background:#0D1117;border:1px solid rgba(255,58,92,0.2);border-radius:8px;padding:18px 20px;">
 <div style="font-family:'Rajdhani',sans-serif;font-size:.75rem;font-weight:700;
             color:#FF3A5C;text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px;">
