@@ -480,10 +480,22 @@ def get_login_css():
   100% { background-position: 0% 50%; }
 }
 
+/* ── Viewport fit: sin scroll vertical, centrado ── */
+.stApp { overflow-y: hidden !important; }
+.main .block-container {
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+[data-testid="stVerticalBlock"] { gap: 6px !important; }
+
 [data-testid="stSidebar"] { display: none !important; }
 
 [data-testid="stTextInput"] {
-  margin-bottom: 18px !important;
+  margin-bottom: 12px !important;
 }
 [data-testid="stTextInput"] input {
   border: 1px solid rgba(0,115,255,.2) !important;
@@ -536,7 +548,7 @@ def get_login_css():
   background: rgba(7,12,24,.97);
   border: 1px solid rgba(0,115,255,.16);
   border-radius: 7px;
-  padding: 64px 56px 52px;
+  padding: clamp(24px, 4.5vh, 52px) clamp(28px, 4vw, 56px) clamp(18px, 3vh, 40px);
   position: relative; overflow: hidden;
   box-shadow: 0 32px 64px rgba(0,0,0,.8),
               0 0 52px rgba(0,115,255,.05),
@@ -559,8 +571,8 @@ def get_login_css():
   letter-spacing: .1em;
 }
 .login-logo {
-  display: block; margin: 0 auto 28px;
-  height: 32px; width: auto;
+  display: block; margin: 0 auto clamp(12px, 2vh, 24px);
+  height: 30px; width: auto;
   filter: brightness(0) invert(1); opacity: .72;
 }
 .login-title {
@@ -572,7 +584,7 @@ def get_login_css():
 .login-subtitle {
   font-family: 'JetBrains Mono', monospace;
   font-size: .7rem; color: #3F5060;
-  text-align: center; margin: 0 0 28px;
+  text-align: center; margin: 0 0 clamp(14px, 2.2vh, 24px);
   letter-spacing: .05em;
 }
 .login-divider {
@@ -607,14 +619,14 @@ def get_login_css():
   font-size: .65rem;
   color: rgba(0,115,255,.28);
   text-align: center;
-  margin-top: 14px;
+  margin-top: 8px;
   letter-spacing: .04em;
   cursor: default;
 }
 .login-footer-txt {
   font-family: 'JetBrains Mono', monospace;
   font-size: .62rem; color: #1A2838;
-  text-align: center; margin-top: 32px;
+  text-align: center; margin-top: 14px;
   letter-spacing: .06em;
 }
 
