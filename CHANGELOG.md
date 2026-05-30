@@ -4,6 +4,13 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-30 (v30)
+
+- **perf(supabase_io)**: `@st.cache_data` añadido a 5 funciones que ejecutaban llamadas de red a Supabase en cada recarga de página sin ningún caché: `get_available_runs()` (TTL 5 min), `get_default_run()` (TTL 5 min), `get_runs_df()` (TTL 5 min), `load_acf_pacf_images()` (TTL 10 min), `load_current_model()` (TTL 5 min). `load_precargados()` ya tenía `@st.cache_data(ttl=600)` desde v22.
+- **perf(supabase_io)**: Invalidación activa del caché — `st.cache_data.clear()` añadido al final de `approve_model()` y `save_to_dashboard()`. Al entrenar o aprobar un modelo, todas las páginas sirven datos frescos inmediatamente sin esperar la expiración del TTL.
+
+---
+
 ### 2026-05-28 (v29)
 
 - **refactor(dashboard)**: Tabs **🔬 ACF/PACF** y **🔍 Grid Search** eliminados de la barra principal de admin/analyst. Ambas vistas se integran como sub-pestañas dentro de **📋 Métricas Técnicas** (sub-tabs: `📊 Resumen · 🔬 ACF/PACF · 🔍 Grid Search`). La barra de tabs pasa de 8 → **6 pestañas** para admin/analyst. Nuevos índices: Walk-Forward → `tabs[3]`, Métricas Técnicas → `tabs[4]`, Asistente IA → `tabs[5]`.

@@ -120,24 +120,39 @@ Toda la comunicación con Supabase pasa por este módulo. Ninguna página import
 
 **Funciones principales:**
 
-| Función | Descripción |
-|---------|-------------|
-| `get_client()` | Cliente Supabase cacheado (`@st.cache_resource`) |
-| `save_to_dashboard(run_name, ...)` | Sube todos los artefactos del run a Storage |
-| `load_precargados(run_name)` | Descarga y parsea artefactos de un run (cacheado 10 min) |
-| `get_available_runs()` | Lista runs desde PostgreSQL (fallback: `training_log.json`), filtrando los que tienen artefactos en Storage |
-| `get_default_run(runs)` | Run activo: primero `activo=TRUE` en DB, luego `latest.txt` |
-| `load_current_model()` | Métricas del modelo activo: misma prioridad que `get_default_run` (DB → `latest.txt`) |
-| `approve_model(run_name, usuario)` | Marca `activo=TRUE` en DB + actualiza `latest.txt` + registra en audit log |
-| `delete_run(run_name, usuario)` | Elimina de DB + registra en audit log |
-| `save_training_log(entry)` | Upsert en `training_runs` + backup en `training_log.json` |
-| `load_training_log()` | Historial completo desde DB (fallback: JSON) |
-| `get_runs_df()` | DataFrame con todos los runs y métricas para análisis comparativo |
-| `log_audit(usuario, accion, run_name, detalle)` | Registra acción en `audit_log`; falla silenciosamente |
-| `get_audit_log(limit)` | Últimas N entradas del audit log |
-| `save_llm_cache(run_name, cache)` | Persiste caché de respuestas Gemini en Storage |
-| `load_llm_cache(run_name)` | Descarga caché Gemini; devuelve `{}` si no existe |
-| `load_acf_pacf_images(run_name)` | Imágenes ACF/PACF como bytes para `st.image` |
+| Función | Caché | TTL | Descripción |
+|---------|:-----:|:---:|-------------|
+| `get_client()` | `@st.cache_resource` | — | Cliente Supabase (anon key) — singleton de proceso |
+| `save_to_dashboard(run_name, ...)` | — | — | Sube todos los artefactos del run a Storage; invalida caché al terminar |
+| `load_precargados(run_name)` | `@st.cache_data` | 10 min | Descarga y parsea 5–6 artefactos Excel/JSON de un run |
+| `get_available_runs()` | `@st.cache_data` | 5 min | Lista runs desde PostgreSQL (fallback: `training_log.json`), filtrando los que tienen artefactos en Storage |
+| `get_default_run(runs)` | `@st.cache_data` | 5 min | Run activo: primero `activo=TRUE` en DB, luego `latest.txt` |
+| `load_current_model()` | `@st.cache_data` | 5 min | Métricas del modelo activo (DB → `latest.txt`) |
+| `load_acf_pacf_images(run_name)` | `@st.cache_data` | 10 min | Imágenes ACF/PACF como bytes para `st.image` |
+| `get_runs_df()` | `@st.cache_data` | 5 min | DataFrame con todos los runs y métricas para análisis comparativo |
+| `approve_model(run_name, usuario)` | — | — | Marca `activo=TRUE` en DB + actualiza `latest.txt` + audit log; invalida caché |
+| `delete_run(run_name, usuario)` | — | — | Elimina de DB + registra en audit log |
+| `save_training_log(entry)` | — | — | Upsert en `training_runs` + backup en `training_log.json` |
+| `load_training_log()` | — | — | Historial completo desde DB (fallback: JSON) |
+| `log_audit(usuario, accion, run_name, detalle)` | — | — | Registra acción en `audit_log`; falla silenciosamente |
+| `get_audit_log(limit)` | — | — | Últimas N entradas del audit log |
+| `save_llm_cache(run_name, cache)` | — | — | Persiste caché de respuestas Gemini en Storage |
+| `load_llm_cache(run_name)` | — | — | Descarga caché Gemini; devuelve `{}` si no existe |
+
+**Estrategia de caché (`@st.cache_data`):**
+
+Todas las funciones de lectura que hacen llamadas de red a Supabase están decoradas con `@st.cache_data`. Esto evita descargas redundantes cuando el usuario navega entre páginas o Streamlit rerenderiza el script:
+
+| Función | Coste evitado |
+|---------|---------------|
+| `get_available_runs()` | Query DB + `list()` de Storage por cada run (N round-trips) |
+| `get_default_run()` | Query DB |
+| `load_precargados()` | 5–6 descargas de Excel desde Storage (~1–3 MB/run) |
+| `load_acf_pacf_images()` | 2 descargas PNG |
+| `load_current_model()` | Query DB + descarga JSON |
+| `get_runs_df()` | Query DB completa |
+
+La invalidación es activa: `save_to_dashboard()` y `approve_model()` llaman a `st.cache_data.clear()` al finalizar, de forma que todas las páginas ven datos frescos inmediatamente sin esperar la expiración del TTL.
 
 **Esquema de tablas PostgreSQL:**
 

@@ -453,7 +453,7 @@ Página independiente disponible para **Admin**, **Analista** y **Manager**. Com
 | Módulo | Responsabilidad |
 |--------|----------------|
 | `core/auth_system.py` | Autenticación Supabase Auth + fallback SHA-256, sesiones, timeout, RBAC, UI de login |
-| `core/supabase_io.py` | I/O con Supabase Storage y PostgreSQL; audit log centralizado |
+| `core/supabase_io.py` | I/O con Supabase Storage y PostgreSQL; audit log centralizado; caché `@st.cache_data` en todas las funciones de lectura (TTL 5–10 min), invalidación automática al entrenar o aprobar un modelo |
 | `core/utils_validacion.py` | Validación de calidad del DataFrame antes de entrenar |
 | `core/logger.py` | Logger centralizado — consola + `logs/app.log` (rotativo 2 MB × 3) |
 | `core/styles.py` | CSS global dark premium, helpers `kpi_card()`, `section_header()`, `apply_chart_theme()` |

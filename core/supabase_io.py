@@ -92,6 +92,7 @@ def _run_exists(run_name: str) -> bool:
         return False
 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_available_runs() -> list[str]:
     """Lista de runs disponibles (más reciente primero).
     Fuente primaria: tabla DB. Fallback: training_log.json.
@@ -121,6 +122,7 @@ def get_available_runs() -> list[str]:
             return []
 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_default_run(runs: list[str]) -> str | None:
     """Run activo: primero busca activo=TRUE en DB, luego latest.txt, luego el más reciente."""
     try:
@@ -151,6 +153,7 @@ def approve_model(run_name: str, usuario: str | None = None) -> None:
         log.warning("No se pudo actualizar activo en DB: %s", e)
     _upload("latest.txt", run_name.encode(), "text/plain")
     log_audit(usuario, "APPROVE_MODEL", run_name=run_name)
+    st.cache_data.clear()
     log.info("Modelo activado en producción: run='%s'", run_name)
 
 
@@ -164,6 +167,7 @@ def delete_run(run_name: str, usuario: str | None = None) -> None:
         log.error("No se pudo eliminar run '%s' de DB: %s", run_name, e)
 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_runs_df() -> pd.DataFrame:
     """DataFrame con todos los runs y sus métricas para análisis comparativo."""
     try:
@@ -260,6 +264,7 @@ def save_to_dashboard(
         _upload(p + name, buf.getvalue(), "image/png")
 
     n_artefactos = 9 if exog_data is not None else 8
+    st.cache_data.clear()
     log.info("Run '%s' guardado correctamente (%d artefactos)", run_name, n_artefactos)
 
 
@@ -319,6 +324,7 @@ def load_precargados(
     return metricas, pred_total, grid_search, walk_forward, hist_total, exog_total
 
 
+@st.cache_data(ttl=600, show_spinner=False)
 def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:
     """Descarga imágenes ACF/PACF como bytes para st.image."""
     try:
@@ -332,6 +338,7 @@ def load_acf_pacf_images(run_name: str) -> tuple[bytes | None, bytes | None]:
 
 # ── Modelo actual (para comparación ML) ─────────────────────────────────────
 
+@st.cache_data(ttl=300, show_spinner=False)
 def load_current_model() -> dict | None:
     """Carga métricas del modelo activo. Devuelve None si no existe."""
     run_name = None
