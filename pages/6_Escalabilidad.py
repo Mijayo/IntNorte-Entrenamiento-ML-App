@@ -462,6 +462,15 @@ con adaptaciones menores en los datos de entrada.
         mad   = disp
         radar_data.append([disp, roi, comp, sem, mad])
 
+    def _to_rgba(c, a=0.08):
+        if c.startswith("rgba"):
+            return c
+        if c.startswith("rgb"):
+            return c.replace("rgb(", "rgba(").replace(")", f", {a})")
+        h = c.lstrip("#")
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return f"rgba({r},{g},{b},{a})"
+
     fig_radar = go.Figure()
     colors_radar = [COLORS["success"], COLORS["primary"], "#38BDF8",
                     COLORS["secondary"], COLORS["purple"], COLORS["accent"]]
@@ -472,8 +481,7 @@ con adaptaciones menores en los datos de entrada.
             r=vals, theta=cats,
             fill="toself", name=row["Línea de Negocio"].split(" ", 1)[1],
             line=dict(color=colors_radar[i], width=2),
-            fillcolor=colors_radar[i].replace(")", ", 0.08)").replace("rgb", "rgba")
-            if colors_radar[i].startswith("rgb") else colors_radar[i] + "14",
+            fillcolor=_to_rgba(colors_radar[i]),
             opacity=0.9,
         ))
 
