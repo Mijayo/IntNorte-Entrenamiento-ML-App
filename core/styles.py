@@ -654,7 +654,7 @@ html { height: -webkit-fill-available; }
               0 0 52px rgba(0,115,255,.05),
               inset 0 1px 0 rgba(255,255,255,.02);
   animation: fadeInUp .45s ease-out both;
-  margin-bottom: 25px;
+  margin-bottom: 30px !important;
 }
 @media (min-width: 768px) {
   .login-card { margin-bottom: 0; }
