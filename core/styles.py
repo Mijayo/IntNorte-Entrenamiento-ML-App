@@ -736,4 +736,15 @@ html { height: -webkit-fill-available; }
 
 #MainMenu { visibility: hidden; }
 footer    { visibility: hidden; }
-</style>"""
+</style>
+<script>
+(function () {
+  function patchAutocomplete() {
+    var inputs = document.querySelectorAll('[data-testid="stTextInput"] input');
+    if (inputs.length < 2) { setTimeout(patchAutocomplete, 80); return; }
+    inputs[0].setAttribute('autocomplete', 'username');
+    inputs[1].setAttribute('autocomplete', 'current-password');
+  }
+  patchAutocomplete();
+})();
+</script>"""
