@@ -480,17 +480,43 @@ def get_login_css():
   100% { background-position: 0% 50%; }
 }
 
-/* ── Viewport fit: sin scroll vertical, centrado ── */
-.stApp { overflow-y: hidden !important; }
+/* ── Viewport fit cross-browser (Chrome · Safari · Firefox · Edge) ── */
+html { height: -webkit-fill-available; }
+.stApp {
+  height: 100vh !important;
+  height: 100dvh !important;          /* Chrome 108+, Firefox 116+, Safari 15.4+ */
+  overflow: hidden !important;
+}
+.main {
+  height: 100% !important;
+  overflow: hidden !important;
+}
 .main .block-container {
+  height: 100% !important;
   padding-top: 1.5rem !important;
   padding-bottom: 1.5rem !important;
-  min-height: 100vh !important;
+  -webkit-box-sizing: border-box !important;
+  box-sizing: border-box !important;
+  display: -webkit-box !important;
+  display: -webkit-flex !important;
   display: flex !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-box-direction: normal !important;
+  -webkit-flex-direction: column !important;
   flex-direction: column !important;
+  -webkit-box-pack: center !important;
+  -webkit-justify-content: center !important;
   justify-content: center !important;
+  overflow: hidden !important;
 }
-[data-testid="stVerticalBlock"] { gap: 6px !important; }
+/* Safari fallback: 100vh incluye la barra de direcciones */
+@supports (-webkit-touch-callout: none) {
+  .stApp { height: -webkit-fill-available !important; }
+}
+[data-testid="stVerticalBlock"] {
+  gap: 6px !important;
+  -webkit-gap: 6px !important;
+}
 
 [data-testid="stSidebar"] { display: none !important; }
 
