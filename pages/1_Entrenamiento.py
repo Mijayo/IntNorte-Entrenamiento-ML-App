@@ -1095,7 +1095,7 @@ with tabs[5]:
     else:
         col1, col2, col3 = st.columns(3)
         col1.metric("Total ejecuciones", len(historial))
-        col2.metric("Último MAPE", f"{historial[-1]['mape_wf']:.2f}%")
+        col2.metric("Último MAPE", f"{historial[0]['mape_wf']:.2f}%")
         col3.metric("Mejor MAPE", f"{min(e['mape_wf'] for e in historial):.2f}%")
 
         st.markdown("---")
@@ -1113,10 +1113,11 @@ with tabs[5]:
 
         if len(historial) > 1:
             st.subheader("📈 Evolución del MAPE")
+            historial_asc = list(reversed(historial))
             fig_log = go.Figure()
             fig_log.add_trace(go.Scatter(
-                x=[e['timestamp'][:16].replace('T', ' ') for e in historial],
-                y=[e['mape_wf'] for e in historial],
+                x=[e['timestamp'][:16].replace('T', ' ') for e in historial_asc],
+                y=[e['mape_wf'] for e in historial_asc],
                 mode='lines+markers', line=dict(color='#1C7293', width=2),
                 marker=dict(size=8)
             ))

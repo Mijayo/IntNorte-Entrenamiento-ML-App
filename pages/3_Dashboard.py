@@ -373,9 +373,9 @@ Es la estimación más honesta del error real del sistema.
                            f"predicciones_{datetime.now().strftime('%Y%m%d')}.csv",
                            "text/csv")
 
-# ── Tab 3: Recomendaciones (admin + manager) ──────────────────────────────────
+# ── Tab 3: Recomendaciones (admin + analyst + manager) ───────────────────────
 
-if st.session_state.role in ['admin', 'manager']:
+if st.session_state.role in ['admin', 'analyst', 'manager']:
     with tabs[2]:
         st.header("💼 Recomendaciones de Compra", divider='orange')
 
