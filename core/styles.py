@@ -478,6 +478,8 @@ def get_login_css():
   font-family: 'JetBrains Mono', monospace !important;
   font-size: .9rem !important;
   background: rgba(7,12,24,.9) !important;
+  padding: 14px 16px !important;
+  height: 52px !important;
   transition: border-color .2s, box-shadow .2s !important;
 }
 [data-testid="stTextInput"] input:focus {
@@ -503,7 +505,8 @@ def get_login_css():
   letter-spacing: .14em !important;
   text-transform: uppercase !important;
   border-radius: 4px !important;
-  height: 48px !important;
+  height: 54px !important;
+  margin-top: 8px !important;
   transition: background .2s, box-shadow .2s, transform .15s !important;
 }
 [data-testid="stFormSubmitButton"]>button:hover {
@@ -516,7 +519,7 @@ def get_login_css():
   background: rgba(7,12,24,.97);
   border: 1px solid rgba(0,115,255,.16);
   border-radius: 7px;
-  padding: 44px 40px 36px;
+  padding: 64px 56px 52px;
   position: relative; overflow: hidden;
   box-shadow: 0 32px 64px rgba(0,0,0,.8),
               0 0 52px rgba(0,115,255,.05),
@@ -536,26 +539,26 @@ def get_login_css():
   letter-spacing: .1em;
 }
 .login-logo {
-  display: block; margin: 0 auto 22px;
-  height: 30px; width: auto;
+  display: block; margin: 0 auto 28px;
+  height: 32px; width: auto;
   filter: brightness(0) invert(1); opacity: .72;
 }
 .login-title {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 1.5rem; font-weight: 700; color: #C9D8E6;
-  text-align: center; margin: 0 0 5px;
+  font-size: 1.75rem; font-weight: 700; color: #C9D8E6;
+  text-align: center; margin: 0 0 6px;
   letter-spacing: .12em; text-transform: uppercase;
 }
 .login-subtitle {
   font-family: 'JetBrains Mono', monospace;
   font-size: .7rem; color: #3F5060;
-  text-align: center; margin: 0 0 30px;
+  text-align: center; margin: 0 0 40px;
   letter-spacing: .05em;
 }
 .login-footer-txt {
   font-family: 'JetBrains Mono', monospace;
   font-size: .62rem; color: #1A2838;
-  text-align: center; margin-top: 22px;
+  text-align: center; margin-top: 32px;
   letter-spacing: .06em;
 }
 
