@@ -7,6 +7,7 @@ Gestiona la autenticación compartida y muestra la página de inicio.
 
 import streamlit as st
 from core.auth_system import init_session_state, show_login_page, check_session_timeout, show_user_info, show_header
+import core.supabase_io as sio
 
 st.set_page_config(
     page_title="Sistema TIGGO 2",
@@ -30,6 +31,19 @@ if not st.session_state.authenticated:
 show_header("Sistema de Predicción TIGGO 2", "Selecciona una aplicación en el menú lateral izquierdo.")
 
 show_user_info()
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _get_mape_activo() -> str:
+    try:
+        m = sio.load_current_model()
+        if m:
+            val = m["walk_forward_validation"]["mape"]
+            return f"{val:.2f} %"
+    except Exception:
+        pass
+    return "— %"
+
+_mape_display = _get_mape_activo()
 
 # ── Hero section — línea gráfica slides ──────────────────────────────────────
 
@@ -78,6 +92,7 @@ st.markdown("""
   background: var(--c-surface) !important;
   border: 1px solid rgba(0,115,255,0.08) !important;
   position: relative !important;
+  padding: 32px 28px 28px !important;
   transition: border-color .25s, transform .2s !important;
 }
 .feature-card:hover {
@@ -148,7 +163,7 @@ with col1:
   <p>Carga datos de ventas, entrena un nuevo modelo SARIMA con búsqueda bayesiana
      (Optuna) y publícalo en el Dashboard.</p>
   <div class="card-kpi">
-    <div class="card-kpi-value">SARIMA</div>
+    <div class="card-kpi-value">SARIMAx</div>
     <div class="card-kpi-label">Modelo activo · Optuna TPE</div>
   </div>
   <span class="feature-card-badge badge-tech">Admin · Analista</span>
@@ -156,14 +171,14 @@ with col1:
 """, unsafe_allow_html=True)
 
 with col2:
-    st.markdown("""
+    st.markdown(f"""
 <div class="feature-card green">
   <span class="fc-number">02 / DASHBOARD</span>
   <h3>Dashboard</h3>
   <p>Visualiza predicciones, KPIs y métricas del modelo activo.
      Cambia entre versiones históricas desde el panel lateral.</p>
   <div class="card-kpi">
-    <div class="card-kpi-value lime">10.32 %</div>
+    <div class="card-kpi-value lime">{_mape_display}</div>
     <div class="card-kpi-label">MAPE · walk-forward</div>
   </div>
   <span class="feature-card-badge badge-all">Todos los roles</span>
@@ -185,6 +200,7 @@ with col3:
 </div>
 """, unsafe_allow_html=True)
 
+st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
 col4, col5, col6 = st.columns(3)
 
 with col4:
