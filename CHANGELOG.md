@@ -4,6 +4,14 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-30 (v32)
+
+- **ux(entrenamiento)**: Guía de pasos siguientes añadida en `pages/1_Entrenamiento.py`. Tab 1 muestra un banner azul persistente cuando los datos ya están cargados: *"Paso siguiente → Ve a la pestaña ✅ Validación"*. Tab 2 muestra un banner verde tras la validación exitosa: *"Paso siguiente → Ve a la pestaña 🤖 Entrenamiento"* (o rojo si hay errores). Elimina la ambigüedad sobre qué hacer después de procesar el Excel.
+- **config(entrenamiento)**: Ventana de entrenamiento por defecto actualizada al rango completo de datos disponibles: `TRAINING_DEFAULT_START = 2022-01-01` (antes `2024-01-01`) y nueva constante `TRAINING_DEFAULT_END = 2026-03-31`. Ambas fechas se aplican como valores por defecto en los `date_input` de las pestañas Preparar Datos y Entrenamiento. Maximiza los ciclos estacionales visibles por SARIMA (51 meses / ~4 ciclos) sin sacrificar la ventana completa del piloto.
+- **docs**: README y CHANGELOG actualizados — tabla de parámetros configurables refleja las nuevas fechas por defecto.
+
+---
+
 ### 2026-05-30 (v31) — Release Final ISDI
 
 - **feat(home)**: Sección **"¿Por qué Chery Tiggo 2?"** añadida en `app_principal.py` antes de las feature cards. Presenta el contexto de selección del piloto: 2,047 unidades históricas, 51+ meses de datos, #1 modelo Chery en volumen, narrativa piloto → escalable. Responde al feedback del jurado sobre justificar la selección del modelo de predicción ante el cliente.

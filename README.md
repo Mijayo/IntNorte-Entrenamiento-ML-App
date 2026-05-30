@@ -330,7 +330,8 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 |-----------|-------------|-------------|
 | Marca | `CHERY` | Filtro de marca |
 | Modelo | `TIGGO 2` | Filtro de modelo |
-| Fecha inicio | `2024-01-01` | Inicio de la ventana de entrenamiento |
+| Fecha inicio | `2022-01-01` | Inicio de la ventana de entrenamiento (inicio del histórico disponible) |
+| Fecha fin | `2026-03-31` | Fin de la ventana de entrenamiento (último mes con datos completos) |
 | Horizonte | `6` meses | Meses a predecir (3–12) |
 | Máx. ventas | `100` unid./mes | Límite superior de predicciones válidas |
 | Excluir mes actual | `true` | Eliminar el mes en curso (datos incompletos) |

@@ -36,21 +36,11 @@ WALK_FORWARD_MONTHS: int = 12    # Ventana máxima de validación walk-forward
 EXOG_ROLLING_WINDOW: int = 6     # Meses para proyectar ventas_otros en el horizonte
 
 # ── Ventana de entrenamiento por defecto ──────────────────────────────────────
-# SARIMAX aprende los patrones del período que le muestras. Si el mercado ha
-# cambiado de régimen (ej.: nuevo nivel de demanda post-2024), entrenar con
-# datos históricos lejanos ancla el modelo en ese nivel antiguo y produce
-# predicciones sistemáticamente bajas.
-#
-# Regla práctica:
-#   · Usa al menos 3 ciclos estacionales completos (36 meses) para que SARIMA
-#     aprenda los coeficientes estacionales con fiabilidad estadística.
-#   · Excluye períodos que no representen el comportamiento actual del mercado
-#     (pandemia 2020, quiebres estructurales, lanzamientos de producto).
-#
-# Para TIGGO 2 (caso 2026): el nivel de demanda pasó de ~31 uds/mes (2021-2024)
-# a ~65 uds/mes (2026). Arrancar en 2024-01-01 da 27+ meses recientes y evita
-# que los datos pre-boom arrastren la predicción hacia abajo.
-TRAINING_DEFAULT_START: date = date(2024, 1, 1)
+# Cobertura de datos disponibles para TIGGO 2: Ene 2022 – Mar 2026 (51 meses).
+# Se usa el rango completo para maximizar los ciclos estacionales que aprende
+# SARIMA (mínimo recomendado: 36 meses / 3 ciclos).
+TRAINING_DEFAULT_START: date = date(2022, 1, 1)
+TRAINING_DEFAULT_END:   date = date(2026, 3, 31)
 
 import core.supabase_io as sio
 from core.auth_system import (init_session_state, show_login_page, show_user_info,
@@ -356,6 +346,9 @@ with tabs[0]:
                 if dfs_ventas or df_stock_cargado is not None:
                     st.rerun()
 
+    if 'df_raw' in st.session_state:
+        st.info("**Paso siguiente →** Ve a la pestaña **✅ Validación** para revisar la calidad de los datos antes de entrenar.")
+
 # ── Tab 2: Validación ─────────────────────────────────────────────────────────
 
 with tabs[1]:
@@ -380,6 +373,12 @@ with tabs[1]:
         st.session_state['validation_passed'] = is_valid
         st.session_state['df_validated'] = df_raw
 
+        st.markdown("---")
+        if is_valid:
+            st.success("**Paso siguiente →** Ve a la pestaña **🤖 Entrenamiento** para configurar y lanzar el modelo SARIMA.")
+        else:
+            st.error("**Corrige los errores de validación** antes de continuar con el entrenamiento.")
+
 # ── Tab 3: Preparar Datos (académico) ─────────────────────────────────────────
 
 with tabs[2]:
@@ -403,7 +402,7 @@ with tabs[2]:
             ac_modelo = st.text_input("Modelo", value="TIGGO 2", key="ac_modelo")
         with col2:
             ac_fecha_ini = st.date_input("Fecha inicio", value=TRAINING_DEFAULT_START, key="ac_fi")
-            ac_fecha_fin = st.date_input("Fecha fin",    value=date.today(),      key="ac_ff")
+            ac_fecha_fin = st.date_input("Fecha fin",    value=TRAINING_DEFAULT_END, key="ac_ff")
 
         # Cálculo del límite superior exclusivo
         if ac_fecha_fin.month == 12:
@@ -598,9 +597,10 @@ with tabs[3]:
             )
             fecha_fin = st.date_input(
                 "Fecha fin de datos",
-                value=date.today(),
+                value=TRAINING_DEFAULT_END,
                 help=(
                     "Límite superior del histórico usado para entrenar. "
+                    "Por defecto: Mar 2026 (último mes con datos completos). "
                     "Si 'Eliminar mes actual' también está marcado, "
                     "se aplica el corte más conservador de los dos."
                 )
@@ -648,7 +648,8 @@ intenta reconciliar dos comportamientos incompatibles.
 |-----------|--------------------------|
 | Mercado estable, sin cambios de tendencia | Máximo histórico disponible (2017+) |
 | Recuperación post-pandemia capturada | 2021-01-01 |
-| Nuevo nivel de demanda desde 2024 | **2024-01-01** ← caso actual TIGGO 2 |
+| Cobertura completa disponible (TIGGO 2) | **2022-01-01** ← caso actual |
+| Nuevo régimen de demanda reciente | 2024-01-01 (más peso a datos recientes) |
 | Lanzamiento de versión nueva del modelo | Fecha del lanzamiento |
 
 #### Mínimo estadístico
