@@ -421,6 +421,25 @@ code, pre {
 .badge-all  { background: rgba(0,115,255,.07); color: var(--c-cyan); border: 1px solid rgba(0,115,255,.22); }
 .badge-tech { background: rgba(255,193,7,.07); color: var(--c-gold); border: 1px solid rgba(255,193,7,.22); }
 
+/* ── Card KPI (home page feature cards) ───────────────────── */
+.card-kpi {
+  margin-top: 18px; padding-top: 16px;
+  border-top: 1px solid rgba(0,115,255,0.07);
+  font-family: 'JetBrains Mono', monospace;
+}
+.card-kpi-value {
+  font-size: 1.45rem; font-weight: 400;
+  color: var(--c-cyan); line-height: 1;
+  text-shadow: 0 0 18px rgba(0,115,255,.3);
+}
+.card-kpi-value.lime   { color: var(--c-gold);   text-shadow: 0 0 18px rgba(194,255,0,.25); }
+.card-kpi-value.violet { color: var(--c-purple);  text-shadow: 0 0 18px rgba(167,139,250,.2); }
+.card-kpi-label {
+  font-size: .55rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--c-muted);
+  margin-top: 4px;
+}
+
 /* ── Alert / info boxes ────────────────────────────────────── */
 .success-box {
   background: rgba(0,245,160,.04); border-left: 3px solid var(--c-green);
@@ -459,6 +478,61 @@ code, pre {
 #MainMenu { visibility: hidden; }
 footer    { visibility: hidden; }
 [data-testid="stDecoration"] { display: none !important; }
+</style>"""
+
+
+# ── CSS Home ──────────────────────────────────────────────────────────────────
+
+def get_home_css():
+    """CSS específico de la página de inicio — hero, contexto y grid KPIs."""
+    return """
+<style>
+.home-hero {
+  padding: 44px 0 40px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(0,115,255,0.10);
+  position: relative;
+}
+.home-hero::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, rgba(0,115,255,0.5), rgba(194,255,0,0.3), transparent);
+}
+.hero-meta-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .58rem; letter-spacing: .18em;
+  color: var(--c-muted); text-transform: uppercase;
+}
+.hero-meta-sep { opacity: .3; }
+.hero-meta-tag { opacity: .7; }
+.hero-meta-tag.active { color: var(--c-cyan); opacity: 1; }
+.home-hero-title {
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: clamp(2.4rem, 4vw, 3.8rem) !important;
+  font-weight: 700 !important;
+  color: var(--c-text) !important;
+  line-height: 1.08 !important;
+  letter-spacing: .02em !important;
+  text-transform: uppercase !important;
+  margin: 0 0 20px !important;
+  padding: 0 !important;
+}
+.hero-accent { color: var(--c-cyan); }
+.home-hero-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .72rem; color: var(--c-muted);
+  letter-spacing: .06em; margin-bottom: 0;
+}
+.contexto-kpis {
+  display: grid !important;
+  grid-template-columns: repeat(4, auto) !important;
+  gap: 24px !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
 </style>"""
 
 
@@ -598,7 +672,7 @@ html { height: -webkit-fill-available; }
 }
 .login-logo {
   display: block; margin: 0 auto clamp(12px, 2vh, 24px);
-  height: 30px; width: auto;
+  height: 52px; width: auto;
   filter: brightness(0) invert(1); opacity: .72;
 }
 .login-title {
