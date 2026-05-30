@@ -470,8 +470,21 @@ def get_login_css():
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 [data-testid="stSidebar"] { display: none !important; }
 
+[data-testid="stTextInput"] {
+  margin-bottom: 18px !important;
+}
 [data-testid="stTextInput"] input {
   border: 1px solid rgba(0,115,255,.2) !important;
   border-radius: 4px !important;
@@ -493,6 +506,10 @@ def get_login_css():
   letter-spacing: .12em !important;
   text-transform: uppercase !important;
   font-weight: 700 !important;
+}
+
+[data-testid="stForm"] {
+  animation: fadeInUp .45s ease-out .12s both !important;
 }
 
 [data-testid="stFormSubmitButton"]>button {
@@ -524,15 +541,18 @@ def get_login_css():
   box-shadow: 0 32px 64px rgba(0,0,0,.8),
               0 0 52px rgba(0,115,255,.05),
               inset 0 1px 0 rgba(255,255,255,.02);
+  animation: fadeInUp .45s ease-out both;
 }
 .login-card::before {
   content: ''; position: absolute;
   top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, #0073FF 0%, rgba(0,115,255,.6) 60%, rgba(194,255,0,.6) 100%);
+  background: linear-gradient(90deg, #0073FF, rgba(0,115,255,.5), rgba(194,255,0,.7), rgba(0,115,255,.5), #0073FF);
+  background-size: 300% 100%;
+  animation: gradientShift 5s ease infinite;
   box-shadow: 0 0 14px rgba(0,115,255,.3);
 }
 .login-card::after {
-  content: 'SYS:TIGGO2';
+  content: 'SYS:TIGGO2  ·  v3.1';
   position: absolute; top: 14px; right: 18px;
   font-family: 'JetBrains Mono', monospace;
   font-size: .58rem; color: rgba(0,115,255,.2);
@@ -552,8 +572,44 @@ def get_login_css():
 .login-subtitle {
   font-family: 'JetBrains Mono', monospace;
   font-size: .7rem; color: #3F5060;
-  text-align: center; margin: 0 0 40px;
+  text-align: center; margin: 0 0 28px;
   letter-spacing: .05em;
+}
+.login-divider {
+  height: 1px;
+  background: rgba(0,115,255,.1);
+  margin: 0;
+}
+.login-error {
+  border: 1px solid rgba(239,68,68,.3) !important;
+  background: rgba(239,68,68,.05) !important;
+  border-radius: 4px !important;
+  padding: 10px 14px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: .75rem !important;
+  color: #F87171 !important;
+  margin-top: 10px !important;
+  letter-spacing: .03em;
+}
+.login-warning {
+  border: 1px solid rgba(234,179,8,.25) !important;
+  background: rgba(234,179,8,.04) !important;
+  border-radius: 4px !important;
+  padding: 10px 14px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: .75rem !important;
+  color: #FCD34D !important;
+  margin-top: 10px !important;
+  letter-spacing: .03em;
+}
+.login-forgot {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .65rem;
+  color: rgba(0,115,255,.28);
+  text-align: center;
+  margin-top: 14px;
+  letter-spacing: .04em;
+  cursor: default;
 }
 .login-footer-txt {
   font-family: 'JetBrains Mono', monospace;

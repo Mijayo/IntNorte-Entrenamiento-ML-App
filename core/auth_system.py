@@ -170,6 +170,7 @@ def show_login_page(app_title: str = "Sistema TIGGO 2") -> None:
           <img src="{LOGO_URL}" class="login-logo">
           <div class="login-title">{app_title}</div>
           <div class="login-subtitle">Sistema de Predicción de Demanda</div>
+          <div class="login-divider"></div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -186,10 +187,11 @@ def show_login_page(app_title: str = "Sistema TIGGO 2") -> None:
                         time.sleep(0.8)
                         st.rerun()
                     else:
-                        st.error(message)
+                        st.markdown(f'<div class="login-error">⚠ {message}</div>', unsafe_allow_html=True)
                 else:
-                    st.warning("Por favor completa todos los campos")
+                    st.markdown('<div class="login-warning">◦ Por favor completa todos los campos</div>', unsafe_allow_html=True)
 
+        st.markdown('<p class="login-forgot">¿Olvidaste tu contraseña? Contacta al administrador del sistema</p>', unsafe_allow_html=True)
         st.markdown(
             '<p class="login-footer-txt">Acceso restringido · Sistema TIGGO 2 · ISDI</p>',
             unsafe_allow_html=True,
