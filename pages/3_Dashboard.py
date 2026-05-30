@@ -419,6 +419,75 @@ if st.session_state.role in ['admin', 'manager']:
             st.warning(f"⚠️ La predicción ({proximo:.0f}) difiere >30% del promedio histórico "
                        f"({prom_hist:.1f}). Revisa factores externos.")
 
+        # ── Análisis del Ciclo de Valor ───────────────────────────────────────
+        st.markdown("---")
+        st.subheader("📆 Análisis del Ciclo de Valor — Estacionalidad y Negocio")
+
+        # Calcular medias por mes del año
+        monthly_avg = hist_total.groupby(hist_total.index.month).mean()
+        month_names = ['Ene','Feb','Mar','Abr','May','Jun',
+                       'Jul','Ago','Sep','Oct','Nov','Dic']
+        _peak_month_idx = monthly_avg.idxmax()
+        _low_month_idx  = monthly_avg.idxmin()
+        _peak_name  = month_names[_peak_month_idx - 1]
+        _low_name   = month_names[_low_month_idx  - 1]
+        _peak_val   = monthly_avg.max()
+        _low_val    = monthly_avg.min()
+        _estac_ratio = _peak_val / _low_val
+
+        col_s1, col_s2, col_s3 = st.columns(3)
+        col_s1.markdown(kpi_card("Mes pico histórico",  f"{_peak_name}",  "📈"), unsafe_allow_html=True)
+        col_s2.markdown(kpi_card("Mes valle histórico", f"{_low_name}",   "📉", "amber"), unsafe_allow_html=True)
+        col_s3.markdown(kpi_card("Ratio pico/valle",    f"{_estac_ratio:.1f}x", "📊", "blue"), unsafe_allow_html=True)
+
+        fig_seas = go.Figure()
+        bar_colors_seas = [
+            COLORS['accent'] if v == monthly_avg.max() else
+            (COLORS['primary'] if v >= monthly_avg.mean() else COLORS['muted'])
+            for v in monthly_avg.values
+        ]
+        fig_seas.add_trace(go.Bar(
+            x=month_names,
+            y=monthly_avg.values,
+            marker=dict(color=bar_colors_seas, opacity=0.88),
+            text=[f"{v:.1f}" for v in monthly_avg.values],
+            textposition="outside",
+            textfont=dict(family="JetBrains Mono, monospace", size=11, color="#7A95A8"),
+            hovertemplate="%{x}: %{y:.1f} uds/mes (media histórica)<extra></extra>",
+        ))
+        fig_seas.add_hline(
+            y=monthly_avg.mean(), line_dash="dot", line_color=COLORS['secondary'],
+            annotation_text=f"Media: {monthly_avg.mean():.1f} uds",
+            annotation_font_color=COLORS['secondary'],
+        )
+        apply_chart_theme(fig_seas, height=340,
+                          title="Media histórica de ventas por mes del año — TIGGO 2")
+        fig_seas.update_layout(xaxis_title="Mes", yaxis_title="Unidades (media)")
+        st.plotly_chart(fig_seas, use_container_width=True, config={"displayModeBar": False})
+
+        # Insights de negocio sobre la estacionalidad
+        st.markdown(f"""
+<div style="background:rgba(0,115,255,0.06);border:1px solid rgba(0,115,255,0.18);
+            border-radius:10px;padding:16px 20px;margin-top:4px;">
+<span style="font-family:'Rajdhani',sans-serif;font-size:1.0rem;font-weight:700;
+             color:#0073FF;text-transform:uppercase;letter-spacing:.08em;">
+💡 Lectura de Negocio — Ciclo de Valor del Tiggo 2
+</span>
+<ul style="color:#94A3B8;font-size:0.9rem;margin-top:10px;padding-left:20px;line-height:1.9;">
+  <li><strong style="color:#C9D8E6;">Pico en {_peak_name}:</strong> concentración de ventas
+      que puede estar ligada al <em>rappel del proveedor</em> — las distribuidoras aceleran
+      cierres de mes/trimestre para alcanzar metas de volumen y acceder a descuentos retroactivos
+      del fabricante Chery.</li>
+  <li><strong style="color:#C9D8E6;">Ratio {_estac_ratio:.1f}x pico/valle:</strong> variabilidad
+      significativa que justifica la predicción mes a mes en lugar de usar una media anual simple.</li>
+  <li><strong style="color:#C9D8E6;">Oportunidad de des-estacionalización:</strong> si la concentración
+      de ventas en un mes responde a incentivos comerciales internos (rappel, cuota), la solución
+      podría orientarse a <em>suavizar</em> esa concentración distribuyendo el esfuerzo de venta
+      a lo largo del trimestre — reduciendo el riesgo de quiebre de stock en el pico.</li>
+</ul>
+</div>
+""", unsafe_allow_html=True)
+
         # ── Explicación académica ──────────────────────────────────────────────
         with st.expander("📚 Marco teórico — ¿Por qué estas estrategias?", expanded=False):
             st.markdown("""
@@ -617,10 +686,10 @@ if st.session_state.role in ['admin', 'analyst']:
             use_container_width=True, hide_index=True
         )
 
-    # Métricas Técnicas (con sub-tabs: Resumen · ACF/PACF · Grid Search)
+    # Métricas Técnicas (con sub-tabs: Resumen · ACF/PACF · Grid Search · vs Descartados)
     with tabs[4]:
         st.header("📋 Métricas Técnicas Completas", divider='gray')
-        sub_tabs = st.tabs(["📊 Resumen", "🔬 ACF/PACF", "🔍 Grid Search"])
+        sub_tabs = st.tabs(["📊 Resumen", "🔬 ACF/PACF", "🔍 Grid Search", "🏆 vs Descartados"])
 
         # ── Sub-tab 1: Resumen ────────────────────────────────────────────────
         with sub_tabs[0]:
@@ -689,6 +758,123 @@ if st.session_state.role in ['admin', 'analyst']:
                                   color_continuous_scale='Teal')
             apply_chart_theme(fig_grid, height=480, title='Grid Search — AIC vs MAPE')
             st.plotly_chart(fig_grid, use_container_width=True, config={'displayModeBar': False})
+
+        # ── Sub-tab 4: vs Descartados ─────────────────────────────────────────
+        with sub_tabs[3]:
+            st.markdown(section_header("SARIMA vs Modelos Alternativos", "🏆"), unsafe_allow_html=True)
+
+            cml = st.session_state.get("cml_resultados")
+
+            if cml is not None:
+                # Resultados en tiempo real desde Comparativa ML
+                df_met_cmp = cml["metricas"]
+                ganador_cmp = cml["ganador"]
+
+                st.markdown(f"""
+<div style="background:rgba(0,245,160,0.08);border:1px solid rgba(0,245,160,0.25);
+            border-radius:10px;padding:12px 20px;margin-bottom:18px;">
+<span style="font-size:1.0rem;font-weight:700;color:#00F5A0;">🏆 Ganador: {ganador_cmp}</span>
+<span style="color:#94A3B8;font-size:0.88rem;margin-left:12px;">
+Resultados en tiempo real &nbsp;·&nbsp; Comparativa ejecutada en esta sesión
+</span>
+</div>
+""", unsafe_allow_html=True)
+
+                st.dataframe(
+                    df_met_cmp.style
+                        .highlight_min(subset=["MAE", "RMSE", "MAPE (%)"], axis=0,
+                                       color="rgba(0,245,160,0.12)")
+                        .highlight_max(subset=["R²"], axis=0,
+                                       color="rgba(0,245,160,0.12)")
+                        .format({"MAE": "{:.2f}", "RMSE": "{:.2f}",
+                                 "MAPE (%)": "{:.1f}%", "R²": "{:.3f}"}),
+                    use_container_width=True,
+                )
+
+                fig_cmp = go.Figure()
+                bar_colors = [COLORS['success'] if m == ganador_cmp else COLORS['primary']
+                              for m in df_met_cmp.index]
+                fig_cmp.add_trace(go.Bar(
+                    x=df_met_cmp.index,
+                    y=df_met_cmp["MAPE (%)"],
+                    marker=dict(color=bar_colors, opacity=0.88),
+                    text=[f"{v:.1f}%" for v in df_met_cmp["MAPE (%)"]],
+                    textposition="outside",
+                    textfont=dict(family="JetBrains Mono, monospace", size=12, color="#7A95A8"),
+                ))
+                fig_cmp.add_hline(y=15, line_dash="dot", line_color=COLORS['accent'],
+                                  annotation_text="Objetivo < 15%",
+                                  annotation_font_color=COLORS['accent'])
+                apply_chart_theme(fig_cmp, height=380,
+                                  title="MAPE por modelo — período de test (menor = mejor)")
+                fig_cmp.update_layout(yaxis_title="MAPE (%)", showlegend=False,
+                                      yaxis=dict(ticksuffix="%"))
+                st.plotly_chart(fig_cmp, use_container_width=True,
+                                config={"displayModeBar": False})
+
+            else:
+                st.info(
+                    "💡 Ejecuta la página **Comparativa ML** con el mismo run y los resultados "
+                    "aparecerán aquí automáticamente. Mientras tanto, aquí está la justificación "
+                    "metodológica de la selección."
+                )
+
+                # KPIs SARIMA desde datos live
+                c1, c2, c3 = st.columns(3)
+                c1.markdown(kpi_card("MAPE SARIMA (walk-forward)", f"{mape_wf:.1f}%",
+                                     "🎯", "amber"), unsafe_allow_html=True)
+                c2.markdown(kpi_card("Combinaciones evaluadas", len(grid_search),
+                                     "🔢", "blue"), unsafe_allow_html=True)
+                c3.markdown(kpi_card("Mejor AIC",
+                                     f"{grid_search.loc[grid_search['mape'].idxmin(),'aic']:.0f}",
+                                     "📐"), unsafe_allow_html=True)
+
+            # Tabla de justificación metodológica (siempre visible)
+            st.markdown(section_header("¿Por qué se descartaron las otras familias?", "📋"),
+                        unsafe_allow_html=True)
+            df_eval = pd.DataFrame([
+                {
+                    "Modelo":         "SARIMA (p,d,q)(P,D,Q)[12]  ✅",
+                    "Familia":        "Serie Temporal",
+                    "Estacionalidad": "Explícita — periodo m=12",
+                    "Variable exóg.": "✅ ventas_otros (Pearson)",
+                    "Req. mínimo":    "24 meses",
+                    "Por qué ganó":   "Modela directamente la estructura AR+MA estacional del Tiggo 2 con exógena; menor MAPE en test.",
+                },
+                {
+                    "Modelo":         "Prophet",
+                    "Familia":        "Serie Temporal",
+                    "Estacionalidad": "Automática (changepoints)",
+                    "Variable exóg.": "❌ no incorporada",
+                    "Req. mínimo":    "24 meses",
+                    "Por qué no":     "Sin variable exógena pierde el efecto Pearson. Sobreajusta en series cortas con picos de diciembre.",
+                },
+                {
+                    "Modelo":         "Regresión Lineal",
+                    "Familia":        "ML — lag features",
+                    "Estacionalidad": "Implícita (lag_12)",
+                    "Variable exóg.": "Como feature",
+                    "Req. mínimo":    "17 meses + test",
+                    "Por qué no":     "Asume relación lineal entre lags y ventas futuras; no captura tendencia ni no-linealidad estacional.",
+                },
+                {
+                    "Modelo":         "Random Forest",
+                    "Familia":        "ML — lag features",
+                    "Estacionalidad": "Implícita (lag_12)",
+                    "Variable exóg.": "Como feature",
+                    "Req. mínimo":    "17 meses + test",
+                    "Por qué no":     "Overfitting con n pequeño (51 meses). No extrapola tendencia — predice dentro del rango de entrenamiento.",
+                },
+                {
+                    "Modelo":         "XGBoost",
+                    "Familia":        "ML — lag features",
+                    "Estacionalidad": "Implícita (lag_12)",
+                    "Variable exóg.": "Como feature",
+                    "Req. mínimo":    "17 meses + test",
+                    "Por qué no":     "Igual que RF. Los árboles no extrapolan — MAPE se dispara fuera del rango histórico.",
+                },
+            ])
+            st.dataframe(df_eval.set_index("Modelo"), use_container_width=True)
 
 # ── Tab LLM (admin / analyst) ────────────────────────────────────────────────
 

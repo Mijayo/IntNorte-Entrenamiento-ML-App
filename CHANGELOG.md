@@ -4,6 +4,16 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-30 (v31) — Release Final ISDI
+
+- **feat(home)**: Sección **"¿Por qué Chery Tiggo 2?"** añadida en `app_principal.py` antes de las feature cards. Presenta el contexto de selección del piloto: 2,047 unidades históricas, 51+ meses de datos, #1 modelo Chery en volumen, narrativa piloto → escalable. Responde al feedback del jurado sobre justificar la selección del modelo de predicción ante el cliente.
+- **feat(dashboard/metricas)**: Sub-tab **"🏆 vs Descartados"** añadido como cuarto sub-tab dentro de 📋 Métricas Técnicas. Si se viene de la página Comparativa ML (`st.session_state["cml_resultados"]` poblado), muestra las métricas en tiempo real de todos los modelos con gráfico de barras y línea objetivo MAPE 15%. Siempre muestra la tabla metodológica de los 5 modelos con justificación de descarte: SARIMA ✅ (estructura AR+MA estacional + exógena, menor MAPE), Prophet ❌ (sobreajuste sin exógena en series cortas), LR ❌ (no captura no-linealidad estacional), RF ❌ (overfitting con n=51), XGB ❌ (no extrapola tendencia).
+- **feat(dashboard/recomendaciones)**: Análisis del ciclo estacional añadido al tab Recomendaciones, antes del marco teórico. KPIs de mes pico, mes valle y ratio pico/valle calculados desde los datos históricos reales. Gráfico de barras con media mensual histórica (rojo=máximo, azul=sobre media, gris=bajo media). Callout de negocio sobre el efecto rappel del proveedor en diciembre y la oportunidad de des-estacionalización.
+- **feat(proyeccion)**: Calculadora de ROI estratégico **"Valor Estratégico del Sistema — ¿Cuánto vale predecir bien?"** añadida al final de `pages/5_Proyeccion_Ingresos.py`. Inputs configurables: sobrestock actual (uds/mes), costo de financiamiento (%), stockouts mensuales, % de reducción sobrestock/stockout, costo anual del sistema. Outputs: waterfall chart (ahorro sobrestock → ingresos recuperados → valor bruto → costo sistema → valor neto), 4 KPIs (ahorro por sobrestock, ingresos recuperados, valor neto anual, ROI multiplier), tablas comparativas "✅ Con sistema" vs "❌ Sin sistema".
+- **feat(escalabilidad)**: Tab **"🚀 Visión del Producto"** añadido como 6.º tab en `pages/6_Escalabilidad.py`. Tres tarjetas de etapa: Etapa 1 HOY (Sistema Reactivo, EN PRODUCCIÓN), Etapa 2 AÑO 1 (Sistema Proactivo — auto-retraining, multi-brand, integración ERP), Etapa 3 AÑO 2+ (Sistema Autónomo — SaaS multi-tenant, optimización de precio, API LatAm). Gráfico dual-axis valor de negocio (barras) + autonomía (línea). Callout de cierre que conecta el piloto Tiggo 2 con la visión LatAm.
+
+---
+
 ### 2026-05-30 (v30)
 
 - **perf(supabase_io)**: `@st.cache_data` añadido a 5 funciones que ejecutaban llamadas de red a Supabase en cada recarga de página sin ningún caché: `get_available_runs()` (TTL 5 min), `get_default_run()` (TTL 5 min), `get_runs_df()` (TTL 5 min), `load_acf_pacf_images()` (TTL 10 min), `load_current_model()` (TTL 5 min). `load_precargados()` ya tenía `@st.cache_data(ttl=600)` desde v22.

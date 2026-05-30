@@ -176,11 +176,11 @@ El Dashboard carga automáticamente el modelo activo al arrancar. Desde la barra
 |---|---|
 | 📊 Dashboard | KPIs: ventas del último mes, MAPE, horizonte. Gráfico del histórico completo. |
 | 🔮 Predicciones | Histórico + predicción mes a mes con IC 95% + validación walk-forward. |
-| 💼 Recomendaciones | Escenarios conservador y agresivo de compra al fabricante + marco teórico (Newsvendor Problem, stock de seguridad, nivel de servicio Tipo I). |
+| 💼 Recomendaciones | Análisis del ciclo estacional (mes pico/valle, ratio, gráfico mensual, efecto rappel) + escenarios conservador y agresivo de compra al fabricante + marco teórico (Newsvendor Problem, stock de seguridad, nivel de servicio Tipo I). |
 | 🔄 Walk-Forward | Real vs predicho mes a mes, tabla de errores porcentuales. |
-| 📋 Métricas Técnicas | Tres sub-pestañas: **📊 Resumen** (parámetros SARIMA, AIC/BIC, MAPE), **🔬 ACF/PACF** (gráficos de autocorrelación), **🔍 Grid Search** (top modelos Optuna, scatter AIC vs MAPE). |
+| 📋 Métricas Técnicas | Cuatro sub-pestañas: **📊 Resumen** (parámetros SARIMA, AIC/BIC, MAPE), **🔬 ACF/PACF** (gráficos de autocorrelación), **🔍 Grid Search** (top modelos Optuna, scatter AIC vs MAPE), **🏆 vs Descartados** (comparativa de los 5 modelos con justificación de descarte y métricas en tiempo real si se viene de Comparativa ML). |
 | 🤖 Asistente IA | Chat con Gemini sobre el modelo (ver sección abajo). |
-| 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares. |
+| 💰 **Proyección Ingresos** *(página independiente)* | Proyección financiera a 6 meses en dólares + calculadora de ROI estratégico. |
 | 🏪 **Concesionarios** *(página independiente)* | Análisis histórico + predicciones desagregadas por tienda. |
 
 #### Financiero (2 tabs en Dashboard + página Proyección Ingresos)
@@ -213,9 +213,17 @@ Dashboard básico y predicciones, sin métricas técnicas ni IA ni proyección f
 
 > Disponible para: `admin`, `analyst`, `manager`
 
-Muestra el análisis de demanda del próximo mes y dos escenarios de pedido al fabricante.
+Muestra el análisis del ciclo estacional, el análisis de demanda del próximo mes y dos escenarios de pedido al fabricante.
 
-**Métricas mostradas:**
+**Bloque 1 — Ciclo estacional:**
+
+El sistema calcula automáticamente el patrón estacional a partir de los datos históricos reales del run activo:
+
+- **KPIs**: mes con mayor demanda histórica promedio, mes con menor demanda, y ratio pico/valle (ej. "Diciembre es 2.3× más alto que Agosto").
+- **Gráfico de barras mensual**: media histórica de ventas por mes del año. El mes máximo aparece en rojo, los meses sobre la media en azul, los meses bajo la media en gris.
+- **Callout de negocio**: explica el efecto rappel del proveedor en diciembre (pico artificial de demanda por incentivos de fin de año) y la oportunidad operativa de anticipar el pedido en noviembre para aprovechar ese rappel.
+
+**Bloque 2 — Recomendaciones de compra:**
 - Predicción puntual y rango IC 95% para el mes siguiente.
 - **Estrategia Conservadora** — IC superior + 10%: minimiza sobrestock; recomendada cuando la tendencia es estable o decreciente.
 - **Estrategia Agresiva** — IC superior + 20%: maximiza cobertura; recomendada cuando la tendencia es creciente o el lead time de importación es largo.
@@ -273,6 +281,32 @@ Página independiente que traduce la predicción SARIMA en cifras financieras en
 
 ---
 
+### Calculadora de ROI estratégico
+
+Al final de la página hay una sección interactiva: **"Valor Estratégico del Sistema — ¿Cuánto vale predecir bien?"**. Permite cuantificar el retorno económico del sistema en términos de ahorro de capital inmovilizado y ventas recuperadas.
+
+**Cómo usarla:**
+
+1. Introduce el sobrestock mensual actual (unidades medias en exceso por mes).
+2. Indica el costo de financiamiento mensual (% sobre el valor de inventario).
+3. Introduce los stockouts mensuales estimados (ventas perdidas por rotura de stock).
+4. Ajusta el porcentaje de mejora esperado para sobrestock y stockout con el sistema.
+5. Introduce el costo anual de operar el sistema (licencias, cómputo, soporte).
+
+El sistema calcula automáticamente:
+
+- **Ahorro por sobrestock** = sobrestock × reducción × costo financiamiento × precio × 12 meses.
+- **Ingresos recuperados** = stockouts × reducción × margen × precio × 12 meses.
+- **Valor neto anual** = valor bruto − costo del sistema.
+- **ROI multiplier**: cuántas veces el costo del sistema se recupera en valor generado.
+- **Payback en meses**: en cuántos meses el sistema paga su propia inversión.
+
+**Gráfico waterfall**: muestra el flujo completo — desde los dos bloques de ahorro hasta el descuento del costo, llegando al valor neto final.
+
+**Tablas comparativas**: "✅ Con sistema" vs "❌ Sin sistema" con el impacto económico de cada escenario.
+
+---
+
 ### Página Concesionarios
 
 > Disponible para: `admin`, `analyst`, `manager`
@@ -310,6 +344,40 @@ El asistente conoce el modelo activo: parámetros SARIMA, MAPE, predicciones y t
 - *"¿Debería pedir más o menos unidades que el mes pasado?"*
 - *"¿Cuál es el rango realista de ventas para abril?"*
 - *"La predicción baja en verano, ¿es normal para este modelo?"*
+
+---
+
+## Sección — Escalabilidad
+
+> Disponible para todos los roles
+
+Presenta la hoja de ruta para exportar el pipeline a otras marcas, líneas de negocio y mercados de LatAm. Es la página de visión estratégica del sistema — no requiere ninguna acción del usuario, es informativa.
+
+**Tabs disponibles:**
+
+| Tab | Contenido |
+|-----|-----------|
+| 🏗️ Arquitectura | Diagrama del stack técnico y flujo de datos del sistema |
+| 🚗 Portafolio | Hoja de ruta de expansión a otros modelos del portafolio Chery |
+| 💼 Líneas de Negocio | Aplicación del sistema a flotillas, leasing y postventa |
+| 📋 Playbook de Onboarding | Checklist para incorporar un nuevo modelo o marca en menos de 2 semanas |
+| 🌎 Expansión Geográfica | Roadmap de despliegue en otros países de LatAm |
+| 🚀 Visión del Producto | Evolución del sistema en 3 etapas (ver abajo) |
+
+### Tab Visión del Producto
+
+Muestra la evolución planificada del sistema en tres etapas:
+
+**Etapa 1 — Sistema Reactivo (HOY, 2025-2026)** — *EN PRODUCCIÓN*
+El sistema actual: predicción mensual SARIMA, dashboard de KPIs, RBAC por roles, asistente Gemini. El equipo consulta el sistema y toma decisiones de compra manualmente.
+
+**Etapa 2 — Sistema Proactivo (AÑO 1, 2026-2027)** — *ROADMAP*
+Auto-retraining mensual, soporte multi-marca en un mismo dashboard, integración con ERP del concesionario para lectura de stock en tiempo real, alertas push cuando la predicción supera umbrales configurados.
+
+**Etapa 3 — Sistema Autónomo (AÑO 2+, 2027-2028)** — *VISIÓN ESTRATÉGICA*
+Plataforma SaaS multi-tenant (varios concesionarios en una misma instancia), módulo de optimización de precio basado en elasticidad, API pública LatAm para integración con terceros.
+
+El gráfico dual-axis muestra la evolución del valor de negocio generado (barras) y el nivel de autonomía operativa (línea) para cada etapa.
 
 ---
 

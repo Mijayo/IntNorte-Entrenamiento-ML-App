@@ -247,11 +247,12 @@ streamlit run app_principal.py
 | 🔮 Predicciones | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 💼 Recomendaciones de compra | ✅ | ✅ | — | ✅ | — |
 | 🔄 Walk-Forward | ✅ | ✅ | — | — | — |
-| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search) | ✅ | ✅ | — | — | — |
+| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search · 🏆 vs Descartados) | ✅ | ✅ | — | — | — |
 | 🤖 Asistente IA (Gemini) | ✅ | ✅ | — | ✅ | — |
 
 > El tab 🏪 Concesionarios se trasladó a la página independiente `pages/4_Concesionarios.py` (2026-05-28).
 > Los tabs 🔬 ACF/PACF y 🔍 Grid Search se integraron como sub-pestañas de 📋 Métricas Técnicas (2026-05-28).
+> Sub-tab 🏆 vs Descartados añadido a Métricas Técnicas con tabla metodológica de los 5 modelos (2026-05-30).
 
 **Página independiente Proyección Ingresos (`pages/5_Proyeccion_Ingresos.py`):**
 
@@ -387,14 +388,25 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 |-----|:-----:|:--------:|:-------:|:------:|
 | 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
 | 🔮 Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
-| 💼 Recomendaciones de compra | ✅ | ✅ | ✅ | — |
+| 💼 Recomendaciones de compra (+ análisis ciclo estacional) | ✅ | ✅ | ✅ | — |
 | 🔄 Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — |
-| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search) | ✅ | ✅ | — | — |
+| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search · 🏆 vs Descartados) | ✅ | ✅ | — | — |
 | 🤖 **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
 
 > La proyección financiera (💰 Proyección Ingresos) se trasladó a la página independiente `pages/5_Proyeccion_Ingresos.py` (2026-05-27).
 > El tab 🏪 Concesionarios se trasladó a la página independiente `pages/4_Concesionarios.py` (2026-05-28).
 > Los tabs 🔬 ACF/PACF y 🔍 Grid Search se consolidaron como sub-pestañas de 📋 Métricas Técnicas (2026-05-28).
+> Sub-tab 🏆 vs Descartados y análisis de ciclo estacional añadidos (2026-05-30).
+
+### Tab Recomendaciones de Compra — análisis de ciclo estacional
+
+El tab incluye ahora un bloque de análisis estacional previo al marco teórico:
+
+- **KPIs estacionales**: mes pico histórico, mes valle y ratio pico/valle calculados desde los datos reales del run activo.
+- **Gráfico de media mensual**: barras con color coding (rojo = máximo, azul = sobre la media histórica, gris = bajo la media).
+- **Callout de negocio**: explica el efecto rappel del proveedor en diciembre y la oportunidad operativa de des-estacionalizar los pedidos.
+
+---
 
 ### Tab Predicciones — conceptos y secciones
 
@@ -427,7 +439,25 @@ Página independiente disponible para **Admin**, **Analista** y **Financiero** (
 
 Los ingresos se calculan multiplicando la predicción mensual por el precio efectivo (precio × tipo de cambio). El rango IC se traslada a dólares para comunicar la incertidumbre financiera. La visualización usa barras en overlay: la banda IC 95% aparece como capa semitransparente sobre las barras de ingreso central.
 
-> Extraída del tab 3 de `2_Dashboard.py` el 2026-05-27 para mejorar la navegación y separar la vista financiera de la operativa. Acceso restringido a roles con permiso `ver_ingresos`: admin, analyst y financiero (2026-05-27).
+### Calculadora de ROI estratégico
+
+Sección añadida al final de la página: **"Valor Estratégico del Sistema — ¿Cuánto vale predecir bien?"**
+
+| Input | Por defecto | Descripción |
+|-------|-------------|-------------|
+| Sobrestock actual | 5 uds/mes | Unidades medias en exceso por mes (capital inmovilizado) |
+| Costo de financiamiento (%) | 1.5% | Costo mensual del capital inmovilizado |
+| Stockouts mensuales | 2 uds/mes | Ventas perdidas por rotura de stock |
+| Reducción sobrestock (%) | 60% | % de mejora esperada con el sistema |
+| Reducción stockout (%) | 70% | % de oportunidades recuperadas |
+| Costo anual del sistema | 1 200 $ | Coste total de operar el sistema por año |
+
+Outputs:
+- **Waterfall chart**: Ahorro sobrestock → Ingresos recuperados → Valor bruto → Costo sistema → Valor neto.
+- **4 KPIs**: ahorro por sobrestock anual, ingresos recuperados, valor neto anual, ROI multiplier (x veces el costo).
+- **Tablas comparativas** "✅ Con sistema" vs "❌ Sin sistema".
+
+> Extraída del tab 3 de `2_Dashboard.py` el 2026-05-27 para mejorar la navegación y separar la vista financiera de la operativa. Acceso restringido a roles con permiso `ver_ingresos`: admin, analyst y financiero (2026-05-27). Calculadora ROI añadida en 2026-05-30.
 
 ---
 
@@ -445,6 +475,31 @@ Página independiente disponible para **Admin**, **Analista** y **Manager**. Com
 | 📋 Detalle | Ranking acumulado + pivot mensual exportable |
 
 **Editor de shares:** expander inline con `st.data_editor` para ajustar el % de cada concesionario y simular escenarios (apertura/cierre de tiendas, campañas locales). Los shares editados se renormalizan automáticamente y se aplican a todas las predicciones.
+
+---
+
+## App 6 — Escalabilidad (`pages/6_Escalabilidad.py`)
+
+Página disponible para **todos los roles**. Presenta la hoja de ruta para exportar el pipeline a otras marcas, líneas de negocio y mercados.
+
+| Tab | Descripción |
+|-----|-------------|
+| 🏗️ Arquitectura | Diagrama del stack técnico y flujo de datos |
+| 🚗 Portafolio | Hoja de ruta de expansión a otros modelos del portafolio Chery |
+| 💼 Líneas de Negocio | Aplicación del sistema a flotillas, leasing y postventa |
+| 📋 Playbook de Onboarding | Pasos para incorporar un nuevo modelo o marca en < 2 semanas |
+| 🌎 Expansión Geográfica | Roadmap de despliegue en otros mercados LatAm |
+| 🚀 Visión del Producto | Evolución de 3 etapas: Reactivo → Proactivo → Autónomo |
+
+### Tab Visión del Producto — evolución del sistema
+
+| Etapa | Período | Estado | Capacidades |
+|-------|---------|--------|-------------|
+| **Etapa 1 — Reactivo** | HOY 2025-2026 | EN PRODUCCIÓN | Predicción SARIMA mensual, dashboard, RBAC, Gemini |
+| **Etapa 2 — Proactivo** | AÑO 1 2026-2027 | ROADMAP | Auto-retraining, multi-brand, integración ERP, alertas push |
+| **Etapa 3 — Autónomo** | AÑO 2+ 2027-2028 | VISIÓN | SaaS multi-tenant, optimización de precio, API LatAm |
+
+Gráfico dual-axis: barras de valor de negocio + línea de autonomía operativa por etapa.
 
 ---
 

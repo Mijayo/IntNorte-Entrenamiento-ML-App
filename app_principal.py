@@ -153,6 +153,65 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ── Contexto de mercado — por qué Chery Tiggo 2 ──────────────────────────────
+
+st.markdown("""
+<div style="margin-bottom:28px;padding:18px 24px;
+            background:linear-gradient(135deg,rgba(0,115,255,0.06),rgba(194,255,0,0.04));
+            border:1px solid rgba(0,115,255,0.14);border-radius:8px;position:relative;">
+<div style="font-family:'Rajdhani',sans-serif;font-size:.6rem;font-weight:700;
+            letter-spacing:.2em;text-transform:uppercase;color:#3F5060;margin-bottom:10px;">
+CONTEXTO DE SELECCIÓN
+</div>
+<div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+  <div style="flex:1;min-width:220px;">
+    <span style="font-family:'Rajdhani',sans-serif;font-size:1.02rem;font-weight:700;
+                 color:#C9D8E6;">¿Por qué Chery Tiggo&nbsp;2?</span>
+    <p style="color:#7A95A8;font-size:.84rem;line-height:1.75;margin-top:6px;">
+      Al analizar el portafolio histórico de Interamericana Norte, el Tiggo&nbsp;2 es el modelo
+      con <strong style="color:#C2FF00;">mayor demanda sostenida</strong> en el segmento SUV
+      compacto y el <strong style="color:#C2FF00;">historial más largo disponible</strong>
+      (51+ meses, 3+ ciclos estacionales completos) — condición necesaria para entrenar SARIMA.
+    </p>
+  </div>
+  <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:center;">
+    <div style="text-align:center;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+                  color:#0073FF;line-height:1;">2,047</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
+                  color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
+        unidades históricas
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+                  color:#C2FF00;line-height:1;">51+</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
+                  color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
+        meses de datos
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+                  color:#00F5A0;line-height:1;">#1</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
+                  color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
+        modelo Chery en volumen
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+                  color:#A78BFA;line-height:1;">Piloto</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
+                  color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
+        → escalable a todo el portafolio
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+""", unsafe_allow_html=True)
+
 col1, col2, col3 = st.columns(3)
 
 with col1:

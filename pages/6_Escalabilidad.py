@@ -67,6 +67,7 @@ tabs = st.tabs([
     "💼 Líneas de Negocio",
     "📋 Playbook de Onboarding",
     "🌎 Expansión Geográfica",
+    "🚀 Visión del Producto",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -850,5 +851,172 @@ datos de ventas locales y puede calibrar su modelo SARIMA de forma autónoma.
 independiente por combinación (marca × modelo × mercado), todo gestionado desde la misma infraestructura
 Supabase + Streamlit Cloud. El coste marginal de incorporar un nuevo mercado es prácticamente cero
 en infraestructura — solo requiere los datos y el tiempo de onboarding del analista local.
+</div>
+""", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 6: VISIÓN DEL PRODUCTO — REACTIVO → PROACTIVO → AUTÓNOMO
+# ══════════════════════════════════════════════════════════════════════════════
+
+with tabs[5]:
+    st.markdown(section_header("Evolución del Producto — De Reactivo a Autónomo", "🚀"),
+                unsafe_allow_html=True)
+
+    st.markdown("""
+<div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.22);
+            border-radius:10px;padding:14px 20px;margin-bottom:24px;">
+<span style="font-size:.95rem;font-weight:600;color:#A78BFA;">
+De un asistente que responde preguntas hoy, a un sistema que toma decisiones mañana.
+</span><br>
+<span style="color:#94A3B8;font-size:.88rem;">
+El mismo pipeline SARIMA es el motor en las tres etapas — lo que evoluciona es el nivel de autonomía
+del sistema y el valor que entrega al negocio.
+</span>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── Timeline de evolución ─────────────────────────────────────────────────
+
+    ev1, ev2, ev3 = st.columns(3)
+
+    stage_style = (
+        "border-radius:8px;padding:24px 20px;height:100%;min-height:320px;"
+        "display:flex;flex-direction:column;gap:10px;"
+    )
+    label_style = (
+        "font-family:'JetBrains Mono',monospace;font-size:.55rem;"
+        "letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px;"
+    )
+    title_style = (
+        "font-family:'Rajdhani',sans-serif;font-size:1.25rem;font-weight:700;"
+        "text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;"
+    )
+    item_style = (
+        "font-family:'JetBrains Mono',monospace;font-size:.68rem;"
+        "color:#7A95A8;padding:4px 0;border-bottom:1px solid rgba(0,115,255,0.06);"
+    )
+
+    with ev1:
+        st.markdown(f"""
+<div style="{stage_style}background:rgba(0,115,255,0.07);border:1px solid rgba(0,115,255,0.25);">
+  <div>
+    <div style="{label_style}color:#3F5060;">ETAPA 1 · HOY · 2025–2026</div>
+    <div style="{title_style}color:#0073FF;">Sistema<br>Reactivo</div>
+  </div>
+  <div style="flex:1;">
+    <div style="{item_style}">→ El analista carga datos mensualmente</div>
+    <div style="{item_style}">→ El sistema entrena SARIMA con Optuna</div>
+    <div style="{item_style}">→ Dashboard muestra predicción + IC 95%</div>
+    <div style="{item_style}">→ Recomendación de compra conservadora/agresiva</div>
+    <div style="{item_style}">→ Asistente IA responde preguntas del equipo</div>
+    <div style="{item_style}">→ Proyección financiera en USD</div>
+  </div>
+  <div style="margin-top:12px;padding:10px 12px;background:rgba(0,115,255,0.1);
+              border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#0073FF;">
+    🎯 Estado: <strong>EN PRODUCCIÓN</strong><br>
+    MAPE objetivo &lt; 15% · 1 marca · 1 modelo
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    with ev2:
+        st.markdown(f"""
+<div style="{stage_style}background:rgba(194,255,0,0.05);border:1px solid rgba(194,255,0,0.22);">
+  <div>
+    <div style="{label_style}color:#3F5060;">ETAPA 2 · AÑO 1 · 2026–2027</div>
+    <div style="{title_style}color:#C2FF00;">Sistema<br>Proactivo</div>
+  </div>
+  <div style="flex:1;">
+    <div style="{item_style}">→ Monitoreo automático de MAPE (data drift)</div>
+    <div style="{item_style}">→ Re-entrenamiento automático cuando MAPE &gt; umbral</div>
+    <div style="{item_style}">→ Alertas push al equipo (email / Slack)</div>
+    <div style="{item_style}">→ Pipeline multi-marca: Chery + JAC + BYD</div>
+    <div style="{item_style}">→ Integración con ERP / DMS del distribuidor</div>
+    <div style="{item_style}">→ Recomendación de pedido enviada al proveedor</div>
+  </div>
+  <div style="margin-top:12px;padding:10px 12px;background:rgba(194,255,0,0.08);
+              border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#C2FF00;">
+    🎯 Estado: <strong>EN ROADMAP</strong><br>
+    4–6 marcas · Alertas automáticas · LatAm Fase 1
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    with ev3:
+        st.markdown(f"""
+<div style="{stage_style}background:rgba(0,245,160,0.05);border:1px solid rgba(0,245,160,0.2);">
+  <div>
+    <div style="{label_style}color:#3F5060;">ETAPA 3 · AÑO 2+ · 2027–2028</div>
+    <div style="{title_style}color:#00F5A0;">Sistema<br>Autónomo</div>
+  </div>
+  <div style="flex:1;">
+    <div style="{item_style}">→ Plataforma SaaS multi-tenant (marca × mercado)</div>
+    <div style="{item_style}">→ Modelos independientes por SKU y concesionario</div>
+    <div style="{item_style}">→ Optimización de precios dinámica (price elasticity)</div>
+    <div style="{item_style}">→ Gestión autónoma de stock de seguridad</div>
+    <div style="{item_style}">→ Integración financiera (forecast de cash flow)</div>
+    <div style="{item_style}">→ API pública para distribuidores LatAm</div>
+  </div>
+  <div style="margin-top:12px;padding:10px 12px;background:rgba(0,245,160,0.08);
+              border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#00F5A0;">
+    🎯 Estado: <strong>VISIÓN ESTRATÉGICA</strong><br>
+    Portafolio completo LatAm · SaaS B2B
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── Gráfico de valor por etapa ────────────────────────────────────────────
+
+    st.markdown('<div style="margin-top:28px"></div>', unsafe_allow_html=True)
+    st.markdown(section_header("Valor de Negocio por Etapa de Evolución", "📈"),
+                unsafe_allow_html=True)
+
+    etapas        = ["Reactivo<br>(Hoy)", "Proactivo<br>(Año 1)", "Autónomo<br>(Año 2+)"]
+    valor_negocio = [30, 65, 100]
+    autonomia     = [15, 55, 95]
+    marcas_cub    = [1, 6, 20]
+
+    fig_ev = go.Figure()
+    fig_ev.add_trace(go.Bar(
+        name="Valor de negocio (índice)",
+        x=etapas, y=valor_negocio,
+        marker=dict(color=[COLORS['primary'], COLORS['secondary'], COLORS['success']],
+                    opacity=0.85),
+        text=[f"{v}" for v in valor_negocio],
+        textposition="outside",
+        textfont=dict(family="JetBrains Mono, monospace", size=12, color="#7A95A8"),
+    ))
+    fig_ev.add_trace(go.Scatter(
+        name="Autonomía del sistema (%)",
+        x=etapas, y=autonomia,
+        mode="lines+markers",
+        line=dict(color=COLORS['purple'], width=2.5, dash="dot"),
+        marker=dict(size=10, color=COLORS['purple'], symbol="diamond",
+                    line=dict(color="#080D18", width=1.5)),
+        yaxis="y2",
+    ))
+    apply_chart_theme(fig_ev, height=360,
+                      title="Evolución del valor de negocio y autonomía del sistema")
+    fig_ev.update_layout(
+        barmode="group",
+        yaxis=dict(title="Valor de negocio (índice 0–100)", ticksuffix=""),
+        yaxis2=dict(title="Autonomía (%)", overlaying="y", side="right",
+                    range=[0, 110], ticksuffix="%",
+                    gridcolor="rgba(167,139,250,0.06)",
+                    tickfont=dict(family="JetBrains Mono, monospace",
+                                  color="#A78BFA", size=11)),
+        legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center"),
+    )
+    st.plotly_chart(fig_ev, use_container_width=True, config={"displayModeBar": False})
+
+    # ── Callout final ─────────────────────────────────────────────────────────
+
+    st.markdown("""
+<div class="success-box" style="margin-top:24px;">
+<strong>El mismo modelo SARIMA que hoy predice el Tiggo 2 en Norte Perú</strong>
+es la base del sistema que mañana gestionará el portafolio completo de
+Interamericana — y pasado mañana, el de cualquier distribuidor automotriz de LatAm.
+El código no cambia; cambia el nivel de integración y autonomía que el negocio
+decide activar.
 </div>
 """, unsafe_allow_html=True)

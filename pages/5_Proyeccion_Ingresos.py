@@ -244,6 +244,166 @@ if has_permission('exportar'):
         "text/csv",
     )
 
+# ── Valor Estratégico del Sistema — Show Me The Money ─────────────────────────
+
+st.markdown("---")
+st.markdown(section_header("Valor Estratégico del Sistema — ¿Cuánto vale predecir bien?", "💎"),
+            unsafe_allow_html=True)
+
+st.markdown("""
+<div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.22);
+            border-radius:10px;padding:14px 20px;margin-bottom:20px;">
+<span style="font-size:.95rem;font-weight:600;color:#A78BFA;">Cuantificación del impacto económico del sistema de predicción</span><br>
+<span style="color:#94A3B8;font-size:0.88rem;">
+Ajusta los parámetros de negocio para calcular el ahorro anual estimado vs. gestión sin predicción.
+</span>
+</div>
+""", unsafe_allow_html=True)
+
+roi_c1, roi_c2, roi_c3 = st.columns(3)
+with roi_c1:
+    st.markdown("**Parámetros de inventario**")
+    sobrestock_actual = st.number_input(
+        "Sobrestock promedio sin predicción (uds/mes)",
+        min_value=0, max_value=50, value=5, step=1,
+        help="Unidades extra compradas por encima de la demanda real, por mes, sin sistema de predicción.",
+    )
+    costo_fin_pct = st.number_input(
+        "Costo mensual de capital inmovilizado (% del precio/ud)",
+        min_value=0.5, max_value=5.0, value=1.5, step=0.1, format="%.1f",
+        help="Costo financiero + almacenamiento mensual por unidad en inventario (típico: 1–2%).",
+    )
+with roi_c2:
+    st.markdown("**Parámetros de venta perdida**")
+    stockout_mes = st.number_input(
+        "Ventas perdidas por mes sin predicción (uds/mes)",
+        min_value=0, max_value=20, value=2, step=1,
+        help="Unidades que no se vendieron por quiebre de stock estimado sin el sistema.",
+    )
+    reduccion_stockout_pct = st.number_input(
+        "Reducción de stockout con el sistema (%)",
+        min_value=0, max_value=100, value=70, step=5,
+        help="Porcentaje de stockouts evitados gracias a la predicción (estimación conservadora: 60–80%).",
+    )
+with roi_c3:
+    st.markdown("**Parámetros del sistema**")
+    reduccion_sobrestock_pct = st.number_input(
+        "Reducción de sobrestock con el sistema (%)",
+        min_value=0, max_value=100, value=60, step=5,
+        help="Porcentaje de unidades sobrestock evitadas con mejor previsión (estimación: 50–70%).",
+    )
+    costo_sistema_anual = st.number_input(
+        "Costo anual del sistema (USD $)",
+        min_value=0, max_value=50_000, value=1_200, step=100,
+        help="Coste total anual: Streamlit Cloud + Supabase + mantenimiento (~$100/mes).",
+    )
+
+# ── Cálculos ──────────────────────────────────────────────────────────────────
+
+costo_por_ud_mes = precio_usd * (costo_fin_pct / 100)
+
+ahorro_sobrestock_anual = (
+    sobrestock_actual
+    * (reduccion_sobrestock_pct / 100)
+    * costo_por_ud_mes
+    * 12
+)
+
+margen_por_ud = precio_usd * (margen_usd_pct / 100)
+ahorro_stockout_anual = (
+    stockout_mes
+    * (reduccion_stockout_pct / 100)
+    * margen_por_ud
+    * 12
+)
+
+valor_bruto_anual = ahorro_sobrestock_anual + ahorro_stockout_anual
+roi_neto = valor_bruto_anual - costo_sistema_anual
+roi_ratio = (valor_bruto_anual / costo_sistema_anual) if costo_sistema_anual > 0 else float('inf')
+payback_meses = (costo_sistema_anual / (valor_bruto_anual / 12)) if valor_bruto_anual > 0 else float('inf')
+
+# ── KPIs del ROI ──────────────────────────────────────────────────────────────
+
+r1, r2, r3, r4 = st.columns(4)
+r1.markdown(kpi_card("Ahorro sobrestock/año",
+                     f"${ahorro_sobrestock_anual:,.0f}", "📦"), unsafe_allow_html=True)
+r2.markdown(kpi_card("Ingresos recuperados/año",
+                     f"${ahorro_stockout_anual:,.0f}", "💹", "green"), unsafe_allow_html=True)
+r3.markdown(kpi_card("Valor neto anual del sistema",
+                     f"${roi_neto:,.0f}", "💎", "blue"), unsafe_allow_html=True)
+r4.markdown(kpi_card("ROI del sistema",
+                     f"{roi_ratio:.0f}x", "🚀", "amber"), unsafe_allow_html=True)
+
+# ── Gráfico waterfall ─────────────────────────────────────────────────────────
+
+fig_roi = go.Figure(go.Waterfall(
+    orientation="v",
+    measure=["relative", "relative", "total", "relative", "total"],
+    x=["Ahorro<br>sobrestock", "Ingresos<br>recuperados",
+       "Valor bruto", "Costo<br>del sistema", "Valor neto"],
+    y=[ahorro_sobrestock_anual, ahorro_stockout_anual, 0,
+       -costo_sistema_anual, 0],
+    text=[f"${ahorro_sobrestock_anual:,.0f}", f"${ahorro_stockout_anual:,.0f}",
+          f"${valor_bruto_anual:,.0f}", f"-${costo_sistema_anual:,.0f}",
+          f"${roi_neto:,.0f}"],
+    textposition="outside",
+    textfont=dict(family="JetBrains Mono, monospace", size=12, color="#7A95A8"),
+    connector=dict(line=dict(color="rgba(0,115,255,0.25)", width=1.5)),
+    increasing=dict(marker=dict(color=COLORS['success'], opacity=0.85)),
+    decreasing=dict(marker=dict(color=COLORS['accent'], opacity=0.85)),
+    totals=dict(marker=dict(color=COLORS['primary'], opacity=0.9)),
+))
+apply_chart_theme(fig_roi, height=400, title="Valor anual del sistema — Waterfall ($USD)")
+fig_roi.update_layout(yaxis_title="USD ($)", yaxis_tickprefix="$", yaxis_tickformat=",.0f")
+st.plotly_chart(fig_roi, use_container_width=True, config={"displayModeBar": False})
+
+# ── Tabla resumen ─────────────────────────────────────────────────────────────
+
+col_ta, col_tb = st.columns(2)
+with col_ta:
+    st.markdown(f"""
+<div style="background:#0D1117;border:1px solid rgba(0,245,160,0.2);border-radius:8px;padding:18px 20px;">
+<div style="font-family:'Rajdhani',sans-serif;font-size:.75rem;font-weight:700;
+            color:#00F5A0;text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px;">
+✅ Con sistema de predicción
+</div>
+<table style="width:100%;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:#94A3B8;border-collapse:collapse;">
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Sobrestock reducido</td>
+    <td style="text-align:right;color:#00F5A0;">{sobrestock_actual * reduccion_sobrestock_pct/100:.1f} uds/mes</td></tr>
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Stockouts evitados</td>
+    <td style="text-align:right;color:#00F5A0;">{stockout_mes * reduccion_stockout_pct/100:.1f} uds/mes</td></tr>
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Ahorro capital inmovilizado</td>
+    <td style="text-align:right;color:#00F5A0;">${ahorro_sobrestock_anual:,.0f}/año</td></tr>
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Ingresos recuperados</td>
+    <td style="text-align:right;color:#00F5A0;">${ahorro_stockout_anual:,.0f}/año</td></tr>
+<tr style="font-weight:700"><td style="padding:8px 0;color:#C9D8E6">Payback del sistema</td>
+    <td style="text-align:right;color:#C2FF00;">{payback_meses:.1f} meses</td></tr>
+</table>
+</div>
+""", unsafe_allow_html=True)
+
+with col_tb:
+    st.markdown(f"""
+<div style="background:#0D1117;border:1px solid rgba(255,58,92,0.2);border-radius:8px;padding:18px 20px;">
+<div style="font-family:'Rajdhani',sans-serif;font-size:.75rem;font-weight:700;
+            color:#FF3A5C;text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px;">
+❌ Sin sistema de predicción
+</div>
+<table style="width:100%;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:#94A3B8;border-collapse:collapse;">
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Sobrestock mensual</td>
+    <td style="text-align:right;color:#FF3A5C;">{sobrestock_actual} uds/mes</td></tr>
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Stockouts mensuales</td>
+    <td style="text-align:right;color:#FF3A5C;">{stockout_mes} uds/mes</td></tr>
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Capital inmovilizado/año</td>
+    <td style="text-align:right;color:#FF3A5C;">${sobrestock_actual * costo_por_ud_mes * 12:,.0f}</td></tr>
+<tr><td style="padding:5px 0;border-bottom:1px solid rgba(0,115,255,0.06)">Margen perdido/año</td>
+    <td style="text-align:right;color:#FF3A5C;">${stockout_mes * margen_por_ud * 12:,.0f}</td></tr>
+<tr style="font-weight:700"><td style="padding:8px 0;color:#C9D8E6">Coste total ineficiencia</td>
+    <td style="text-align:right;color:#FF3A5C;">${(sobrestock_actual * costo_por_ud_mes + stockout_mes * margen_por_ud) * 12:,.0f}/año</td></tr>
+</table>
+</div>
+""", unsafe_allow_html=True)
+
 # ── Footer ────────────────────────────────────────────────────────────────────
 
 st.markdown(
