@@ -172,8 +172,8 @@ st.markdown("""
             letter-spacing:.2em;text-transform:uppercase;color:#3F5060;margin-bottom:10px;">
 CONTEXTO DE SELECCIÓN
 </div>
-<div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
-  <div style="flex:1;min-width:220px;">
+<div style="display:flex;flex-direction:column;gap:20px;">
+  <div>
     <span style="font-family:'Rajdhani',sans-serif;font-size:1.02rem;font-weight:700;
                  color:#C9D8E6;">¿Por qué Chery Tiggo&nbsp;2?</span>
     <p style="color:#7A95A8;font-size:.84rem;line-height:1.75;margin-top:6px;">
@@ -185,7 +185,7 @@ CONTEXTO DE SELECCIÓN
   </div>
   <div class="contexto-kpis">
     <div style="text-align:center;">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+      <div style="font-family:'Rajdhani',sans-serif;font-size:2.8rem;font-weight:700;
                   color:#0073FF;line-height:1;">2,047</div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
                   color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
@@ -193,7 +193,7 @@ CONTEXTO DE SELECCIÓN
       </div>
     </div>
     <div style="text-align:center;">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+      <div style="font-family:'Rajdhani',sans-serif;font-size:2.8rem;font-weight:700;
                   color:#C2FF00;line-height:1;">51+</div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
                   color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
@@ -201,7 +201,7 @@ CONTEXTO DE SELECCIÓN
       </div>
     </div>
     <div style="text-align:center;">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+      <div style="font-family:'Rajdhani',sans-serif;font-size:2.8rem;font-weight:700;
                   color:#00F5A0;line-height:1;">#1</div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
                   color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
@@ -209,7 +209,7 @@ CONTEXTO DE SELECCIÓN
       </div>
     </div>
     <div style="text-align:center;">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
+      <div style="font-family:'Rajdhani',sans-serif;font-size:2.8rem;font-weight:700;
                   color:#A78BFA;line-height:1;">Piloto</div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.58rem;
                   color:#3F5060;text-transform:uppercase;letter-spacing:.12em;margin-top:3px;">
