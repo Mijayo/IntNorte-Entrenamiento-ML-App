@@ -37,7 +37,7 @@ core/                         ← Paquete Python de utilidades
 ├── logger.py                 ← Logging centralizado (consola + archivo rotativo)
 └── styles.py                 ← CSS global y helpers de componentes
 tests/
-└── test_validacion.py        ← 17 tests unitarios de utils_validacion
+└── test_validacion.py        ← 19 tests unitarios de utils_validacion
 data/                         ← Datos locales — gitignored, nunca en el repo
 ├── raw/                      ← Excel histórico de ventas (fuente)
 ├── processed/                ← Datasets transformados (veh_ml_features.xlsx — incluye columna ventas_otros)
@@ -384,14 +384,14 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 
 ### Tabs por rol
 
-| Tab | Admin | Analista | Gerente | Viewer |
-|-----|:-----:|:--------:|:-------:|:------:|
-| 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ |
-| 🔮 Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ |
-| 💼 Recomendaciones de compra (+ análisis ciclo estacional) | ✅ | ✅ | ✅ | — |
-| 🔄 Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — |
-| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search · 🏆 vs Descartados) | ✅ | ✅ | — | — |
-| 🤖 **Asistente IA (Gemini)** | ✅ | ✅ | ✅ | — |
+| Tab | Admin | Analista | Financiero | Gerente | Viewer |
+|-----|:-----:|:--------:|:----------:|:-------:|:------:|
+| 📊 Dashboard (KPIs + histórico) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 🔮 Predicciones (N meses + IC + walk-forward overlay) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 💼 Recomendaciones de compra (+ análisis ciclo estacional) | ✅ | ✅ | — | ✅ | — |
+| 🔄 Walk-forward validation (detalle técnico) | ✅ | ✅ | — | — | — |
+| 📋 Métricas Técnicas (sub-tabs: Resumen · 🔬 ACF/PACF · 🔍 Grid Search · 🏆 vs Descartados) | ✅ | ✅ | — | — | — |
+| 🤖 **Asistente IA (Gemini)** | ✅ | ✅ | — | ✅ | — |
 
 > La proyección financiera (💰 Proyección Ingresos) se trasladó a la página independiente `pages/5_Proyeccion_Ingresos.py` (2026-05-27).
 > El tab 🏪 Concesionarios se trasladó a la página independiente `pages/4_Concesionarios.py` (2026-05-28).
@@ -556,15 +556,24 @@ __pycache__/  venv/  .env   ← estándar Python
 
 ---
 
-## Modelo activo (Iteración 3 — 2026-05-22)
+## Modelo activo (2026-05-30)
 
 | Métrica | Valor |
 |---------|-------|
-| **Orden SARIMA** | `(1, 1, 0)(1, 0, 2)[12]` |
-| **AIC** | 137.38 |
-| **MAPE walk-forward** | **10.32%** |
-| **Trials válidos** | 71 / 80 |
+| **Run ID** | `20260530_103626` |
+| **Período de datos** | 2022-01 → 2026-03 |
+| **Meses de datos** | 51 |
+| **Total ventas históricas** | 1 804 uds |
+| **Fecha inicio entrenamiento** | 2022-01-01 |
 | **Horizonte de pronóstico** | 6 meses |
+| **Orden SARIMA** | `(2, 0, 1)(1, 0, 2)[12]` |
+| **AIC** | 138.48 |
+| **BIC** | 190.85 |
+| **Variable exógena (`ventas_otros`)** | ✅ usada (Pearson r = 0.581) |
+| **MAPE walk-forward** | **14.65%** |
+| **Meses validados (walk-forward)** | 12 |
+| **Trials válidos / total** | 62 / 80 |
+| **Combinaciones descartadas** | 18 |
 
 ---
 
