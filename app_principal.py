@@ -134,6 +134,15 @@ st.markdown("""
   text-transform: uppercase; color: var(--c-muted);
   margin-top: 4px;
 }
+/* Contexto KPIs — 4 columnas siempre en una fila */
+.contexto-kpis {
+  display: grid !important;
+  grid-template-columns: repeat(4, auto) !important;
+  gap: 24px !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
 </style>
 
 <div class="home-hero">
@@ -174,7 +183,7 @@ CONTEXTO DE SELECCIÓN
       (51+ meses, 3+ ciclos estacionales completos) — condición necesaria para entrenar SARIMA.
     </p>
   </div>
-  <div style="display:flex;gap:32px;flex-wrap:wrap;align-items:center;">
+  <div class="contexto-kpis">
     <div style="text-align:center;">
       <div style="font-family:'Rajdhani',sans-serif;font-size:1.9rem;font-weight:700;
                   color:#0073FF;line-height:1;">2,047</div>
