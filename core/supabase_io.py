@@ -22,8 +22,9 @@ from .logger import get_logger
 
 log = get_logger("supabase_io")
 
-_TABLE       = "training_runs"
-_AUDIT_TABLE = "audit_log"
+_TABLE         = "training_runs"
+_AUDIT_TABLE   = "audit_log"
+_VENTAS_TABLE  = "ventas_reales"
 
 _ARTIFACT_NAMES = [
     "modelo_total_mejorado.pkl.gz",
@@ -36,6 +37,7 @@ _ARTIFACT_NAMES = [
     "acf_plot.png",
     "pacf_plot.png",
     "llm_cache.json",
+    "cml_resultados.json",
 ]
 
 
@@ -76,6 +78,11 @@ def _db():
 def _audit():
     """Acceso directo a la tabla audit_log (service role — sin RLS)."""
     return _get_service_client().table(_AUDIT_TABLE)
+
+
+def _ventas():
+    """Acceso directo a la tabla ventas_reales (service role — sin RLS)."""
+    return _get_service_client().table(_VENTAS_TABLE)
 
 
 # ── Primitivas de I/O (Storage) ──────────────────────────────────────────────
@@ -571,37 +578,29 @@ def get_model_age_days(run_name: str) -> int | None:
 
 # ── Ventas reales (feedback loop) ────────────────────────────────────────────
 
-def _get_ventas_reales_raw() -> list[dict]:
-    """Descarga ventas_reales.json desde Storage (sin cache)."""
+@st.cache_data(ttl=120, show_spinner=False)
+def get_ventas_reales() -> list[dict]:
+    """Registros de ventas reales desde la tabla DB (cacheado 2 min)."""
     try:
-        return json.loads(_download("ventas_reales.json"))
-    except Exception:
+        return (
+            _ventas()
+            .select("fecha, ventas, usuario, timestamp")
+            .order("fecha", desc=False)
+            .execute()
+            .data
+        )
+    except Exception as e:
+        log.warning("No se pudo leer ventas_reales de DB: %s", e)
         return []
 
 
-@st.cache_data(ttl=120, show_spinner=False)
-def get_ventas_reales() -> list[dict]:
-    """Registros de ventas reales cargados desde Supabase Storage (cacheado 2 min)."""
-    return _get_ventas_reales_raw()
-
-
 def save_venta_real(fecha: str, ventas: int, usuario: str) -> None:
-    """Persiste un registro de venta mensual real en ventas_reales.json.
-    Si ya existe una entrada para esa fecha, la sobreescribe."""
-    existing = _get_ventas_reales_raw()
-    existing = [r for r in existing if r.get("fecha") != fecha]
-    existing.append({
-        "fecha":     fecha,
-        "ventas":    ventas,
-        "usuario":   usuario,
-        "timestamp": datetime.now().isoformat(),
-    })
-    existing.sort(key=lambda r: r["fecha"])
-    _upload(
-        "ventas_reales.json",
-        json.dumps(existing, indent=2, ensure_ascii=False).encode(),
-        "application/json",
-    )
+    """Upsert de un registro mensual en la tabla ventas_reales.
+    Si ya existe una entrada para esa fecha, la sobreescribe (upsert on fecha)."""
+    _ventas().upsert(
+        {"fecha": fecha, "ventas": ventas, "usuario": usuario},
+        on_conflict="fecha",
+    ).execute()
     log_audit(usuario, "REGISTRAR_VENTA", detalle={"fecha": fecha, "ventas": ventas})
     log.info("Venta real guardada: fecha='%s' ventas=%d", fecha, ventas)
     st.cache_data.clear()
@@ -609,16 +608,46 @@ def save_venta_real(fecha: str, ventas: int, usuario: str) -> None:
 
 def delete_venta_real(fecha: str, usuario: str) -> None:
     """Elimina el registro de venta real de una fecha concreta."""
-    existing = _get_ventas_reales_raw()
-    existing = [r for r in existing if r.get("fecha") != fecha]
-    _upload(
-        "ventas_reales.json",
-        json.dumps(existing, indent=2, ensure_ascii=False).encode(),
-        "application/json",
-    )
+    _ventas().delete().eq("fecha", fecha).execute()
     log_audit(usuario, "ELIMINAR_VENTA", detalle={"fecha": fecha})
     log.info("Venta real eliminada: fecha='%s'", fecha)
     st.cache_data.clear()
+
+
+# ── Comparativa ML — persistencia por run ────────────────────────────────────
+
+def save_cml_resultados(run_name: str, metricas_df: "pd.DataFrame", ganador: str) -> None:
+    """Persiste los resultados de Comparativa ML en Storage como JSON por run.
+    Formato: {run_name}/cml_resultados.json — se sobreescribe en cada ejecución."""
+    try:
+        payload = {
+            "ganador":   ganador,
+            "metricas":  metricas_df.to_dict(orient="index"),
+            "timestamp": datetime.now().isoformat(),
+        }
+        _upload(
+            f"{run_name}/cml_resultados.json",
+            json.dumps(payload, indent=2, ensure_ascii=False).encode(),
+            "application/json",
+        )
+        log.info("CML resultados guardados: run='%s' ganador='%s'", run_name, ganador)
+    except Exception as e:
+        log.warning("No se pudo guardar cml_resultados para run='%s': %s", run_name, e)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_cml_resultados(run_name: str) -> "dict | None":
+    """Carga los resultados de Comparativa ML guardados para un run.
+    Devuelve dict con 'metricas' (DataFrame) y 'ganador' (str), o None si no existen."""
+    try:
+        raw = json.loads(_download(f"{run_name}/cml_resultados.json"))
+        return {
+            "metricas": pd.DataFrame(raw["metricas"]).T,
+            "ganador":  raw["ganador"],
+        }
+    except Exception as e:
+        log.debug("cml_resultados no disponibles para run='%s': %s", run_name, e)
+        return None
 
 
 # ── Exportación Excel ────────────────────────────────────────────────────────

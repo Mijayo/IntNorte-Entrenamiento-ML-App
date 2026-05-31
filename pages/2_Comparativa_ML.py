@@ -747,6 +747,10 @@ if st.button("🏆 Comparar modelos", type="primary", use_container_width=True):
         "fuente_run":  run_sel if fuente == "Cargar desde un run guardado en Supabase" else None,
     }
 
+    # Persistir métricas en Supabase para que el Dashboard las muestre sin nueva sesión
+    if run_sel:
+        sio.save_cml_resultados(run_sel, df_met, mejor)
+
 # ── 5. Publicar en producción ─────────────────────────────────────────────────
 
 st.header("6. Publicar modelo ganador en producción", divider="green")

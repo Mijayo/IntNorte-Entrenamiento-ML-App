@@ -4,6 +4,16 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-05-31 (v34)
+
+- **feat(supabase_io)**: `ventas_reales` migrado de Storage JSON a tabla PostgreSQL. La lógica anterior (leer/modificar/escribir un JSON en Storage) tenía riesgo de race condition con escrituras concurrentes. Ahora se usa upsert con `on_conflict="fecha"` sobre la nueva tabla `ventas_reales` en PostgreSQL. Funciones afectadas: `get_ventas_reales()` (ahora lee de DB con `@st.cache_data(ttl=120)`), `save_venta_real()`, `delete_venta_real()`. La función privada `_get_ventas_reales_raw()` fue eliminada.
+- **feat(supabase_io)**: Persistencia de resultados Comparativa ML entre sesiones. `save_cml_resultados(run_name, df, ganador)` guarda las métricas como `{run_name}/cml_resultados.json` en Storage al completar la comparativa. `load_cml_resultados(run_name)` las carga con `@st.cache_data(ttl=600)`. El artefacto `cml_resultados.json` añadido a `_ARTIFACT_NAMES`.
+- **fix(dashboard)**: Sub-tab **🏆 vs Descartados** ya no requiere que el usuario haya ejecutado la Comparativa en la misma sesión. Si `st.session_state["cml_resultados"]` está vacío, carga automáticamente el JSON persistido en Supabase para el run seleccionado.
+- **fix(comparativa)**: Al completar la comparativa con un run de Supabase, guarda los resultados en Storage mediante `sio.save_cml_resultados(run_sel, df_met, mejor)`.
+- **db**: Tabla `ventas_reales` creada en Supabase PostgreSQL — `id bigserial PK`, `fecha text NOT NULL UNIQUE`, `ventas integer NOT NULL`, `usuario text`, `timestamp timestamptz DEFAULT now()`.
+
+---
+
 ### 2026-05-31 (v33)
 
 - **refactor(auth)**: `guard_page()` añadida a `core/auth_system.py`. Reemplaza el bloque de 5 líneas (`init_session_state` + `check_session_timeout` + `show_login_page` + `st.stop()`) que se duplicaba al principio de cada página. Acepta `app_title`, `permission` opcional y `roles` opcional. Adoptada por `app_principal.py` y todas las páginas de `pages/`.

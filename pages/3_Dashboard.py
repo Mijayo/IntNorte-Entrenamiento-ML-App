@@ -1040,6 +1040,9 @@ if st.session_state.role in ['admin', 'analyst']:
             st.markdown(section_header("SARIMA vs Modelos Alternativos", "🏆"), unsafe_allow_html=True)
 
             cml = st.session_state.get("cml_resultados")
+            # Si no hay resultados en sesión, intentar cargarlos desde Supabase
+            if cml is None:
+                cml = sio.load_cml_resultados(selected_run)
 
             if cml is not None:
                 # Resultados en tiempo real desde Comparativa ML
@@ -1090,8 +1093,8 @@ Resultados en tiempo real &nbsp;·&nbsp; Comparativa ejecutada en esta sesión
 
             else:
                 st.info(
-                    "💡 Ejecuta la página **Comparativa ML** con el mismo run y los resultados "
-                    "aparecerán aquí automáticamente. Mientras tanto, aquí está la justificación "
+                    "💡 Ejecuta la página **Comparativa ML** con este run para guardar los "
+                    "resultados numéricos aquí. Mientras tanto, aquí está la justificación "
                     "metodológica de la selección."
                 )
 

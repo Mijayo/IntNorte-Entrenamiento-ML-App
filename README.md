@@ -82,6 +82,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     acf_plot.png
     pacf_plot.png
     llm_cache.json                  ← Caché de respuestas Gemini (persistente por run)
+    cml_resultados.json             ← Métricas de Comparativa ML (persistente por run, para Dashboard cross-sesión)
 ```
 
 ### Tablas PostgreSQL
@@ -200,11 +201,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_training_runs_activo
 
 -- Tabla de ventas reales (feedback loop)
 CREATE TABLE IF NOT EXISTS ventas_reales (
-  id         BIGSERIAL    PRIMARY KEY,
-  fecha      DATE         NOT NULL UNIQUE,  -- primer día del mes
-  ventas     INT          NOT NULL,
-  usuario    TEXT,
-  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  id        BIGSERIAL    PRIMARY KEY,
+  fecha     TEXT         NOT NULL UNIQUE,  -- 'YYYY-MM-01', primer día del mes
+  ventas    INTEGER      NOT NULL,
+  usuario   TEXT,
+  timestamp TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 -- Tabla de audit log
@@ -566,7 +567,7 @@ Gráfico dual-axis: barras de valor de negocio + línea de autonomía operativa 
 | Módulo | Responsabilidad |
 |--------|----------------|
 | `core/auth_system.py` | Autenticación Supabase Auth + fallback SHA-256, sesiones, timeout, RBAC, UI de login; `guard_page()` unifica el guard de cada página |
-| `core/supabase_io.py` | I/O con Supabase Storage y PostgreSQL; audit log centralizado; caché `@st.cache_data` en todas las funciones de lectura (TTL 5–10 min), invalidación automática al entrenar o aprobar un modelo; `get_model_age_days()`, `get_ventas_reales()`, `save_venta_real()`, `delete_venta_real()`, `build_export_excel()` |
+| `core/supabase_io.py` | I/O con Supabase Storage y PostgreSQL; audit log centralizado; caché `@st.cache_data` en todas las funciones de lectura (TTL 5–10 min), invalidación automática al entrenar o aprobar un modelo; `get_model_age_days()`, `get_ventas_reales()`, `save_venta_real()`, `delete_venta_real()`, `save_cml_resultados()`, `load_cml_resultados()`, `build_export_excel()` |
 | `core/utils_validacion.py` | Validación de calidad del DataFrame antes de entrenar |
 | `core/logger.py` | Logger centralizado — consola + `logs/app.log` (rotativo 2 MB × 3) |
 | `core/styles.py` | CSS global dark premium, helpers `kpi_card()`, `section_header()`, `apply_chart_theme()` |
