@@ -18,8 +18,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import core.supabase_io as sio
-from core.auth_system import (init_session_state, show_login_page, show_user_info,
-                              check_session_timeout, has_permission, show_header)
+from core.auth_system import (guard_page, show_user_info, show_header, has_permission)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -31,18 +30,7 @@ st.set_page_config(
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
-init_session_state()
-
-if check_session_timeout():
-    st.warning("⏱️ Tu sesión ha expirado.")
-    st.stop()
-if not st.session_state.authenticated:
-    show_login_page("💰 Proyección de Ingresos — TIGGO 2")
-    st.stop()
-
-if not has_permission('ver_ingresos'):
-    st.error("🔒 Acceso restringido — Esta página está disponible sólo para **Admin**, **Analista** y **Financiero**.")
-    st.stop()
+guard_page("💰 Proyección de Ingresos — TIGGO 2", permission="ver_ingresos")
 
 # ── Selector de versión (sidebar) ─────────────────────────────────────────────
 
@@ -240,12 +228,12 @@ Ajusta el precio unitario y el margen neto para tu escenario real.
     )
 
     if has_permission('exportar'):
-        csv_usd = df_usd[disp_cols_usd].to_csv(index=False).encode('utf-8')
+        _xls_proy = sio.build_proyeccion_excel(df_usd, disp_cols_usd)
         st.download_button(
-            "📥 Exportar CSV proyección USD",
-            csv_usd,
-            f"proyeccion_ingresos_usd_{datetime.now().strftime('%Y%m%d')}.csv",
-            "text/csv",
+            "📥 Exportar Excel proyección de ingresos",
+            _xls_proy,
+            f"proyeccion_ingresos_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
 # ══════════════════════════════════════════════════════════════════════════════

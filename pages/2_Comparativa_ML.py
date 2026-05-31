@@ -41,8 +41,7 @@ except ImportError:
     XGBOOST_OK = False
 
 import core.supabase_io as sio
-from core.auth_system import (init_session_state, show_login_page, show_user_info,
-                              check_session_timeout, has_permission, show_header)
+from core.auth_system import (guard_page, show_user_info, has_permission, show_header)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -52,16 +51,7 @@ st.set_page_config(page_title="Comparativa ML", page_icon="🏆", layout="wide")
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
-init_session_state()
-if check_session_timeout():
-    st.warning("⏱️ Tu sesión ha expirado.")
-    st.stop()
-if not st.session_state.authenticated:
-    show_login_page("🏆 Comparativa de Modelos ML")
-    st.stop()
-if not has_permission('entrenar_modelos'):
-    st.error("❌ No tienes permiso para acceder a esta página")
-    st.stop()
+guard_page("🏆 Comparativa de Modelos ML", permission="entrenar_modelos")
 
 show_header("Comparativa de Modelos ML", "¿Qué modelo predice mejor las ventas del Tiggo 2?")
 show_user_info()

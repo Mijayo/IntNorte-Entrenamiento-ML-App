@@ -9,7 +9,7 @@ Fuentes: Rajdhani (display) + JetBrains Mono (datos)
 # ── Paleta de colores ─────────────────────────────────────────────────────────
 
 COLORS = {
-    'primary':    '#0073FF',   # vibrant orange (acción principal)
+    'primary':    '#0073FF',   # vibrant blue (acción principal)
     'secondary':  '#C2FF00',   # lime-yellow
     'accent':     '#FF3A5C',   # signal red
     'success':    '#00F5A0',   # neon green
@@ -536,6 +536,45 @@ def get_home_css():
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 20px 12px !important;
   }
+}
+
+/* ── Context panel ────────────────────────────────── */
+.context-panel {
+  margin-bottom: 28px; padding: 18px 24px;
+  background: linear-gradient(135deg, rgba(0,115,255,0.06), rgba(194,255,0,0.04));
+  border: 1px solid rgba(0,115,255,0.14); border-radius: 8px; position: relative;
+}
+.context-panel-label {
+  font-family: 'Rajdhani', sans-serif; font-size: .6rem; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--c-muted); margin-bottom: 10px;
+}
+.context-panel-body { display: flex; flex-direction: column; gap: 20px; }
+.context-title {
+  font-family: 'Rajdhani', sans-serif; font-size: 1.02rem; font-weight: 700; color: var(--c-text);
+}
+.context-text { color: #7A95A8; font-size: .84rem; line-height: 1.75; margin-top: 6px; }
+.context-text strong { color: var(--c-gold); }
+.contexto-kpis > div { text-align: center; }
+.ctx-kpi-value {
+  font-family: 'Rajdhani', sans-serif; font-size: 2.8rem; font-weight: 700; line-height: 1;
+}
+.ctx-kpi-value.blue   { color: var(--c-cyan); }
+.ctx-kpi-value.lime   { color: var(--c-gold); }
+.ctx-kpi-value.green  { color: var(--c-green); }
+.ctx-kpi-value.violet { color: var(--c-purple); }
+.ctx-kpi-sub {
+  font-family: 'JetBrains Mono', monospace; font-size: .58rem;
+  color: var(--c-muted); text-transform: uppercase; letter-spacing: .12em; margin-top: 3px;
+}
+
+/* ── Home footer ──────────────────────────────────── */
+.home-footer {
+  margin-top: 48px; padding-top: 16px;
+  border-top: 1px solid rgba(0,115,255,0.06);
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .55rem; letter-spacing: .16em;
+  color: var(--c-muted); text-transform: uppercase; opacity: .6;
 }
 </style>"""
 

@@ -17,8 +17,7 @@ import streamlit as st
 from datetime import datetime
 
 import core.supabase_io as sio
-from core.auth_system import (init_session_state, show_login_page, show_user_info,
-                               check_session_timeout, has_permission, show_header)
+from core.auth_system import (guard_page, show_user_info, show_header)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -30,18 +29,7 @@ st.set_page_config(
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
-init_session_state()
-
-if check_session_timeout():
-    st.warning("⏱️ Tu sesión ha expirado.")
-    st.stop()
-if not st.session_state.authenticated:
-    show_login_page("🏪 Concesionarios TIGGO 2")
-    st.stop()
-
-if st.session_state.role not in ['admin', 'analyst', 'manager']:
-    st.error("❌ No tienes permiso para acceder a esta sección.")
-    st.stop()
+guard_page("🏪 Concesionarios TIGGO 2", roles=['admin', 'analyst', 'manager'])
 
 # ── Selector de versión del modelo (sidebar) ──────────────────────────────────
 

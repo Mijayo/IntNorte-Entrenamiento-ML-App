@@ -347,6 +347,46 @@ El asistente conoce el modelo activo: parámetros SARIMA, MAPE, predicciones y t
 
 ---
 
+## Sección — Registrar Ventas Reales
+
+> Disponible para: `admin`, `analyst`
+
+Página de feedback loop. Una vez cerrado un mes, registra las ventas reales para medir la precisión del modelo en producción.
+
+**Pasos:**
+
+1. Selecciona el mes y el año en el selectbox.
+2. Introduce el número de unidades vendidas ese mes.
+3. Haz clic en **Registrar**. El dato se guarda en Supabase y el Dashboard se actualiza automáticamente.
+
+**Scoreboard acumulado:**
+
+Una vez hay al menos un mes registrado, la página muestra:
+- MAPE de producción: error medio entre predicción y real, para todos los meses registrados.
+- Desviación máxima y porcentaje de meses dentro del objetivo (< 15%).
+- Gráfico real vs predicción con IC 95% y puntos de ventas reales.
+- Tabla mes a mes con error porcentual con gradiente de color (verde < 10%, amarillo 10–15%, rojo > 15%).
+
+**Drift alert:** si algún mes registrado supera el 15% de error, aparece un aviso recomendando reentrenar el modelo.
+
+---
+
+## Sección — Administración
+
+> Disponible exclusivamente para: `admin`
+
+Panel de gestión del sistema. Tres tabs:
+
+**👥 Usuarios:** lista de cuentas configuradas en `secrets.toml`. Muestra nombre, rol e icono de cada usuario. No se muestran contraseñas.
+
+**📜 Audit Log:** registro de todas las acciones críticas del sistema (login, logout, aprobación de modelo, eliminación de run). Filtrable por tipo de acción. KPIs: acciones hoy, usuarios únicos activos, alertas registradas.
+
+**🤖 Gestión de modelos:** tabla completa de runs disponibles con métricas (MAPE, AIC, meses de datos, fecha). Permite:
+- Aprobar un run: lo marca como modelo activo en producción (`activo=TRUE`).
+- Eliminar un run: borra el run de la base de datos y del Storage (con confirmación).
+
+---
+
 ## Sección — Escalabilidad
 
 > Disponible para todos los roles

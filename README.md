@@ -28,7 +28,9 @@ pages/
 ├── 3_Dashboard.py            ← Dashboard de negocio (todos los roles)
 ├── 4_Concesionarios.py       ← Análisis histórico + predicciones por tienda (Admin / Analista / Manager)
 ├── 5_Proyeccion_Ingresos.py  ← Proyección financiera en USD (Admin / Analista / Financiero)
-└── 6_Escalabilidad.py        ← Hoja de ruta multi-marca: portafolio, líneas de negocio, onboarding, LatAm (todos)
+├── 6_Escalabilidad.py        ← Hoja de ruta multi-marca: portafolio, líneas de negocio, onboarding, LatAm (todos)
+├── 7_Registrar_Ventas.py     ← Feedback loop: ventas reales vs predicción, drift alert (Admin / Analista)
+└── 8_Administracion.py       ← Panel de administración: usuarios, audit log, gestión de modelos (Admin)
 core/                         ← Paquete Python de utilidades
 ├── __init__.py
 ├── auth_system.py            ← Autenticación Supabase Auth + fallback local, sesiones, RBAC
@@ -196,6 +198,15 @@ CREATE TABLE IF NOT EXISTS training_runs (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_training_runs_activo
   ON training_runs (activo) WHERE activo = TRUE;
 
+-- Tabla de ventas reales (feedback loop)
+CREATE TABLE IF NOT EXISTS ventas_reales (
+  id         BIGSERIAL    PRIMARY KEY,
+  fecha      DATE         NOT NULL UNIQUE,  -- primer día del mes
+  ventas     INT          NOT NULL,
+  usuario    TEXT,
+  created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 -- Tabla de audit log
 CREATE TABLE IF NOT EXISTS audit_log (
   id        BIGSERIAL    PRIMARY KEY,
@@ -231,13 +242,13 @@ streamlit run app_principal.py
 
 ## Roles y permisos
 
-| Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML | Concesionarios | Escalabilidad |
-|-----|:-------------:|:---------:|:-------------------:|:--------------:|:--------------:|:-------------:|
-| `admin` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ | ✅ |
-| `analyst` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ | ✅ |
-| `financiero` | — | ✅ (2 tabs) | ✅ | — | — | ✅ |
-| `manager` | — | ✅ (4 tabs) | — | — | ✅ | ✅ |
-| `viewer` | — | ✅ (2 tabs) | — | — | — | ✅ |
+| Rol | Entrenamiento | Dashboard | Proyección Ingresos | Comparativa ML | Concesionarios | Escalabilidad | Reg. Ventas | Administración |
+|-----|:-------------:|:---------:|:-------------------:|:--------------:|:--------------:|:-------------:|:-----------:|:--------------:|
+| `admin` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `analyst` | ✅ | ✅ (6 tabs) | ✅ | ✅ | ✅ | ✅ | ✅ | — |
+| `financiero` | — | ✅ (2 tabs) | ✅ | — | — | ✅ | — | — |
+| `manager` | — | ✅ (4 tabs) | — | — | ✅ | ✅ | — | — |
+| `viewer` | — | ✅ (2 tabs) | — | — | — | ✅ | — | — |
 
 **Tabs del Dashboard por rol:**
 
@@ -398,6 +409,24 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 > El tab 🏪 Concesionarios se trasladó a la página independiente `pages/4_Concesionarios.py` (2026-05-28).
 > Los tabs 🔬 ACF/PACF y 🔍 Grid Search se consolidaron como sub-pestañas de 📋 Métricas Técnicas (2026-05-28).
 > Sub-tab 🏆 vs Descartados y análisis de ciclo estacional añadidos (2026-05-30).
+> Alerta predictiva proactiva e indicador de frescura del modelo añadidos (2026-05-31).
+
+### Alerta predictiva proactiva
+
+Aparece sobre los tabs cuando el primer mes del forecast desvía ≥ 15% respecto a la media de los últimos 12 meses del histórico:
+
+- **Banner amarillo** — demanda inusualmente alta (`+X%`): sugiere anticipar el pedido o incrementar stock de seguridad.
+- **Banner azul** — demanda inusualmente baja (`-X%`): sugiere reducir el pedido para evitar sobrestock.
+
+### Indicador de frescura del modelo (sidebar)
+
+Badge en la barra lateral con la antigüedad del run activo:
+
+| Color | Condición | Texto |
+|-------|-----------|-------|
+| 🟢 Verde | < 30 días | Reciente |
+| 🟡 Amarillo | 30–89 días | Envejeciendo |
+| 🔴 Rojo | ≥ 90 días | Desactualizado + warning |
 
 ### Tab Recomendaciones de Compra — análisis de ciclo estacional
 
@@ -479,6 +508,34 @@ Página independiente disponible para **Admin**, **Analista** y **Manager**. Com
 
 ---
 
+## App 7 — Registrar Ventas (`pages/7_Registrar_Ventas.py`)
+
+Página de **feedback loop** disponible para **Admin** y **Analista**. Permite registrar las ventas reales de cada mes una vez cerrado el período y mide la precisión del modelo en producción.
+
+| Sección | Descripción |
+|---------|-------------|
+| Formulario de registro | Selector mes/año + input de unidades vendidas → upsert en tabla `ventas_reales` de Supabase |
+| Scoreboard acumulado | MAPE de producción (meses con dato real), desviación máxima, porcentaje de meses dentro del objetivo 15% |
+| Gráfico real vs predicción | Línea de predicción + banda IC 95% + puntos de ventas reales, con drift alert si algún mes supera el 15% de error |
+| Tabla detallada | Mes a mes con predicción, real, error absoluto y % de error con gradiente de color |
+| Exportar CSV | Disponible para roles con permiso `exportar` |
+
+> Los datos registrados se usan en el Dashboard (tab 📊) para mostrar la sección "Seguimiento en producción — Real vs Predicción" y activan automáticamente la alerta de drift.
+
+---
+
+## App 8 — Administración (`pages/8_Administracion.py`)
+
+Panel de administración de acceso exclusivo para el rol **Admin**.
+
+| Tab | Descripción |
+|-----|-------------|
+| 👥 Usuarios | Lista de cuentas configuradas en `secrets.toml` — nombre, rol, icono, email. Sin contraseñas. |
+| 📜 Audit Log | Tabla de acciones recientes (LOGIN, LOGOUT, APPROVE_MODEL, DELETE_RUN) con filtro por tipo y KPIs del día |
+| 🤖 Gestión de modelos | Tabla de todos los runs con métricas (MAPE, AIC, meses); botón "Aprobar" para activar un run; botón "Eliminar" con confirmación |
+
+---
+
 ## App 6 — Escalabilidad (`pages/6_Escalabilidad.py`)
 
 Página disponible para **todos los roles**. Presenta la hoja de ruta para exportar el pipeline a otras marcas, líneas de negocio y mercados.
@@ -508,8 +565,8 @@ Gráfico dual-axis: barras de valor de negocio + línea de autonomía operativa 
 
 | Módulo | Responsabilidad |
 |--------|----------------|
-| `core/auth_system.py` | Autenticación Supabase Auth + fallback SHA-256, sesiones, timeout, RBAC, UI de login |
-| `core/supabase_io.py` | I/O con Supabase Storage y PostgreSQL; audit log centralizado; caché `@st.cache_data` en todas las funciones de lectura (TTL 5–10 min), invalidación automática al entrenar o aprobar un modelo |
+| `core/auth_system.py` | Autenticación Supabase Auth + fallback SHA-256, sesiones, timeout, RBAC, UI de login; `guard_page()` unifica el guard de cada página |
+| `core/supabase_io.py` | I/O con Supabase Storage y PostgreSQL; audit log centralizado; caché `@st.cache_data` en todas las funciones de lectura (TTL 5–10 min), invalidación automática al entrenar o aprobar un modelo; `get_model_age_days()`, `get_ventas_reales()`, `save_venta_real()`, `delete_venta_real()`, `build_export_excel()` |
 | `core/utils_validacion.py` | Validación de calidad del DataFrame antes de entrenar |
 | `core/logger.py` | Logger centralizado — consola + `logs/app.log` (rotativo 2 MB × 3) |
 | `core/styles.py` | CSS global dark premium, helpers `kpi_card()`, `section_header()`, `apply_chart_theme()` |

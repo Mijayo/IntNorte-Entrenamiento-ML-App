@@ -43,8 +43,7 @@ TRAINING_DEFAULT_START: date = date(2022, 1, 1)
 TRAINING_DEFAULT_END:   date = date(2026, 3, 31)
 
 import core.supabase_io as sio
-from core.auth_system import (init_session_state, show_login_page, show_user_info,
-                              check_session_timeout, has_permission, show_header)
+from core.auth_system import (guard_page, show_user_info, has_permission, show_header)
 from core.utils_validacion import (validate_dataframe, show_validation_results,
                                    preview_data, plot_temporal_distribution,
                                    plot_missing_data)
@@ -62,16 +61,7 @@ st.markdown("""
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
-init_session_state()
-if check_session_timeout():
-    st.warning("⏱️ Tu sesión ha expirado.")
-    st.stop()
-if not st.session_state.authenticated:
-    show_login_page("🤖 Entrenamiento de Modelos")
-    st.stop()
-if not has_permission('entrenar_modelos'):
-    st.error("❌ No tienes permiso para acceder a esta aplicación")
-    st.stop()
+guard_page("🤖 Entrenamiento de Modelos", permission="entrenar_modelos")
 
 show_header("Entrenamiento de Modelos SARIMA", "Sistema de Entrenamiento Automatizado")
 show_user_info()
@@ -844,6 +834,88 @@ Con Grid Search se evalúan **384 combinaciones fijas**. Optuna usa **TPE (Tree-
 
                 mape_wf = df_wf['error_pct'].mean()
                 st.success(f"✅ MAPE walk-forward: {mape_wf:.2f}% · {len(df_wf)}/{n_wf} meses validados")
+
+                # ── Justificación cadencia de reentrenamiento ─────────────────
+                with st.expander("📅 ¿Con qué frecuencia reentrenar? — Evidencia walk-forward",
+                                 expanded=False):
+                    st.markdown("""
+La validación walk-forward simula el comportamiento real del modelo a lo largo del tiempo.
+Observando cómo evoluciona el error mensual podemos estimar cuándo el modelo empieza a
+"perder frescura" y qué cadencia de reentrenamiento es óptima.
+""")
+                    _df_wf_c = df_wf.copy().reset_index(drop=True)
+                    _df_wf_c['mes_label'] = _df_wf_c['fecha'].dt.strftime('%b %Y')
+
+                    _bar_colors_c = [
+                        '#FF3A5C' if e > 15
+                        else ('#C2FF00' if e > 10 else '#00F5A0')
+                        for e in _df_wf_c['error_pct']
+                    ]
+                    fig_cad = go.Figure()
+                    fig_cad.add_trace(go.Bar(
+                        x=_df_wf_c['mes_label'],
+                        y=_df_wf_c['error_pct'].round(1),
+                        marker=dict(color=_bar_colors_c, opacity=0.86),
+                        text=[f"{e:.1f}%" for e in _df_wf_c['error_pct']],
+                        textposition='outside',
+                        textfont=dict(family="JetBrains Mono, monospace",
+                                      size=10, color="#7A95A8"),
+                        name="MAPE mensual",
+                    ))
+                    fig_cad.add_hline(y=15, line_dash="dot",
+                                      line_color='#FF3A5C',
+                                      annotation_text="Umbral 15%",
+                                      annotation_font_color='#FF3A5C')
+                    fig_cad.add_hline(y=10, line_dash="dot",
+                                      line_color='#C2FF00',
+                                      annotation_text="Objetivo 10%",
+                                      annotation_font_color='#C2FF00')
+                    fig_cad.update_layout(
+                        title="MAPE mensual walk-forward — evolución del error en el tiempo",
+                        yaxis_title="MAPE (%)", xaxis_title="",
+                        template="plotly_white", height=320,
+                        yaxis_ticksuffix="%",
+                    )
+                    st.plotly_chart(fig_cad, use_container_width=True,
+                                    config={'displayModeBar': False})
+
+                    # Calcular drift entre primera y segunda mitad del período WF
+                    _n_c       = len(_df_wf_c)
+                    _half      = _n_c // 2
+                    _mape_ini  = _df_wf_c['error_pct'].iloc[:_half].mean()
+                    _mape_fin  = _df_wf_c['error_pct'].iloc[_half:].mean()
+                    _drift_c   = _mape_fin - _mape_ini
+
+                    if abs(_drift_c) < 3:
+                        _cad_diag = "✅ El error es estable en el tiempo. La cadencia **trimestral** es adecuada."
+                        _cad_rec  = "trimestral (cada 3 meses)"
+                    elif _drift_c > 3:
+                        _cad_diag = "⚠️ El error aumenta con el tiempo: el modelo pierde precisión. Se recomienda reentrenar cada **2–3 meses**."
+                        _cad_rec  = "bimestral (cada 2 meses)"
+                    else:
+                        _cad_diag = "📊 El error mejora en el período reciente — el modelo se adapta bien al ciclo actual."
+                        _cad_rec  = "trimestral (cada 3 meses)"
+
+                    st.markdown(f"""
+**Lectura automática:**
+
+| Período | MAPE promedio |
+|---------|:-------------:|
+| Primera mitad del WF | **{_mape_ini:.1f}%** |
+| Segunda mitad del WF | **{_mape_fin:.1f}%** |
+| Drift del error | **{_drift_c:+.1f} pp** |
+
+{_cad_diag}
+
+**Cadencia recomendada para este run:** {_cad_rec}
+
+> **¿Por qué trimestral y no semanal?**
+> El reentrenamiento semanal consumiría recursos computacionales sin mejora si los datos no cambian —
+> SARIMA aprende patrones estacionales que son estables mes a mes. Con datos mensuales,
+> el lag mínimo útil para detectar cambio de régimen es **3 meses** (un trimestre): suficiente tiempo
+> para que el mercado muestre un nuevo nivel base y para que el analista confirme que el cambio
+> es estructural y no un outlier puntual.
+""")
 
                 # ── Diagnóstico automático cuando MAPE > 15% ─────────────────
                 if mape_wf > 15:

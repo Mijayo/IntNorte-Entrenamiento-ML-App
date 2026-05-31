@@ -27,8 +27,7 @@ warnings.filterwarnings('ignore')
 from google import genai
 
 import core.supabase_io as sio
-from core.auth_system import (init_session_state, show_login_page, show_user_info,
-                              check_session_timeout, has_permission, show_header)
+from core.auth_system import (guard_page, show_user_info, has_permission, show_header)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -42,19 +41,12 @@ st.set_page_config(
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
-init_session_state()
+guard_page("🚗 Dashboard TIGGO 2")
 
 if 'cache_llm_tiggo' not in st.session_state:
     st.session_state.cache_llm_tiggo = {}
 if 'cache_llm_run' not in st.session_state:
     st.session_state.cache_llm_run = None
-
-if check_session_timeout():
-    st.warning("⏱️ Tu sesión ha expirado.")
-    st.stop()
-if not st.session_state.authenticated:
-    show_login_page("🚗 Dashboard TIGGO 2")
-    st.stop()
 
 # ── Selector de versión (sidebar) ────────────────────────────────────────────
 
@@ -123,6 +115,86 @@ role_badges = {
 }
 st.markdown(role_badges.get(st.session_state.role, ''), unsafe_allow_html=True)
 show_user_info()
+
+# ── Alerta predictiva proactiva ───────────────────────────────────────────────
+# Se activa cuando el próximo mes proyectado desvía ≥15% de la media histórica
+# reciente, SIN necesitar ventas reales registradas — es forward-looking.
+
+_hist_12_avg  = hist_total.iloc[-12:].mean() if len(hist_total) >= 12 else hist_total.mean()
+_fc_next      = pred_total['Predicción'].iloc[0]
+_fc_mes       = pred_total['Mes'].iloc[0]
+_fc_ic_inf    = pred_total['IC_Inferior'].iloc[0]
+_fc_ic_sup    = pred_total['IC_Superior'].iloc[0]
+_fc_dev_pct   = (_fc_next - _hist_12_avg) / (_hist_12_avg + 0.01) * 100
+
+if abs(_fc_dev_pct) >= 15:
+    if _fc_dev_pct > 0:
+        st.markdown(f"""
+<div style="background:rgba(255,193,7,0.07);border:1px solid rgba(255,193,7,0.32);
+            border-left:4px solid #FFC107;border-radius:8px;
+            padding:14px 20px;margin-bottom:16px;">
+  <span style="font-family:'Rajdhani',sans-serif;font-size:.72rem;font-weight:700;
+               color:#FFC107;text-transform:uppercase;letter-spacing:.14em;">
+    ⚡ Alerta predictiva — Demanda inusualmente alta
+  </span><br>
+  <span style="color:#C9D8E6;font-size:.9rem;">
+    El modelo anticipa <strong style="color:#FCD34D;">{_fc_next:.0f} uds</strong>
+    para <strong>{_fc_mes}</strong>
+    (<strong style="color:#FCD34D;">+{_fc_dev_pct:.1f}%</strong> vs media
+    últimos 12 m: {_hist_12_avg:.0f} uds · IC 95%: {_fc_ic_inf:.0f}–{_fc_ic_sup:.0f} uds).
+  </span><br>
+  <span style="color:#94A3B8;font-size:.82rem;">
+    💡 Considera anticipar el pedido o incrementar el stock de seguridad
+    antes de que se confirme la demanda.
+  </span>
+</div>
+""", unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+<div style="background:rgba(56,189,248,0.07);border:1px solid rgba(56,189,248,0.28);
+            border-left:4px solid #38BDF8;border-radius:8px;
+            padding:14px 20px;margin-bottom:16px;">
+  <span style="font-family:'Rajdhani',sans-serif;font-size:.72rem;font-weight:700;
+               color:#38BDF8;text-transform:uppercase;letter-spacing:.14em;">
+    ⚡ Alerta predictiva — Demanda inusualmente baja
+  </span><br>
+  <span style="color:#C9D8E6;font-size:.9rem;">
+    El modelo anticipa <strong style="color:#7DD3FC;">{_fc_next:.0f} uds</strong>
+    para <strong>{_fc_mes}</strong>
+    (<strong style="color:#7DD3FC;">{_fc_dev_pct:.1f}%</strong> vs media
+    últimos 12 m: {_hist_12_avg:.0f} uds · IC 95%: {_fc_ic_inf:.0f}–{_fc_ic_sup:.0f} uds).
+  </span><br>
+  <span style="color:#94A3B8;font-size:.82rem;">
+    💡 Considera reducir el pedido del próximo período para evitar sobrestock.
+  </span>
+</div>
+""", unsafe_allow_html=True)
+
+# ── Indicador de frescura del modelo (sidebar) ────────────────────────────────
+
+_age = sio.get_model_age_days(selected_run)
+if _age is not None:
+    if _age < 30:
+        _fc, _fl, _fi = "#00F5A0", "Reciente", "🟢"
+    elif _age < 90:
+        _fc, _fl, _fi = "#FCD34D", "Envejeciendo", "🟡"
+    else:
+        _fc, _fl, _fi = "#FF3A5C", "Desactualizado", "🔴"
+    st.sidebar.markdown(f"""
+<div style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.07);
+            border-radius:8px;padding:10px 13px;margin-top:10px;">
+  <div style="font-family:'Rajdhani',sans-serif;font-size:0.72rem;color:#3F5060;
+              text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">
+    Frescura del modelo
+  </div>
+  <div style="font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;
+              color:{_fc};">{_fi} {_fl}</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.76rem;
+              color:#3F5060;margin-top:2px;">Entrenado hace {_age} días</div>
+</div>
+""", unsafe_allow_html=True)
+    if _age >= 90:
+        st.sidebar.warning("⚠️ Modelo con más de 90 días. Considera reentrenar.")
 
 # ── Conexión Gemini ───────────────────────────────────────────────────────────
 
@@ -232,6 +304,131 @@ with tabs[0]:
                 st.code(f"Modelo: SARIMA{orden}{orden_est}\n"
                         f"AIC: {metricas['mejor_modelo']['aic']:.2f}\n"
                         f"BIC: {metricas['mejor_modelo']['bic']:.2f}")
+
+    # ── Seguimiento en producción (ventas reales vs predicción) ──────────────
+    _ventas_reales = sio.get_ventas_reales()
+    if _ventas_reales:
+        st.markdown(section_header("Seguimiento en Producción — Real vs Predicción", "📡"),
+                    unsafe_allow_html=True)
+        _vr_df = pd.DataFrame(_ventas_reales)
+        _vr_df["fecha"] = pd.to_datetime(_vr_df["fecha"])
+        _vr_df = _vr_df.sort_values("fecha")
+
+        _pred_lookup = {
+            pd.Timestamp(row["Fecha"]): row["Predicción"]
+            for _, row in pred_total.iterrows()
+        }
+        _vr_df["prediccion"] = _vr_df["fecha"].map(_pred_lookup)
+        _vr_matched = _vr_df.dropna(subset=["prediccion"])
+
+        if not _vr_matched.empty:
+            _vr_matched = _vr_matched.copy()
+            _vr_matched["error_pct"] = (
+                abs(_vr_matched["ventas"] - _vr_matched["prediccion"])
+                / _vr_matched["ventas"] * 100
+            )
+            _max_err = _vr_matched["error_pct"].max()
+            if _max_err > 15:
+                st.error(
+                    f"⚠️ **Drift detectado:** el error máximo entre ventas reales y predicción "
+                    f"es **{_max_err:.1f}%** (umbral: 15%). Considera reentrenar el modelo."
+                )
+            else:
+                st.success(
+                    f"✅ Modelo en producción dentro del rango — error máximo: {_max_err:.1f}%"
+                )
+
+            _fig_drift = go.Figure()
+            _fig_drift.add_trace(go.Scatter(
+                x=_vr_matched["fecha"], y=_vr_matched["ventas"],
+                mode="lines+markers", name="Real registrado",
+                line=dict(color=COLORS["success"], width=2.5),
+                marker=dict(size=9, color=COLORS["success"]),
+            ))
+            _fig_drift.add_trace(go.Scatter(
+                x=_vr_matched["fecha"], y=_vr_matched["prediccion"],
+                mode="lines+markers", name="Predicción modelo",
+                line=dict(color=COLORS["accent"], width=2.5, dash="dot"),
+                marker=dict(size=8, color=COLORS["accent"], symbol="diamond"),
+            ))
+            apply_chart_theme(_fig_drift, height=320,
+                              title="Ventas reales vs predicción del modelo")
+            _fig_drift.update_layout(hovermode="x unified",
+                                     xaxis_title="Fecha", yaxis_title="Unidades")
+            st.plotly_chart(_fig_drift, use_container_width=True,
+                            config={"displayModeBar": False})
+        else:
+            st.info(
+                "💡 Hay ventas reales registradas, pero no coinciden con las fechas de "
+                "predicción del modelo activo. Registra ventas de los próximos meses "
+                "en **Registrar Ventas**."
+            )
+    else:
+        if st.session_state.role in ['admin', 'analyst']:
+            st.info(
+                "📡 Registra ventas reales en **Registrar Ventas** para ver el seguimiento "
+                "de producción y detectar drift del modelo automáticamente."
+            )
+
+    # ── Contexto de Mercado — Chery vs Competencia ────────────────────────────
+    if st.session_state.role in ['admin', 'analyst', 'manager']:
+        st.markdown(section_header("Contexto de Mercado — Chery vs Competencia (Perú)", "🏁"),
+                    unsafe_allow_html=True)
+
+        _mkt = pd.DataFrame({
+            'Marca':     ['Toyota', 'Hyundai', 'Kia', 'Chery', 'Chevrolet',
+                          'Nissan', 'Suzuki', 'Otras'],
+            'Share (%)': [24.5, 14.8, 11.9, 8.3, 7.6, 6.9, 5.2, 20.8],
+        })
+        _mkt_colors = [
+            COLORS['success'] if m == 'Chery' else COLORS['muted']
+            for m in _mkt['Marca']
+        ]
+
+        fig_mkt = go.Figure()
+        fig_mkt.add_trace(go.Bar(
+            x=_mkt['Marca'], y=_mkt['Share (%)'],
+            marker=dict(color=_mkt_colors, opacity=0.88),
+            text=[f"{v:.1f}%" for v in _mkt['Share (%)']],
+            textposition='outside',
+            textfont=dict(family="JetBrains Mono, monospace", size=11, color="#7A95A8"),
+            hovertemplate='%{x}: %{y:.1f}% market share<extra></extra>',
+        ))
+        apply_chart_theme(fig_mkt, height=300,
+                          title='Market Share Automotriz — Perú 2024 (estimado)')
+        fig_mkt.update_layout(
+            xaxis_title='', yaxis_title='Share (%)',
+            showlegend=False, yaxis_ticksuffix='%',
+        )
+        st.plotly_chart(fig_mkt, use_container_width=True,
+                        config={'displayModeBar': False})
+
+        # Cuadro de posición competitiva
+        _chery_rank = int(_mkt.sort_values('Share (%)', ascending=False)
+                          .reset_index(drop=True)
+                          .loc[lambda d: d['Marca'] == 'Chery'].index[0]) + 1
+        _chery_share = _mkt.loc[_mkt['Marca'] == 'Chery', 'Share (%)'].values[0]
+        _kia_share   = _mkt.loc[_mkt['Marca'] == 'Kia',   'Share (%)'].values[0]
+        st.markdown(f"""
+<div style="background:rgba(0,245,160,0.05);border:1px solid rgba(0,245,160,0.16);
+            border-radius:8px;padding:12px 18px;margin-top:4px;">
+  <span style="font-family:'Rajdhani',sans-serif;font-size:.72rem;font-weight:700;
+               color:#00F5A0;text-transform:uppercase;letter-spacing:.12em;">
+    Posición Chery
+  </span>
+  <span style="color:#94A3B8;font-size:.85rem;margin-left:10px;">
+    Chery ocupa el <strong style="color:#C9D8E6;">{_chery_rank}.º lugar</strong>
+    con un <strong style="color:#00F5A0;">{_chery_share:.1f}% de market share</strong>,
+    a {abs(_chery_share - _kia_share):.1f}pp de Kia en el segmento SUV compacto.
+    El sistema de predicción optimiza la disponibilidad del Tiggo 2 para defender
+    y expandir esa posición frente a la competencia.
+  </span>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:.6rem;
+            color:#3F5060;margin-top:6px;text-align:right;">
+  Fuente: estimado ARAPER / ASOAVEC 2024 — referencia ilustrativa
+</div>
+""", unsafe_allow_html=True)
 
 # ── Tab 2: Predicciones ───────────────────────────────────────────────────────
 
@@ -368,10 +565,89 @@ Es la estimación más honesta del error real del sistema.
         )
 
     if has_permission('exportar'):
-        csv = pred_total.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Exportar CSV predicciones", csv,
-                           f"predicciones_{datetime.now().strftime('%Y%m%d')}.csv",
-                           "text/csv")
+        _xls = sio.build_export_excel(pred_total, walk_forward, metricas, hist_total)
+        st.download_button(
+            "📥 Exportar Excel (predicciones + walk-forward + histórico)",
+            _xls,
+            f"reporte_tiggo2_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    # ── Simulador de Escenarios — ¿Qué pasa si…? ─────────────────────────────
+    with st.expander("🎯 Simulador de Escenarios — ¿Qué pasa si…?", expanded=False):
+        st.markdown("""
+Aplica un factor de ajuste sobre la predicción SARIMA para simular el impacto de
+factores externos: campañas promocionales, cambio de precio, entrada de un competidor,
+restricción de importaciones, o estacionalidad atípica.
+""")
+        sc1, sc2 = st.columns([2, 3])
+        with sc1:
+            _sc_ajuste = st.slider(
+                "Ajuste de demanda (%)",
+                min_value=-50, max_value=100, value=0, step=5,
+                format="%+d%%",
+                help=(
+                    "+20% → campaña de ventas o lanzamiento de versión nueva.  \n"
+                    "-15% → entrada de competidor directo o aumento de precio."
+                ),
+            )
+            _sc_razon = st.text_input(
+                "Descripción del escenario",
+                placeholder="Ej: Campaña agosto +15%, precio reducido",
+                max_chars=80,
+            )
+
+        with sc2:
+            if _sc_ajuste != 0:
+                _sc_factor = 1 + _sc_ajuste / 100
+                _sc_pred   = pred_total.copy()
+                _sc_pred['Pred_Ajust']    = (_sc_pred['Predicción'] * _sc_factor).round(1)
+                _sc_pred['IC_Inf_Ajust']  = (_sc_pred['IC_Inferior'] * _sc_factor).clip(0).round(1)
+                _sc_pred['IC_Sup_Ajust']  = (_sc_pred['IC_Superior'] * _sc_factor).round(1)
+
+                _sc_color = COLORS['success'] if _sc_ajuste > 0 else COLORS['accent']
+                fig_sc = go.Figure()
+                fig_sc.add_trace(go.Scatter(
+                    x=_sc_pred['Fecha'], y=_sc_pred['Predicción'],
+                    mode='lines+markers', name='Base SARIMA',
+                    line=dict(color=COLORS['accent'], width=2, dash='dot'),
+                    marker=dict(size=7, color=COLORS['accent']),
+                ))
+                # Banda IC ajustada
+                fig_sc.add_trace(go.Scatter(
+                    x=_sc_pred['Fecha'].tolist() + _sc_pred['Fecha'].tolist()[::-1],
+                    y=_sc_pred['IC_Sup_Ajust'].tolist() + _sc_pred['IC_Inf_Ajust'].tolist()[::-1],
+                    fill='toself',
+                    fillcolor='rgba(0,245,160,0.06)' if _sc_ajuste > 0 else 'rgba(255,58,92,0.06)',
+                    line=dict(color='rgba(0,0,0,0)'), showlegend=False,
+                ))
+                fig_sc.add_trace(go.Scatter(
+                    x=_sc_pred['Fecha'], y=_sc_pred['Pred_Ajust'],
+                    mode='lines+markers',
+                    name=f'Escenario ({_sc_ajuste:+d}%)',
+                    line=dict(color=_sc_color, width=2.5),
+                    marker=dict(size=9, symbol='diamond', color=_sc_color,
+                                line=dict(color='#080D18', width=1.5)),
+                ))
+                apply_chart_theme(
+                    fig_sc, height=300,
+                    title=_sc_razon or f"Escenario: demanda {_sc_ajuste:+d}%",
+                )
+                fig_sc.update_layout(hovermode='x unified',
+                                     xaxis_title='Fecha', yaxis_title='Unidades')
+                st.plotly_chart(fig_sc, use_container_width=True,
+                                config={'displayModeBar': False})
+
+                _sc_total_base = pred_total['Predicción'].sum()
+                _sc_total_adj  = _sc_pred['Pred_Ajust'].sum()
+                _sc_delta      = _sc_total_adj - _sc_total_base
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Total base (6 m)", f"{_sc_total_base:.0f} uds")
+                m2.metric("Total escenario (6 m)", f"{_sc_total_adj:.0f} uds",
+                          delta=f"{_sc_delta:+.0f} uds")
+                m3.metric("Factor aplicado", f"{_sc_factor:.2f}×")
+            else:
+                st.info("Mueve el slider para simular un escenario alternativo.")
 
 # ── Tab 3: Recomendaciones (admin + analyst + manager) ───────────────────────
 

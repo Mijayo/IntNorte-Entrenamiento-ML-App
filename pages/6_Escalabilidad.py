@@ -16,8 +16,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from core.auth_system import (init_session_state, show_login_page, show_user_info,
-                              check_session_timeout, show_header)
+from core.auth_system import (guard_page, show_user_info, show_header)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -29,13 +28,7 @@ st.set_page_config(
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
-init_session_state()
-if check_session_timeout():
-    st.warning("⏱️ Tu sesión ha expirado.")
-    st.stop()
-if not st.session_state.authenticated:
-    show_login_page("🌐 Escalabilidad — Plataforma Multi-Marca")
-    st.stop()
+guard_page("🌐 Escalabilidad — Plataforma Multi-Marca")
 
 show_header("Escalabilidad — Plataforma Multi-Marca",
             "Generalización del pipeline SARIMA a otras marcas, modelos y líneas de negocio")

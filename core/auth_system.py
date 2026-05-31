@@ -257,6 +257,27 @@ def has_permission(permission_name: str) -> bool:
     return st.session_state.permissions.get(permission_name, False)
 
 
+def guard_page(
+    app_title: str = "Sistema TIGGO 2",
+    permission: str | None = None,
+    roles: list[str] | None = None,
+) -> None:
+    """Auth guard — call once at the top of every page instead of the 5-line boilerplate."""
+    init_session_state()
+    if check_session_timeout():
+        st.warning("⏱️ Tu sesión ha expirado. Por favor inicia sesión nuevamente.")
+        st.stop()
+    if not st.session_state.authenticated:
+        show_login_page(app_title)
+        st.stop()
+    if permission and not has_permission(permission):
+        st.error("❌ No tienes permiso para acceder a esta página.")
+        st.stop()
+    if roles and st.session_state.role not in roles:
+        st.error("❌ No tienes permiso para acceder a esta sección.")
+        st.stop()
+
+
 def show_header(title: str, subtitle: str = "") -> None:
     """Header corporativo premium — inyecta el CSS global y muestra logo + título."""
     st.markdown(get_global_css(), unsafe_allow_html=True)

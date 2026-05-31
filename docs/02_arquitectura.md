@@ -11,11 +11,17 @@ El sistema sigue una arquitectura **modular de tres capas**: interfaz (Streamlit
 │  app_principal.py  ←── Entry point / autenticación          │
 │       │                                                      │
 │       ├── pages/1_Entrenamiento.py                           │
-│       ├── pages/2_Dashboard.py   ← realtime watcher         │
-│       └── pages/3_Comparativa_ML.py                         │
+│       ├── pages/2_Comparativa_ML.py                          │
+│       ├── pages/3_Dashboard.py   ← realtime watcher         │
+│       ├── pages/4_Concesionarios.py                          │
+│       ├── pages/5_Proyeccion_Ingresos.py                     │
+│       ├── pages/6_Escalabilidad.py                           │
+│       ├── pages/7_Registrar_Ventas.py ← feedback loop       │
+│       └── pages/8_Administracion.py  ← solo admin           │
 │                                                              │
 │  Módulos compartidos (core/):                                │
-│  ├── auth_system.py       (Supabase Auth + sesiones + RBAC) │
+│  ├── auth_system.py       (Supabase Auth + sesiones + RBAC  │
+│  │                         guard_page() unifica el guard)    │
 │  ├── supabase_io.py       (Storage + PostgreSQL + Audit Log) │
 │  ├── utils_validacion.py  (validación de datos)              │
 │  ├── logger.py            (logging centralizado)             │
@@ -44,6 +50,7 @@ El sistema sigue una arquitectura **modular de tres capas**: interfaz (Streamlit
 │  │  POSTGRESQL                                         │    │
 │  │  training_runs   ← registro primario de runs        │    │
 │  │  audit_log       ← trazabilidad de acciones         │    │
+│  │  ventas_reales   ← feedback loop (real vs forecast) │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                                                              │
 │  ┌─────────────────────────────────────────────────────┐    │

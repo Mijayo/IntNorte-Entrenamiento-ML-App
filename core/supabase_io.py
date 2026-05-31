@@ -555,3 +555,106 @@ def get_audit_log(limit: int = 100) -> list[dict]:
     except Exception as e:
         log.warning("No se pudo leer audit_log: %s", e)
         return []
+
+
+# ── Frescura del modelo ──────────────────────────────────────────────────────
+
+def get_model_age_days(run_name: str) -> int | None:
+    """Días transcurridos desde que se entrenó el modelo.
+    Parsea el formato de run_name: YYYYMMDD_HHMMSS."""
+    try:
+        dt = datetime.strptime(run_name, "%Y%m%d_%H%M%S")
+        return (datetime.now() - dt).days
+    except ValueError:
+        return None
+
+
+# ── Ventas reales (feedback loop) ────────────────────────────────────────────
+
+def _get_ventas_reales_raw() -> list[dict]:
+    """Descarga ventas_reales.json desde Storage (sin cache)."""
+    try:
+        return json.loads(_download("ventas_reales.json"))
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def get_ventas_reales() -> list[dict]:
+    """Registros de ventas reales cargados desde Supabase Storage (cacheado 2 min)."""
+    return _get_ventas_reales_raw()
+
+
+def save_venta_real(fecha: str, ventas: int, usuario: str) -> None:
+    """Persiste un registro de venta mensual real en ventas_reales.json.
+    Si ya existe una entrada para esa fecha, la sobreescribe."""
+    existing = _get_ventas_reales_raw()
+    existing = [r for r in existing if r.get("fecha") != fecha]
+    existing.append({
+        "fecha":     fecha,
+        "ventas":    ventas,
+        "usuario":   usuario,
+        "timestamp": datetime.now().isoformat(),
+    })
+    existing.sort(key=lambda r: r["fecha"])
+    _upload(
+        "ventas_reales.json",
+        json.dumps(existing, indent=2, ensure_ascii=False).encode(),
+        "application/json",
+    )
+    log_audit(usuario, "REGISTRAR_VENTA", detalle={"fecha": fecha, "ventas": ventas})
+    log.info("Venta real guardada: fecha='%s' ventas=%d", fecha, ventas)
+    st.cache_data.clear()
+
+
+def delete_venta_real(fecha: str, usuario: str) -> None:
+    """Elimina el registro de venta real de una fecha concreta."""
+    existing = _get_ventas_reales_raw()
+    existing = [r for r in existing if r.get("fecha") != fecha]
+    _upload(
+        "ventas_reales.json",
+        json.dumps(existing, indent=2, ensure_ascii=False).encode(),
+        "application/json",
+    )
+    log_audit(usuario, "ELIMINAR_VENTA", detalle={"fecha": fecha})
+    log.info("Venta real eliminada: fecha='%s'", fecha)
+    st.cache_data.clear()
+
+
+# ── Exportación Excel ────────────────────────────────────────────────────────
+
+def build_export_excel(
+    pred_total: pd.DataFrame,
+    walk_forward: pd.DataFrame,
+    metricas: dict,
+    hist_total: pd.Series,
+) -> bytes:
+    """Genera un workbook Excel multi-hoja para descarga.
+    Hojas: Predicciones · Walk-Forward · Histórico · Métricas."""
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        pred_total.to_excel(writer, sheet_name="Predicciones", index=False)
+        walk_forward.to_excel(writer, sheet_name="Walk-Forward", index=False)
+        hist_df = hist_total.reset_index()
+        hist_df.columns = ["Fecha", "Ventas"]
+        hist_df.to_excel(writer, sheet_name="Histórico", index=False)
+        orden    = metricas.get("mejor_modelo", {}).get("order", [])
+        seasonal = metricas.get("mejor_modelo", {}).get("seasonal_order", [])
+        pd.DataFrame({
+            "Métrica": ["Modelo", "AIC", "BIC", "MAPE walk-forward (%)"],
+            "Valor":   [
+                f"SARIMA{orden}{seasonal}",
+                metricas.get("mejor_modelo", {}).get("aic"),
+                metricas.get("mejor_modelo", {}).get("bic"),
+                metricas.get("walk_forward_validation", {}).get("mape"),
+            ],
+        }).to_excel(writer, sheet_name="Métricas", index=False)
+    return buf.getvalue()
+
+
+def build_proyeccion_excel(df_financiero: pd.DataFrame, cols: list[str]) -> bytes:
+    """Excel para la proyección financiera (una hoja)."""
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df_financiero[cols].to_excel(writer, sheet_name="Proyección Ingresos", index=False)
+    return buf.getvalue()
