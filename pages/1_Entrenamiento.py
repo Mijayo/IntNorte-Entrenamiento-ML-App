@@ -271,9 +271,11 @@ _PRELOADED_STOCK  = _DATA_DIR / "raw" / "Stock Vehiculos.xlsx"
 
 @st.cache_data(show_spinner=False)
 def _load_preloaded() -> tuple[pd.DataFrame, pd.DataFrame]:
-    df_v = pd.read_excel(_PRELOADED_VENTAS, sheet_name="Hoja1", engine="openpyxl")
-    df_s = pd.read_excel(_PRELOADED_STOCK,  sheet_name="Stock Actual", engine="openpyxl")
-    return df_v, df_s
+    if _PRELOADED_VENTAS.exists() and _PRELOADED_STOCK.exists():
+        df_v = pd.read_excel(_PRELOADED_VENTAS, sheet_name="Hoja1", engine="openpyxl")
+        df_s = pd.read_excel(_PRELOADED_STOCK,  sheet_name="Stock Actual", engine="openpyxl")
+        return df_v, df_s
+    return sio.load_datos_precargados()
 
 
 def _clean_ventas_df(df: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:

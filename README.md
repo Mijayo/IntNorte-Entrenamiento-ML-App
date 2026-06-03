@@ -71,6 +71,9 @@ requirements.txt
 ```
 latest.txt                          ← Apunta al run de producción activo (backup)
 training_log.json                   ← Historial de runs (backup; primario es la DB)
+preloaded/                          ← Datos base para la opción "📦 Datos precargados"
+    veh_ml_features.xlsx            ← Histórico completo Ene 2017–Mar 2026 (~30 039 registros, sheet 'Hoja1')
+    Stock Vehiculos.xlsx            ← Stock actual (sheet 'Stock Actual')
 YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     metricas_mejoradas.json
     prediccion_total_mejorada.xlsx
@@ -84,6 +87,8 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     llm_cache.json                  ← Caché de respuestas Gemini (persistente por run)
     cml_resultados.json             ← Métricas de Comparativa ML (persistente por run, para Dashboard cross-sesión)
 ```
+
+> Los archivos en `preloaded/` deben subirse manualmente al bucket la primera vez (vía dashboard Supabase). En local la app los lee desde `data/`; en producción los descarga de Storage vía `sio.load_datos_precargados()` (caché 1 h).
 
 ### Tablas PostgreSQL
 

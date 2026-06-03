@@ -102,6 +102,35 @@ def _download(path: str) -> bytes:
     return data
 
 
+# ── Datos precargados (Storage) ──────────────────────────────────────────────
+
+_PRELOADED_STORAGE_VENTAS = "preloaded/veh_ml_features.xlsx"
+_PRELOADED_STORAGE_STOCK  = "preloaded/Stock Vehiculos.xlsx"
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_datos_precargados() -> "tuple[pd.DataFrame, pd.DataFrame]":
+    """Descarga los Excel de datos precargados desde Supabase Storage.
+
+    Paths en el bucket:
+      - preloaded/veh_ml_features.xlsx   (sheet 'Hoja1')
+      - preloaded/Stock Vehiculos.xlsx   (sheet 'Stock Actual')
+    """
+    raw_v = _download(_PRELOADED_STORAGE_VENTAS)
+    raw_s = _download(_PRELOADED_STORAGE_STOCK)
+    df_v = pd.read_excel(io.BytesIO(raw_v), sheet_name="Hoja1", engine="openpyxl")
+    df_s = pd.read_excel(io.BytesIO(raw_s), sheet_name="Stock Actual", engine="openpyxl")
+    return df_v, df_s
+
+
+def upload_datos_precargados(ventas_bytes: bytes, stock_bytes: bytes) -> None:
+    """Sube los Excel de datos precargados a Supabase Storage (admin)."""
+    _upload(_PRELOADED_STORAGE_VENTAS, ventas_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    _upload(_PRELOADED_STORAGE_STOCK,  stock_bytes,  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    load_datos_precargados.clear()
+    log.info("Datos precargados actualizados en Supabase Storage")
+
+
 # ── Gestión de runs ──────────────────────────────────────────────────────────
 
 def _run_exists(run_name: str) -> bool:

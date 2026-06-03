@@ -4,6 +4,14 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-03 (v37)
+
+- **fix(entrenamiento)**: `_load_preloaded()` ya no falla en Streamlit Cloud por archivos Excel ausentes. La función comprueba si los archivos locales (`data/processed/veh_ml_features.xlsx`, `data/raw/Stock Vehiculos.xlsx`) existen antes de leerlos; si no están presentes (entorno de producción, donde `data/` está en `.gitignore`), descarga los datos desde **Supabase Storage** vía `sio.load_datos_precargados()`. El comportamiento en local es idéntico al anterior.
+- **feat(supabase_io)**: `load_datos_precargados()` — descarga `preloaded/veh_ml_features.xlsx` y `preloaded/Stock Vehiculos.xlsx` desde el bucket de Supabase y devuelve los dos DataFrames; cacheado 1 hora con `@st.cache_data(ttl=3600)`. `upload_datos_precargados(ventas_bytes, stock_bytes)` — sube ambos archivos al path `preloaded/` en Storage e invalida el caché; destinado a uso admin cuando se actualice el histórico base.
+- **infra**: Los archivos de datos precargados deben subirse manualmente una vez al bucket bajo `preloaded/` (vía dashboard Supabase o script local). Ver `docs/05_despliegue.md` para instrucciones.
+
+---
+
 ### 2026-06-03 (v36)
 
 - **feat(entrenamiento)**: Datos precargados con caché + opción de Excel personalizado en `pages/1_Entrenamiento.py`. La pestaña **📤 Cargar Datos** ya no bloquea al usuario pidiéndole un Excel: un radio button selecciona entre **📦 Datos precargados** (carga `data/processed/veh_ml_features.xlsx` vía `@st.cache_data` — histórico completo Ene 2017–Mar 2026, ~30 039 registros, incluye `MODELO3`) y **📤 Subir nuevo Excel** (flujo original de carga manual). La lógica de limpieza (`MODELO3` nulos + duplicados por `CHASIS`) se extrajo a `_clean_ventas_df()`, función compartida entre ambas rutas. El stock precargado se lee de `data/raw/Stock Vehiculos.xlsx`. Una vez cargados los datos, se muestra un resumen de registros y columnas sobre el selector.
