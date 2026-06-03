@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-03 (v35)
+
+- **feat(concesionarios)**: Datos precargados con caché + opción de Excel personalizado en `pages/4_Concesionarios.py`. La página ya no bloquea al usuario pidiéndole un Excel: carga automáticamente `data/raw/Historico_Ventas.xlsx` vía `@st.cache_data` al arrancar. El expander **📂 Fuente de datos** muestra un badge informativo de la fuente activa (precargada o personalizada) y permite subir un Excel propio para sobreescribir los datos durante la sesión. Un botón **↩ Usar precargados** restaura los datos originales sin recargar la página. La lógica de normalización de columnas (`FECHA_VENTA`, `MODELO_NORM`) se extrajo a `_procesar_excel()` para reutilizarla tanto en el loader precargado como en el uploader.
+
+---
+
 ### 2026-05-31 (v34)
 
 - **feat(supabase_io)**: `ventas_reales` migrado de Storage JSON a tabla PostgreSQL. La lógica anterior (leer/modificar/escribir un JSON en Storage) tenía riesgo de race condition con escrituras concurrentes. Ahora se usa upsert con `on_conflict="fecha"` sobre la nueva tabla `ventas_reales` en PostgreSQL. Funciones afectadas: `get_ventas_reales()` (ahora lee de DB con `@st.cache_data(ttl=120)`), `save_venta_real()`, `delete_venta_real()`. La función privada `_get_ventas_reales_raw()` fue eliminada.

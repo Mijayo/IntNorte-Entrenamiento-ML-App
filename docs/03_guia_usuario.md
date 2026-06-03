@@ -311,7 +311,9 @@ El sistema calcula automáticamente:
 
 > Disponible para: `admin`, `analyst`, `manager`
 
-Página independiente que combina el análisis histórico de ventas por tienda con predicciones SARIMA desagregadas. Para comenzar, carga el Excel de ventas desde el expander **📂 Cargar datos de ventas**. El sistema normaliza los nombres de columnas automáticamente (acepta `FECHA-VENTA`, `FECHA_VENTA`, `FECHA VENTA`, `CONCESIONARIO`, `DET_CC`, `AGE` o `SUCURSAL`).
+Página independiente que combina el análisis histórico de ventas por tienda con predicciones SARIMA desagregadas. La página carga automáticamente `data/raw/Historico_Ventas.xlsx` al arrancar (sin necesidad de acción del usuario). El expander **📂 Fuente de datos** muestra un badge con el origen activo y el número de registros CHERY disponibles.
+
+**Cargar un Excel personalizado:** despliega el expander **📂 Fuente de datos**, selecciona un archivo `.xlsx`/`.xls` y el sistema lo normaliza automáticamente (acepta `FECHA-VENTA`, `FECHA_VENTA`, `FECHA VENTA`, `CONCESIONARIO`, `DET_CC`, `AGE` o `SUCURSAL`). El archivo personalizado reemplaza los datos precargados durante toda la sesión. Para volver al precargado, haz clic en **↩ Usar precargados**.
 
 **Filtros disponibles (barra lateral):** año, modelo de vehículo, concesionarios a incluir.
 

@@ -41,7 +41,7 @@ core/                         ← Paquete Python de utilidades
 tests/
 └── test_validacion.py        ← 19 tests unitarios de utils_validacion
 data/                         ← Datos locales — gitignored, nunca en el repo
-├── raw/                      ← Excel histórico de ventas (fuente)
+├── raw/                      ← Excel histórico de ventas (fuente) — `Historico_Ventas.xlsx` se carga automáticamente en la página Concesionarios
 ├── processed/                ← Datasets transformados (veh_ml_features.xlsx — incluye columna ventas_otros)
 ├── monthly/                  ← Ventas mensuales reales para actualización
 └── artifacts/                ← Artefactos del modelo generados localmente
