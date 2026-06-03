@@ -17,6 +17,7 @@ from plotly.subplots import make_subplots
 import pickle
 import json
 from datetime import datetime, date, timedelta
+from pathlib import Path
 import io
 import optuna
 import warnings
@@ -261,6 +262,33 @@ def plot_residuals(model_results):
     return fig
 
 
+# ── Datos precargados ─────────────────────────────────────────────────────────
+
+_DATA_DIR         = Path(__file__).parent.parent / "data"
+_PRELOADED_VENTAS = _DATA_DIR / "processed" / "veh_ml_features.xlsx"
+_PRELOADED_STOCK  = _DATA_DIR / "raw" / "Stock Vehiculos.xlsx"
+
+
+@st.cache_data(show_spinner=False)
+def _load_preloaded() -> tuple[pd.DataFrame, pd.DataFrame]:
+    df_v = pd.read_excel(_PRELOADED_VENTAS, sheet_name="Hoja1", engine="openpyxl")
+    df_s = pd.read_excel(_PRELOADED_STOCK,  sheet_name="Stock Actual", engine="openpyxl")
+    return df_v, df_s
+
+
+def _clean_ventas_df(df: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:
+    n_nulos = int(df["MODELO3"].isna().sum()) if "MODELO3" in df.columns else 0
+    if n_nulos > 0:
+        df = df.dropna(subset=["MODELO3"])
+    n_antes = len(df)
+    if "CHASIS" in df.columns and "FECHA-VENTA" in df.columns:
+        df["FECHA-VENTA"] = pd.to_datetime(df["FECHA-VENTA"], errors="coerce")
+        df = (df.sort_values("FECHA-VENTA")
+               .drop_duplicates(subset=["CHASIS"], keep="last")
+               .reset_index(drop=True))
+    return df, n_antes - len(df), n_nulos
+
+
 # ── Tabs ─────────────────────────────────────────────────────────────────────
 
 tabs = st.tabs(["📤 Cargar Datos", "✅ Validación", "🎓 Preparar Datos",
@@ -270,73 +298,114 @@ tabs = st.tabs(["📤 Cargar Datos", "✅ Validación", "🎓 Preparar Datos",
 
 with tabs[0]:
     st.header("📤 Carga de Datos", divider='blue')
-    st.markdown("""
-    **Instrucciones:**
-    1. Carga el archivo Excel con el histórico de ventas
-    2. El sistema limpiará y validará los datos automáticamente
-    3. También puedes cargar varios archivos si el histórico está dividido — se unificarán en uno solo
-    """)
 
-    uploaded_files = st.file_uploader(
-        "Selecciona el archivo Excel", type=['xlsx', 'xls'],
-        accept_multiple_files=True
+    fuente = st.radio(
+        "Fuente de datos",
+        ["📦 Datos precargados", "📤 Subir nuevo Excel"],
+        horizontal=True,
+        help=(
+            "**Datos precargados**: histórico completo ya procesado (Ene 2017 – Mar 2026).  \n"
+            "**Subir nuevo Excel**: carga uno o varios archivos con datos actualizados."
+        )
     )
 
-    if uploaded_files:
-        st.success(f"✅ {len(uploaded_files)} archivo{'s' if len(uploaded_files) > 1 else ''} cargado{'s' if len(uploaded_files) > 1 else ''}")
-        for f in uploaded_files:
-            st.markdown(f"- **{f.name}** ({f.size / 1024:.1f} KB)")
+    st.markdown("---")
 
-        if st.button("🔄 Procesar", type="primary"):
-            with st.spinner("Procesando..."):
-                dfs_ventas = []
-                df_stock_cargado = None
-                for f in uploaded_files:
-                    try:
-                        sheets = pd.ExcelFile(f, engine='openpyxl').sheet_names
-                        if 'Hoja1' in sheets:
-                            df = pd.read_excel(f, sheet_name='Hoja1', engine='openpyxl')
-                            dfs_ventas.append(df)
-                            st.success(f"✅ {f.name} → ventas ({len(df):,} filas)")
-                        elif 'Stock Actual' in sheets:
-                            df_stock_cargado = pd.read_excel(f, sheet_name='Stock Actual', engine='openpyxl')
-                            st.success(f"✅ {f.name} → stock ({len(df_stock_cargado):,} filas)")
-                        else:
-                            st.error(f"❌ {f.name}: hojas encontradas {sheets} — se esperaba 'Hoja1' o 'Stock Actual'")
-                    except Exception as e:
-                        st.error(f"❌ {f.name}: {e}")
-                if dfs_ventas:
-                    df_unified = pd.concat(dfs_ventas, ignore_index=True)
-                    n_bruto = len(df_unified)
+    # ── Opción A: datos precargados ───────────────────────────────────────────
+    if fuente == "📦 Datos precargados":
+        col_info, col_btn = st.columns([3, 1])
+        with col_info:
+            st.markdown(
+                "**Histórico de ventas** precargado: `data/processed/veh_ml_features.xlsx`  \n"
+                "Cobertura: **Ene 2017 – Mar 2026** · ~30,039 registros · incluye columna `MODELO3`  \n"
+                "**Stock actual** precargado: `data/raw/Stock Vehiculos.xlsx`"
+            )
+        with col_btn:
+            cargar_btn = st.button("✅ Cargar", type="primary", use_container_width=True)
 
-                    # ── Limpieza automática ───────────────────────────────────
-                    # 1. Eliminar filas con MODELO3 nulo
-                    n_nulos = int(df_unified['MODELO3'].isna().sum()) if 'MODELO3' in df_unified.columns else 0
-                    if n_nulos > 0:
-                        df_unified = df_unified.dropna(subset=['MODELO3'])
+        if cargar_btn:
+            with st.spinner("Cargando desde caché..."):
+                df_v_raw, df_s = _load_preloaded()
+                n_bruto = len(df_v_raw)
+                df_clean, n_dupl, n_nulos = _clean_ventas_df(df_v_raw.copy())
+                st.session_state["df_raw"]   = df_clean
+                st.session_state["df_stock"] = df_s
+            st.success(f"✅ {n_bruto:,} registros brutos → **{len(df_clean):,} limpios**")
+            if n_dupl > 0 or n_nulos > 0:
+                st.warning(
+                    f"🧹 Limpieza: {n_dupl} duplicados por CHASIS eliminados · "
+                    f"{n_nulos} filas sin MODELO3 eliminadas"
+                )
+            st.rerun()
 
-                    # 2. Eliminar duplicados por CHASIS (conservar registro más reciente)
-                    n_antes_dedup = len(df_unified)
-                    if 'CHASIS' in df_unified.columns and 'FECHA-VENTA' in df_unified.columns:
-                        df_unified['FECHA-VENTA'] = pd.to_datetime(df_unified['FECHA-VENTA'], errors='coerce')
-                        df_unified = (df_unified
-                                      .sort_values('FECHA-VENTA')
-                                      .drop_duplicates(subset=['CHASIS'], keep='last')
-                                      .reset_index(drop=True))
-                    n_dupl = n_antes_dedup - len(df_unified)
-                    # ─────────────────────────────────────────────────────────
+    # ── Opción B: subir Excel ─────────────────────────────────────────────────
+    else:
+        st.markdown(
+            "**Instrucciones:**\n"
+            "1. Carga el archivo Excel con el histórico de ventas (hoja `Hoja1`) "
+            "y/o el stock (hoja `Stock Actual`)\n"
+            "2. Puedes subir varios archivos — se unificarán automáticamente"
+        )
 
-                    st.session_state['df_raw'] = df_unified
-                    st.success(f"✅ {n_bruto:,} registros brutos → **{len(df_unified):,} limpios**")
-                    if n_dupl > 0 or n_nulos > 0:
-                        st.warning(f"🧹 Limpieza: {n_dupl} duplicados por CHASIS eliminados · "
-                                   f"{n_nulos} filas sin MODELO3 eliminadas")
-                if df_stock_cargado is not None:
-                    st.session_state['df_stock'] = df_stock_cargado
-                if dfs_ventas or df_stock_cargado is not None:
-                    st.rerun()
+        uploaded_files = st.file_uploader(
+            "Selecciona los archivos Excel", type=["xlsx", "xls"],
+            accept_multiple_files=True
+        )
 
-    if 'df_raw' in st.session_state:
+        if uploaded_files:
+            st.success(
+                f"✅ {len(uploaded_files)} archivo"
+                f"{'s' if len(uploaded_files) > 1 else ''} seleccionado"
+                f"{'s' if len(uploaded_files) > 1 else ''}"
+            )
+            for f in uploaded_files:
+                st.markdown(f"- **{f.name}** ({f.size / 1024:.1f} KB)")
+
+            if st.button("🔄 Procesar", type="primary"):
+                with st.spinner("Procesando..."):
+                    dfs_ventas = []
+                    df_stock_cargado = None
+                    for f in uploaded_files:
+                        try:
+                            sheets = pd.ExcelFile(f, engine="openpyxl").sheet_names
+                            if "Hoja1" in sheets:
+                                df = pd.read_excel(f, sheet_name="Hoja1", engine="openpyxl")
+                                dfs_ventas.append(df)
+                                st.success(f"✅ {f.name} → ventas ({len(df):,} filas)")
+                            elif "Stock Actual" in sheets:
+                                df_stock_cargado = pd.read_excel(f, sheet_name="Stock Actual", engine="openpyxl")
+                                st.success(f"✅ {f.name} → stock ({len(df_stock_cargado):,} filas)")
+                            else:
+                                st.error(
+                                    f"❌ {f.name}: hojas encontradas {sheets} "
+                                    "— se esperaba 'Hoja1' o 'Stock Actual'"
+                                )
+                        except Exception as e:
+                            st.error(f"❌ {f.name}: {e}")
+
+                    if dfs_ventas:
+                        df_unified = pd.concat(dfs_ventas, ignore_index=True)
+                        n_bruto = len(df_unified)
+                        df_unified, n_dupl, n_nulos = _clean_ventas_df(df_unified)
+                        st.session_state["df_raw"] = df_unified
+                        st.success(f"✅ {n_bruto:,} registros brutos → **{len(df_unified):,} limpios**")
+                        if n_dupl > 0 or n_nulos > 0:
+                            st.warning(
+                                f"🧹 Limpieza: {n_dupl} duplicados por CHASIS eliminados · "
+                                f"{n_nulos} filas sin MODELO3 eliminadas"
+                            )
+                    if df_stock_cargado is not None:
+                        st.session_state["df_stock"] = df_stock_cargado
+                    if dfs_ventas or df_stock_cargado is not None:
+                        st.rerun()
+
+    # ── Estado actual ─────────────────────────────────────────────────────────
+    if "df_raw" in st.session_state:
+        df_loaded = st.session_state["df_raw"]
+        st.success(
+            f"**Datos en memoria:** {len(df_loaded):,} registros · "
+            f"columnas: {len(df_loaded.columns)}"
+        )
         st.info("**Paso siguiente →** Ve a la pestaña **✅ Validación** para revisar la calidad de los datos antes de entrenar.")
 
 # ── Tab 2: Validación ─────────────────────────────────────────────────────────

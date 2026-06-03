@@ -22,29 +22,43 @@ Esta sección está dividida en seis pestañas que deben seguirse **en orden**.
 
 ### Pestaña 1 — Cargar Datos
 
-**Objetivo:** Subir el Excel con el histórico de ventas.
+**Objetivo:** Cargar el histórico de ventas para entrenar el modelo.
+
+La pestaña ofrece dos modos de carga seleccionables con un radio button:
+
+#### Modo A — 📦 Datos precargados (recomendado)
+
+El sistema carga automáticamente los archivos que ya están en el servidor:
+
+| Archivo | Contenido |
+|---------|-----------|
+| `data/processed/veh_ml_features.xlsx` | Histórico de ventas Ene 2017 – Mar 2026 (~30 039 registros, incluye `MODELO3`) |
+| `data/raw/Stock Vehiculos.xlsx` | Stock actual del concesionario |
 
 **Pasos:**
+1. Deja seleccionado **📦 Datos precargados** (opción por defecto).
+2. Haz clic en **✅ Cargar**.
+
+La primera carga lee el disco; las siguientes son instantáneas (caché en memoria).
+
+#### Modo B — 📤 Subir nuevo Excel
+
+Para actualizar los datos con un histórico más reciente o diferente:
+
 1. Haz clic en **Browse files** y selecciona uno o varios archivos `.xlsx`.
-2. El sistema detecta automáticamente el tipo de archivo según la hoja que contiene:
+2. El sistema detecta automáticamente el tipo de archivo según la hoja:
    - Hoja `Hoja1` → archivo de ventas
    - Hoja `Stock Actual` → archivo de stock
 3. Haz clic en **Procesar**.
 
-El sistema aplica limpieza automática:
-- Elimina filas donde el campo `MODELO3` está vacío (registros sin modelo asignado).
-- Elimina ventas duplicadas del mismo vehículo (mismo número de chasis), conservando el registro más reciente.
+> **Consejo:** Si el histórico está dividido en varios archivos, puedes subirlos todos a la vez — el sistema los unifica automáticamente.
 
-Al finalizar, verás un resumen como:
+#### Limpieza automática (ambos modos)
 
-```
-✅ ventas_2024.xlsx procesado — 8,432 filas cargadas
-   └─ 12 filas eliminadas por MODELO3 nulo
-   └─ 34 duplicados por CHASIS eliminados
-   └─ 8,386 filas limpias listas para validar
-```
+- Elimina filas donde `MODELO3` está vacío (registros sin modelo asignado).
+- Elimina ventas duplicadas del mismo chasis, conservando el registro más reciente.
 
-> **Consejo:** Si el histórico está dividido en varios archivos (por año, por ejemplo), puedes subirlos todos a la vez — el sistema los unifica automáticamente.
+Al finalizar, verás un resumen con el total de registros en memoria y las columnas disponibles.
 
 ---
 

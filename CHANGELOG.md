@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-03 (v36)
+
+- **feat(entrenamiento)**: Datos precargados con caché + opción de Excel personalizado en `pages/1_Entrenamiento.py`. La pestaña **📤 Cargar Datos** ya no bloquea al usuario pidiéndole un Excel: un radio button selecciona entre **📦 Datos precargados** (carga `data/processed/veh_ml_features.xlsx` vía `@st.cache_data` — histórico completo Ene 2017–Mar 2026, ~30 039 registros, incluye `MODELO3`) y **📤 Subir nuevo Excel** (flujo original de carga manual). La lógica de limpieza (`MODELO3` nulos + duplicados por `CHASIS`) se extrajo a `_clean_ventas_df()`, función compartida entre ambas rutas. El stock precargado se lee de `data/raw/Stock Vehiculos.xlsx`. Una vez cargados los datos, se muestra un resumen de registros y columnas sobre el selector.
+
+---
+
 ### 2026-06-03 (v35)
 
 - **feat(concesionarios)**: Datos precargados con caché + opción de Excel personalizado en `pages/4_Concesionarios.py`. La página ya no bloquea al usuario pidiéndole un Excel: carga automáticamente `data/raw/Historico_Ventas.xlsx` vía `@st.cache_data` al arrancar. El expander **📂 Fuente de datos** muestra un badge informativo de la fuente activa (precargada o personalizada) y permite subir un Excel propio para sobreescribir los datos durante la sesión. Un botón **↩ Usar precargados** restaura los datos originales sin recargar la página. La lógica de normalización de columnas (`FECHA_VENTA`, `MODELO_NORM`) se extrajo a `_procesar_excel()` para reutilizarla tanto en el loader precargado como en el uploader.

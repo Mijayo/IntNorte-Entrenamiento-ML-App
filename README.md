@@ -41,8 +41,8 @@ core/                         ← Paquete Python de utilidades
 tests/
 └── test_validacion.py        ← 19 tests unitarios de utils_validacion
 data/                         ← Datos locales — gitignored, nunca en el repo
-├── raw/                      ← Excel histórico de ventas (fuente) — `Historico_Ventas.xlsx` se carga automáticamente en la página Concesionarios
-├── processed/                ← Datasets transformados (veh_ml_features.xlsx — incluye columna ventas_otros)
+├── raw/                      ← Excel histórico de ventas (fuente) — `Historico_Ventas.xlsx` (Concesionarios) · `Stock Vehiculos.xlsx` (Entrenamiento precargado)
+├── processed/                ← Datasets transformados — `veh_ml_features.xlsx` (histórico completo Ene 2017–Mar 2026, incluye `MODELO3` y `ventas_otros`; usado como dato precargado en Entrenamiento)
 ├── monthly/                  ← Ventas mensuales reales para actualización
 └── artifacts/                ← Artefactos del modelo generados localmente
 docs/
@@ -329,7 +329,7 @@ Sin ZIPs. Sin copias manuales. El entrenamiento escribe directamente en Supabase
 
 | # | Pestaña | Descripción |
 |---|---------|-------------|
-| 1 | 📤 Cargar Datos | Subida de Excel de ventas y/o stock |
+| 1 | 📤 Cargar Datos | Radio toggle: **Datos precargados** (carga automática con `@st.cache_data` desde `data/processed/`) o **Subir nuevo Excel** |
 | 2 | ✅ Validación | Calidad de datos, preview, distribución temporal |
 | 3 | 🎓 Preparar Datos | Pipeline académico paso a paso + descarga del `.xlsx` de entrenamiento |
 | 4 | 🤖 Entrenamiento | Configuración, búsqueda Optuna (TPE), walk-forward, guardado en Supabase |
