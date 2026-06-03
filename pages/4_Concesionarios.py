@@ -17,7 +17,7 @@ import streamlit as st
 from datetime import datetime
 
 import core.supabase_io as sio
-from core.auth_system import (guard_page, show_user_info, show_header)
+from core.auth_system import (guard_page, show_user_info, show_header, has_permission)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Config ────────────────────────────────────────────────────────────────────
