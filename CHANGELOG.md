@@ -4,6 +4,15 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-03 (v38)
+
+- **fix(concesionarios)**: `_cargar_precargado()` ahora carga `Historico_Ventas.xlsx` desde **Supabase Storage** como fuente primaria (`sio.load_historico_ventas()`), con fallback al archivo local `data/raw/Historico_Ventas.xlsx`. Elimina el `FileNotFoundError` en producción. La lógica de normalización de columnas se extrajo a `_normalizar_df()` para reutilizarla tanto en la carga precargada como en el uploader de Excel personalizado.
+- **feat(concesionarios)**: Botón admin **"☁️ Guardar como precargado en Supabase"** en el expander 📂 Fuente de datos. Visible solo para el rol `admin` después de subir un Excel personalizado. Llama a `sio.upload_historico_ventas()`, sube el archivo al path `preloaded/Historico_Ventas.xlsx` del bucket e invalida el caché — el nuevo archivo pasa a ser el precargado permanente para todos los usuarios sin necesidad de acceder al dashboard de Supabase.
+- **feat(supabase_io)**: `load_historico_ventas()` — descarga `preloaded/Historico_Ventas.xlsx` desde Storage; devuelve `None` si aún no existe (degradación elegante). `upload_historico_ventas(bytes)` — sube el archivo e invalida el caché. Constante `_EXCEL_CT` para el MIME type de `.xlsx`, compartida por las tres funciones de upload.
+- **infra**: Los tres archivos Excel de la carpeta `preloaded/` han sido subidos al bucket `modelos-ml` de Supabase vía API (service key): `veh_ml_features.xlsx` (3.5 MB), `Stock Vehiculos.xlsx` (1.2 MB), `Historico_Ventas.xlsx` (5.0 MB). El deploy en Streamlit Cloud está operativo sin cargar archivos manualmente.
+
+---
+
 ### 2026-06-03 (v37)
 
 - **fix(entrenamiento)**: `_load_preloaded()` ya no falla en Streamlit Cloud por archivos Excel ausentes. La función comprueba si los archivos locales (`data/processed/veh_ml_features.xlsx`, `data/raw/Stock Vehiculos.xlsx`) existen antes de leerlos; si no están presentes (entorno de producción, donde `data/` está en `.gitignore`), descarga los datos desde **Supabase Storage** vía `sio.load_datos_precargados()`. El comportamiento en local es idéntico al anterior.

@@ -72,8 +72,9 @@ requirements.txt
 latest.txt                          ← Apunta al run de producción activo (backup)
 training_log.json                   ← Historial de runs (backup; primario es la DB)
 preloaded/                          ← Datos base para la opción "📦 Datos precargados"
-    veh_ml_features.xlsx            ← Histórico completo Ene 2017–Mar 2026 (~30 039 registros, sheet 'Hoja1')
-    Stock Vehiculos.xlsx            ← Stock actual (sheet 'Stock Actual')
+    veh_ml_features.xlsx            ← Histórico completo Ene 2017–Mar 2026 (~30 039 registros, sheet 'Hoja1') — Entrenamiento
+    Stock Vehiculos.xlsx            ← Stock actual (sheet 'Stock Actual') — Entrenamiento
+    Historico_Ventas.xlsx           ← Histórico multi-marca/concesionario — Concesionarios
 YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     metricas_mejoradas.json
     prediccion_total_mejorada.xlsx
@@ -88,7 +89,7 @@ YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     cml_resultados.json             ← Métricas de Comparativa ML (persistente por run, para Dashboard cross-sesión)
 ```
 
-> Los archivos en `preloaded/` deben subirse manualmente al bucket la primera vez (vía dashboard Supabase). En local la app los lee desde `data/`; en producción los descarga de Storage vía `sio.load_datos_precargados()` (caché 1 h).
+> Los archivos en `preloaded/` se leen desde `data/` en local y de Storage en producción. Para actualizarlos: un admin puede subir un Excel personalizado en la página Concesionarios y pulsar "☁️ Guardar como precargado en Supabase"; o bien usar `sio.upload_historico_ventas()` / `sio.upload_datos_precargados()` desde código. El caché se invalida automáticamente tras cada upload (TTL 1 h).
 
 ### Tablas PostgreSQL
 

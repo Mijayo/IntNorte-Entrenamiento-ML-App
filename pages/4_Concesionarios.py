@@ -24,12 +24,9 @@ from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
 # ── Datos precargados ─────────────────────────────────────────────────────────
 
-@st.cache_data(show_spinner=False)
-def _cargar_precargado() -> pd.DataFrame | None:
-    path = Path(__file__).parent.parent / "data" / "raw" / "Historico_Ventas.xlsx"
-    if not path.exists():
-        return None
-    raw = pd.read_excel(path, engine='openpyxl')
+def _normalizar_df(raw: pd.DataFrame) -> pd.DataFrame:
+    """Normaliza columnas de fecha y modelo en un DataFrame de ventas."""
+    raw = raw.copy()
     raw.columns = [str(c).strip() for c in raw.columns]
     if len(raw) > 0 and raw.iloc[0].apply(lambda x: isinstance(x, str)).all():
         raw = raw.iloc[1:].reset_index(drop=True)
@@ -44,6 +41,19 @@ def _cargar_precargado() -> pd.DataFrame | None:
             raw = raw.rename(columns={mc: 'MODELO_NORM'})
             break
     return raw
+
+
+@st.cache_data(show_spinner=False)
+def _cargar_precargado() -> pd.DataFrame | None:
+    # 1. Supabase Storage (fuente primaria — funciona en cualquier despliegue)
+    raw = sio.load_historico_ventas()
+    if raw is not None:
+        return _normalizar_df(raw)
+    # 2. Fallback: archivo local (entornos de desarrollo)
+    path = Path(__file__).parent.parent / "data" / "raw" / "Historico_Ventas.xlsx"
+    if not path.exists():
+        return None
+    return _normalizar_df(pd.read_excel(path, engine='openpyxl'))
 
 
 def _procesar_excel(raw: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
@@ -131,24 +141,39 @@ with st.expander("📂 Fuente de datos", expanded=False):
         n_ch  = len(_precargado[_precargado['MARCA'] == 'CHERY']) if 'MARCA' in _precargado.columns else n_pre
         st.info(f"📦 Datos precargados — **Historico_Ventas.xlsx** · {n_pre:,} registros · {n_ch:,} CHERY")
     else:
-        st.warning("⚠️ No se encontró `data/raw/Historico_Ventas.xlsx`. Carga un Excel para continuar.")
+        st.warning("⚠️ No hay datos precargados en Supabase Storage ni en disco local. Carga un Excel para continuar.")
 
     st.caption("Sube tu propio Excel para reemplazar los datos precargados. Columnas mínimas: MARCA · MODELO/MODELO3 · FECHA-VENTA · CONCESIONARIO")
     con_file = st.file_uploader("Excel personalizado de ventas", type=['xlsx', 'xls'], key="conc_page_uploader")
     if con_file and not _tiene_custom:
         with st.spinner("Procesando..."):
             try:
-                raw = pd.read_excel(con_file, engine='openpyxl')
+                file_bytes = con_file.read()
+                raw = pd.read_excel(io.BytesIO(file_bytes), engine='openpyxl')
                 raw, errors = _procesar_excel(raw)
                 for msg in errors:
                     (st.error if msg.startswith("❌") else st.warning)(msg)
                 if not any(m.startswith("❌") for m in errors):
                     st.session_state['df_concesionarios'] = raw
+                    st.session_state['_conc_pending_bytes'] = file_bytes
                     n_ch = len(raw[raw['MARCA'] == 'CHERY']) if 'MARCA' in raw.columns else len(raw)
                     st.success(f"✅ {len(raw):,} registros · {n_ch:,} CHERY")
                     st.rerun()
             except Exception as e:
                 st.error(f"❌ Error al leer el archivo: {e}")
+
+    # Admin: guardar en Supabase Storage para que sea el precargado permanente
+    if has_permission('admin') and st.session_state.get('_conc_pending_bytes'):
+        if st.button("☁️ Guardar como precargado en Supabase", type="primary"):
+            with st.spinner("Subiendo a Supabase Storage..."):
+                try:
+                    sio.upload_historico_ventas(st.session_state['_conc_pending_bytes'])
+                    del st.session_state['_conc_pending_bytes']
+                    _cargar_precargado.clear()
+                    st.success("✅ Historico_Ventas.xlsx guardado en Supabase. Ahora es el archivo precargado para todos los usuarios.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error al subir a Supabase: {e}")
 
 # Resolver fuente activa
 if _tiene_custom:

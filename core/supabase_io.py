@@ -104,8 +104,11 @@ def _download(path: str) -> bytes:
 
 # ── Datos precargados (Storage) ──────────────────────────────────────────────
 
-_PRELOADED_STORAGE_VENTAS = "preloaded/veh_ml_features.xlsx"
-_PRELOADED_STORAGE_STOCK  = "preloaded/Stock Vehiculos.xlsx"
+_PRELOADED_STORAGE_VENTAS    = "preloaded/veh_ml_features.xlsx"
+_PRELOADED_STORAGE_STOCK     = "preloaded/Stock Vehiculos.xlsx"
+_PRELOADED_STORAGE_HISTORICO = "preloaded/Historico_Ventas.xlsx"
+
+_EXCEL_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -125,10 +128,30 @@ def load_datos_precargados() -> "tuple[pd.DataFrame, pd.DataFrame]":
 
 def upload_datos_precargados(ventas_bytes: bytes, stock_bytes: bytes) -> None:
     """Sube los Excel de datos precargados a Supabase Storage (admin)."""
-    _upload(_PRELOADED_STORAGE_VENTAS, ventas_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    _upload(_PRELOADED_STORAGE_STOCK,  stock_bytes,  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    _upload(_PRELOADED_STORAGE_VENTAS, ventas_bytes, _EXCEL_CT)
+    _upload(_PRELOADED_STORAGE_STOCK,  stock_bytes,  _EXCEL_CT)
     load_datos_precargados.clear()
     log.info("Datos precargados actualizados en Supabase Storage")
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_historico_ventas() -> "pd.DataFrame | None":
+    """Descarga Historico_Ventas.xlsx desde Supabase Storage.
+    Devuelve None si el archivo aún no ha sido subido al bucket."""
+    try:
+        raw = _download(_PRELOADED_STORAGE_HISTORICO)
+        return pd.read_excel(io.BytesIO(raw), engine="openpyxl")
+    except Exception as e:
+        log.debug("Historico_Ventas no disponible en Storage: %s", e)
+        return None
+
+
+def upload_historico_ventas(historico_bytes: bytes) -> None:
+    """Sube Historico_Ventas.xlsx a Supabase Storage (admin).
+    Tras el upload invalida el caché para que la siguiente carga refleje el nuevo archivo."""
+    _upload(_PRELOADED_STORAGE_HISTORICO, historico_bytes, _EXCEL_CT)
+    load_historico_ventas.clear()
+    log.info("Historico_Ventas actualizado en Supabase Storage")
 
 
 # ── Gestión de runs ──────────────────────────────────────────────────────────
