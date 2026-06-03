@@ -28,12 +28,11 @@ La pestaña ofrece dos modos de carga seleccionables con un radio button:
 
 #### Modo A — 📦 Datos precargados (recomendado)
 
-El sistema carga automáticamente los archivos que ya están en el servidor:
+El sistema carga automáticamente `data/processed/veh_ml_features.xlsx` desde el servidor:
 
 | Archivo | Contenido |
 |---------|-----------|
 | `data/processed/veh_ml_features.xlsx` | Histórico de ventas Ene 2017 – Mar 2026 (~30 039 registros, incluye `MODELO3`) |
-| `data/raw/Stock Vehiculos.xlsx` | Stock actual del concesionario |
 
 **Pasos:**
 1. Deja seleccionado **📦 Datos precargados** (opción por defecto).
@@ -325,7 +324,7 @@ El sistema calcula automáticamente:
 
 > Disponible para: `admin`, `analyst`, `manager`
 
-Página independiente que combina el análisis histórico de ventas por tienda con predicciones SARIMA desagregadas. La página carga automáticamente `data/raw/Historico_Ventas.xlsx` al arrancar (sin necesidad de acción del usuario). El expander **📂 Fuente de datos** muestra un badge con el origen activo y el número de registros CHERY disponibles.
+Página independiente que combina el análisis histórico de ventas por tienda con predicciones SARIMA desagregadas. La página carga automáticamente `data/processed/veh_ml_features.xlsx` al arrancar (sin necesidad de acción del usuario). El expander **📂 Fuente de datos** muestra un badge con el origen activo y el número de registros CHERY disponibles.
 
 **Cargar un Excel personalizado:** despliega el expander **📂 Fuente de datos**, selecciona un archivo `.xlsx`/`.xls` y el sistema lo normaliza automáticamente (acepta `FECHA-VENTA`, `FECHA_VENTA`, `FECHA VENTA`, `CONCESIONARIO`, `DET_CC`, `AGE` o `SUCURSAL`). El archivo personalizado reemplaza los datos precargados durante toda la sesión. Para volver al precargado, haz clic en **↩ Usar precargados**.
 

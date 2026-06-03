@@ -50,10 +50,10 @@ def _cargar_precargado() -> pd.DataFrame | None:
     if raw is not None:
         return _normalizar_df(raw)
     # 2. Fallback: archivo local (entornos de desarrollo)
-    path = Path(__file__).parent.parent / "data" / "raw" / "Historico_Ventas.xlsx"
+    path = Path(__file__).parent.parent / "data" / "processed" / "veh_ml_features.xlsx"
     if not path.exists():
         return None
-    return _normalizar_df(pd.read_excel(path, engine='openpyxl'))
+    return _normalizar_df(pd.read_excel(path, sheet_name="Hoja1", engine='openpyxl'))
 
 
 def _procesar_excel(raw: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
@@ -139,7 +139,7 @@ with st.expander("📂 Fuente de datos", expanded=False):
     elif _precargado is not None:
         n_pre = len(_precargado)
         n_ch  = len(_precargado[_precargado['MARCA'] == 'CHERY']) if 'MARCA' in _precargado.columns else n_pre
-        st.info(f"📦 Datos precargados — **Historico_Ventas.xlsx** · {n_pre:,} registros · {n_ch:,} CHERY")
+        st.info(f"📦 Datos precargados — **veh_ml_features.xlsx** · {n_pre:,} registros · {n_ch:,} CHERY")
     else:
         st.warning("⚠️ No hay datos precargados en Supabase Storage ni en disco local. Carga un Excel para continuar.")
 
@@ -170,7 +170,7 @@ with st.expander("📂 Fuente de datos", expanded=False):
                     sio.upload_historico_ventas(st.session_state['_conc_pending_bytes'])
                     del st.session_state['_conc_pending_bytes']
                     _cargar_precargado.clear()
-                    st.success("✅ Historico_Ventas.xlsx guardado en Supabase. Ahora es el archivo precargado para todos los usuarios.")
+                    st.success("✅ veh_ml_features.xlsx guardado en Supabase. Ahora es el archivo precargado para todos los usuarios.")
                     st.rerun()
                 except Exception as e:
                     st.error(f"❌ Error al subir a Supabase: {e}")

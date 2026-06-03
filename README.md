@@ -41,8 +41,8 @@ core/                         ← Paquete Python de utilidades
 tests/
 └── test_validacion.py        ← 19 tests unitarios de utils_validacion
 data/                         ← Datos locales — gitignored, nunca en el repo
-├── raw/                      ← Excel histórico de ventas (fuente) — `Historico_Ventas.xlsx` (Concesionarios) · `Stock Vehiculos.xlsx` (Entrenamiento precargado)
-├── processed/                ← Datasets transformados — `veh_ml_features.xlsx` (histórico completo Ene 2017–Mar 2026, incluye `MODELO3` y `ventas_otros`; usado como dato precargado en Entrenamiento)
+├── raw/                      ← Excel histórico de ventas (fuente bruta)
+├── processed/                ← Datasets transformados — `veh_ml_features.xlsx` (histórico completo Ene 2017–Mar 2026, incluye `MODELO3` y `ventas_otros`; **única fuente precargada** para Entrenamiento y Concesionarios)
 ├── monthly/                  ← Ventas mensuales reales para actualización
 └── artifacts/                ← Artefactos del modelo generados localmente
 docs/
@@ -72,9 +72,7 @@ requirements.txt
 latest.txt                          ← Apunta al run de producción activo (backup)
 training_log.json                   ← Historial de runs (backup; primario es la DB)
 preloaded/                          ← Datos base para la opción "📦 Datos precargados"
-    veh_ml_features.xlsx            ← Histórico completo Ene 2017–Mar 2026 (~30 039 registros, sheet 'Hoja1') — Entrenamiento
-    Stock Vehiculos.xlsx            ← Stock actual (sheet 'Stock Actual') — Entrenamiento
-    Historico_Ventas.xlsx           ← Histórico multi-marca/concesionario — Concesionarios
+    veh_ml_features.xlsx            ← Histórico completo Ene 2017–Mar 2026 (~30 039 registros, sheet 'Hoja1') — Entrenamiento y Concesionarios
 YYYYMMDD_HHMMSS/                    ← Una carpeta por run de entrenamiento
     metricas_mejoradas.json
     prediccion_total_mejorada.xlsx

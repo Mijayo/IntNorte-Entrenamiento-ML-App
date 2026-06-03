@@ -4,6 +4,13 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-03 (v39)
+
+- **refactor(entrenamiento)**: `_load_preloaded()` simplificada — ya solo carga `data/processed/veh_ml_features.xlsx` (o su equivalente en Supabase Storage). Eliminada la constante `_PRELOADED_STOCK` y la carga de `data/raw/Stock Vehiculos.xlsx`. La función devuelve un único `pd.DataFrame` en vez de una tupla; el fallback de Supabase extrae solo `df_v` de `sio.load_datos_precargados()`. Eliminada la línea `st.session_state["df_stock"]` del flujo precargado — el stock de vehículos es exclusivo del flujo de carga manual si el usuario sube su propio Excel.
+- **refactor(concesionarios)**: `_cargar_precargado()` actualizada — el fallback local ahora apunta a `data/processed/veh_ml_features.xlsx` (hoja `Hoja1`) en lugar de `data/raw/Historico_Ventas.xlsx`. La fuente primaria (Supabase Storage) no cambia. Textos de UI actualizados para mostrar `veh_ml_features.xlsx` en el badge de datos precargados y en el mensaje de confirmación de subida a Supabase.
+
+---
+
 ### 2026-06-03 (v38)
 
 - **fix(concesionarios)**: `_cargar_precargado()` ahora carga `Historico_Ventas.xlsx` desde **Supabase Storage** como fuente primaria (`sio.load_historico_ventas()`), con fallback al archivo local `data/raw/Historico_Ventas.xlsx`. Elimina el `FileNotFoundError` en producción. La lógica de normalización de columnas se extrajo a `_normalizar_df()` para reutilizarla tanto en la carga precargada como en el uploader de Excel personalizado.

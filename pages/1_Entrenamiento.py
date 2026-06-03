@@ -266,16 +266,14 @@ def plot_residuals(model_results):
 
 _DATA_DIR         = Path(__file__).parent.parent / "data"
 _PRELOADED_VENTAS = _DATA_DIR / "processed" / "veh_ml_features.xlsx"
-_PRELOADED_STOCK  = _DATA_DIR / "raw" / "Stock Vehiculos.xlsx"
 
 
 @st.cache_data(show_spinner=False)
-def _load_preloaded() -> tuple[pd.DataFrame, pd.DataFrame]:
-    if _PRELOADED_VENTAS.exists() and _PRELOADED_STOCK.exists():
-        df_v = pd.read_excel(_PRELOADED_VENTAS, sheet_name="Hoja1", engine="openpyxl")
-        df_s = pd.read_excel(_PRELOADED_STOCK,  sheet_name="Stock Actual", engine="openpyxl")
-        return df_v, df_s
-    return sio.load_datos_precargados()
+def _load_preloaded() -> pd.DataFrame:
+    if _PRELOADED_VENTAS.exists():
+        return pd.read_excel(_PRELOADED_VENTAS, sheet_name="Hoja1", engine="openpyxl")
+    df_v, _ = sio.load_datos_precargados()
+    return df_v
 
 
 def _clean_ventas_df(df: pd.DataFrame) -> tuple[pd.DataFrame, int, int]:
@@ -319,19 +317,17 @@ with tabs[0]:
         with col_info:
             st.markdown(
                 "**Histórico de ventas** precargado: `data/processed/veh_ml_features.xlsx`  \n"
-                "Cobertura: **Ene 2017 – Mar 2026** · ~30,039 registros · incluye columna `MODELO3`  \n"
-                "**Stock actual** precargado: `data/raw/Stock Vehiculos.xlsx`"
+                "Cobertura: **Ene 2017 – Mar 2026** · ~30,039 registros · incluye columna `MODELO3`"
             )
         with col_btn:
             cargar_btn = st.button("✅ Cargar", type="primary", use_container_width=True)
 
         if cargar_btn:
             with st.spinner("Cargando desde caché..."):
-                df_v_raw, df_s = _load_preloaded()
+                df_v_raw = _load_preloaded()
                 n_bruto = len(df_v_raw)
                 df_clean, n_dupl, n_nulos = _clean_ventas_df(df_v_raw.copy())
-                st.session_state["df_raw"]   = df_clean
-                st.session_state["df_stock"] = df_s
+                st.session_state["df_raw"] = df_clean
             st.success(f"✅ {n_bruto:,} registros brutos → **{len(df_clean):,} limpios**")
             if n_dupl > 0 or n_nulos > 0:
                 st.warning(
