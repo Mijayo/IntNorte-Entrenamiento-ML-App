@@ -185,7 +185,7 @@ sin modificar una sola línea de código.
 
 | Parámetro | Tiggo 2 (actual) | Nueva marca |
 |-----------|:----------------:|:-----------:|
-| Archivo Excel | `Historico_Ventas.xlsx` | cualquier `.xlsx` |
+| Archivo Excel | `veh_ml_features.xlsx` | cualquier `.xlsx` |
 | Filtro MARCA | `CHERY` | p.ej. `JAC` |
 | Filtro MODELO3 | `TIGGO 2` | p.ej. `HUNTER` |
 | Fecha inicio | `2024-01-01` | según disponibilidad |

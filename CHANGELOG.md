@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-04 (v40)
+
+- **fix(registrar_ventas)**: Tab **"📡 Comparativa en Producción"** ya no aparece vacía cuando las ventas reales registradas corresponden a meses predichos por el modelo. El problema era un mismatch de formato de fecha: `pred_total` usa `freq='ME'` (mes-fin, ej. `2026-04-30`) mientras que el formulario de registro guarda fechas como primer día del mes (`2026-04-01`). El `merge` por igualdad exacta devolvía cero filas. **Fix:** ambas columnas de fecha se normalizan a inicio de mes con `.dt.to_period("M").dt.to_timestamp()` antes del join. MAPE de producción, gráfico real vs predicción e IC 95% ahora se muestran correctamente.
+
+---
+
 ### 2026-06-03 (v39)
 
 - **refactor(entrenamiento)**: `_load_preloaded()` simplificada — ya solo carga `data/processed/veh_ml_features.xlsx` (o su equivalente en Supabase Storage). Eliminada la constante `_PRELOADED_STOCK` y la carga de `data/raw/Stock Vehiculos.xlsx`. La función devuelve un único `pd.DataFrame` en vez de una tupla; el fallback de Supabase extrae solo `df_v` de `sio.load_datos_precargados()`. Eliminada la línea `st.session_state["df_stock"]` del flujo precargado — el stock de vehículos es exclusivo del flujo de carga manual si el usuario sube su propio Excel.

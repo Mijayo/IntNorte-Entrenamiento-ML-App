@@ -176,11 +176,13 @@ with tab2:
         )
     else:
         _vr_df = pd.DataFrame(ventas_reales)
-        _vr_df["fecha"] = pd.to_datetime(_vr_df["fecha"])
+        _vr_df["fecha"] = pd.to_datetime(_vr_df["fecha"]).dt.to_period("M").dt.to_timestamp()
 
-        # Unir con predicciones (hist + pred_total)
+        # Unir con predicciones — normalizar a inicio de mes para que
+        # pred_total (freq='ME' → fin de mes) coincida con las fechas registradas (día 1)
         _all_pred = pred_total[["Fecha", "Predicción", "IC_Inferior", "IC_Superior"]].copy()
         _all_pred.columns = ["fecha", "prediccion", "ic_inf", "ic_sup"]
+        _all_pred["fecha"] = _all_pred["fecha"].dt.to_period("M").dt.to_timestamp()
 
         _merged = _vr_df.merge(_all_pred, on="fecha", how="inner")
 

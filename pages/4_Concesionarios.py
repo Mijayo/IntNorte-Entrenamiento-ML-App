@@ -46,9 +46,11 @@ def _normalizar_df(raw: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data(show_spinner=False)
 def _cargar_precargado() -> pd.DataFrame | None:
     # 1. Supabase Storage (fuente primaria — funciona en cualquier despliegue)
-    raw = sio.load_historico_ventas()
-    if raw is not None:
-        return _normalizar_df(raw)
+    try:
+        df_v, _ = sio.load_datos_precargados()
+        return _normalizar_df(df_v)
+    except Exception:
+        pass
     # 2. Fallback: archivo local (entornos de desarrollo)
     path = Path(__file__).parent.parent / "data" / "processed" / "veh_ml_features.xlsx"
     if not path.exists():
@@ -167,7 +169,7 @@ with st.expander("📂 Fuente de datos", expanded=False):
         if st.button("☁️ Guardar como precargado en Supabase", type="primary"):
             with st.spinner("Subiendo a Supabase Storage..."):
                 try:
-                    sio.upload_historico_ventas(st.session_state['_conc_pending_bytes'])
+                    sio.upload_ventas_precargado(st.session_state['_conc_pending_bytes'])
                     del st.session_state['_conc_pending_bytes']
                     _cargar_precargado.clear()
                     st.success("✅ veh_ml_features.xlsx guardado en Supabase. Ahora es el archivo precargado para todos los usuarios.")
