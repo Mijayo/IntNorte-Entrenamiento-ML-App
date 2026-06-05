@@ -6,9 +6,10 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ### 2026-06-05 (docs)
 
-- **docs**: Creados `docs/08_conclusiones_iteracion3.md` y `docs/09_conclusiones_release_final.md`.
-  - Iter3: MAPE walk-forward **10.32%** · SARIMA(1,1,0)(1,0,2)\[12\] · v40 · justificación de re-entrenamiento trimestral · modelos descartados con métricas.
-  - Release Final: resumen ejecutivo de las 3 iteraciones, propuesta de valor cuantificada, roadmap competitivo, aprendizajes del proyecto.
+- **docs**: Creados `docs/08_conclusiones_iteracion3.md` y `docs/09_conclusiones_release_final.md`. Corregida evolución MAPE en `docs/07_conclusiones_iteracion2.md`.
+  - Evolución correcta: **27.89% (Iter1) → 10.32% (Iter2) → 14.65% (Iter3)**
+  - Iter3: MAPE walk-forward **14.65%** · SARIMA(2,0,1)(1,0,2)\[12\] · v40 · justificación de re-entrenamiento trimestral · modelos descartados con métricas · narrativa de regresión por datos 2026.
+  - Release Final: resumen ejecutivo de las 3 iteraciones, ROI cuantificado, roadmap competitivo, aprendizajes del proyecto.
 
 ---
 

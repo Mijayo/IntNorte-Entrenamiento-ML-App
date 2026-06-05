@@ -47,21 +47,23 @@ Sistema web multi-página construido sobre Streamlit + Supabase que combina pred
 | Iteración | MAPE Walk-Forward | Orden SARIMA | Estado |
 |-----------|------------------|-------------|--------|
 | **1** | 27.89% ❌ | (7,1,2)(1,1,2)\[12\] | Diagnóstico — modelo sobreparametrizado |
-| **2** | 14.65% ⚠️ | (2,0,1)(1,0,2)\[12\] | Operacional con revisión |
-| **3** | **10.32% ✅** | **(1,1,0)(1,0,2)\[12\]** | **Operacional** |
+| **2** | **10.32% ✅** | **(1,1,0)(1,0,2)\[12\]** | Modelo óptimo |
+| **3** | 14.65% ⚠️ | (2,0,1)(1,0,2)\[12\] | Sistema operativo completo |
 
 > **Métrica de producción: MAPE Walk-Forward.** Se valida sobre los últimos 12 meses del dataset con esquema expanding window — en cada paso, el modelo se re-estima con datos hasta ese mes y predice el siguiente, sin data leakage. Esta es la única métrica que representa el error real en producción.
 
 ### Las decisiones técnicas que movieron el MAPE
 
-| Iteración | Decisión clave | Impacto |
-|-----------|---------------|---------|
-| Iter1 → Iter2 | Recortar dataset a Ene 2022 (eliminar régimen bajo-volumen 2021) | ▼ 13.24 pp |
-| Iter1 → Iter2 | Reducir p de 7 a 2 — eliminar overfitting | Incluido en ▼ 13.24 pp |
-| Iter2 → Iter3 | Reintroducir d=1 al detectar tendencia leve en datos 2026 | ▼ 4.33 pp |
-| Iter2 → Iter3 | Simplificar q=0 — MA innecesario con d=1 activo | Incluido en ▼ 4.33 pp |
+| Iteración | Decisión clave | Impacto en MAPE |
+|-----------|---------------|----------------|
+| Iter1 → Iter2 | Recortar dataset a Ene 2022 — eliminar régimen bajo-volumen 2021 | ▼ 17.57 pp |
+| Iter1 → Iter2 | Reducir p de 7 a 2, d=1→0 — eliminar overfitting | Incluido en ▼ 17.57 pp |
+| Iter2 → Iter3 | Nuevos datos 2026 con tendencia alcista — dinámica cambia | ▲ 4.33 pp |
+| Iter2 → Iter3 | Foco en producto (5 módulos nuevos) — no en optimización de modelo | — |
 
-**Palanca principal:** la calidad del dataset importa más que la complejidad del modelo. Eliminar 12 meses de datos ruidosos redujo el error más que cualquier ajuste de hiperparámetros.
+**Palanca principal:** la calidad del dataset importa más que la complejidad del modelo. Eliminar 12 meses de datos ruidosos (Iter1→Iter2) redujo el error ▼17.57 pp. La leve regresión en Iter3 refleja datos 2026 más volátiles, no un deterioro del pipeline.
+
+> **El mejor modelo del proyecto es Iter2: MAPE 10.32%** — guardado en Supabase y activable en cualquier momento desde el panel de Administración.
 
 ---
 
@@ -162,15 +164,15 @@ Chery ocupa el **4.º lugar** en ventas de SUVs compactos en Perú (2025), detr�
 
 | | Iteración 1 | Iteración 2 | Iteración 3 (Release Final) |
 |---|---|---|---|
-| MAPE walk-forward | 27.89% ❌ | 14.65% ⚠️ | **10.32% ✅** |
+| MAPE walk-forward | 27.89% ❌ | **10.32% ✅** | 14.65% ⚠️ |
 | Páginas | 3 | 3 | **8** |
 | Ciclo operativo | ❌ | ❌ | ✅ |
 | Alertas proactivas | ❌ | ❌ | ✅ |
 | Deploy sin archivos locales | ❌ | ❌ | ✅ |
 | Escalabilidad multi-marca | ❌ | ❌ | ✅ |
-| Estado | Diagnóstico | Operacional c/ revisión | **Operacional** |
+| Estado | Diagnóstico | Modelo óptimo | **Sistema operativo completo** |
 
-> **Conclusión:** En tres iteraciones, el Sistema TIGGO 2 evolucionó de un prototipo de predicción a un sistema de decisión operativo con MAPE 10.32%, cobertura nacional, ciclo de retroalimentación automático y arquitectura escalable. Está listo para un piloto real en Int. Norte y para expandirse al portafolio completo de Chery Perú.
+> **Conclusión:** En tres iteraciones, el Sistema TIGGO 2 evolucionó de un prototipo de predicción a un sistema de decisión operativo. El mejor modelo del proyecto (Iter2, MAPE 10.32%) está disponible en producción; el modelo de Iter3 cierra el ciclo con MAPE 14.65% — dentro del umbral operacional — y un sistema completo de 8 módulos con cobertura nacional, ciclo de retroalimentación automático y arquitectura escalable. Listo para un piloto real en Int. Norte.
 
 ---
 
