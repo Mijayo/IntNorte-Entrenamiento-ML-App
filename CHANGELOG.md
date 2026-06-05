@@ -4,6 +4,14 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-05 (docs)
+
+- **docs**: Creados `docs/08_conclusiones_iteracion3.md` y `docs/09_conclusiones_release_final.md`.
+  - Iter3: MAPE walk-forward **10.32%** · SARIMA(1,1,0)(1,0,2)\[12\] · v40 · justificación de re-entrenamiento trimestral · modelos descartados con métricas.
+  - Release Final: resumen ejecutivo de las 3 iteraciones, propuesta de valor cuantificada, roadmap competitivo, aprendizajes del proyecto.
+
+---
+
 ### 2026-06-04 (v40)
 
 - **fix(registrar_ventas)**: Tab **"📡 Comparativa en Producción"** ya no aparece vacía cuando las ventas reales registradas corresponden a meses predichos por el modelo. El problema era un mismatch de formato de fecha: `pred_total` usa `freq='ME'` (mes-fin, ej. `2026-04-30`) mientras que el formulario de registro guarda fechas como primer día del mes (`2026-04-01`). El `merge` por igualdad exacta devolvía cero filas. **Fix:** ambas columnas de fecha se normalizan a inicio de mes con `.dt.to_period("M").dt.to_timestamp()` antes del join. MAPE de producción, gráfico real vs predicción e IC 95% ahora se muestran correctamente.
