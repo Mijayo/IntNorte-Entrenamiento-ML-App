@@ -16,6 +16,19 @@ Sistema multipage en Streamlit para entrenar modelos SARIMA, comparar múltiples
 | [06 — Conclusiones Iteración 1](docs/06_conclusiones_iteracion1.md) | Resultados, aprendizajes y decisiones de la primera iteración |
 | [07 — Conclusiones Iteración 2](docs/07_conclusiones_iteracion2.md) | Resultados, aprendizajes y decisiones de la segunda iteración |
 
+### Documentación por página
+
+| Página | Acceso | Descripción |
+|--------|--------|-------------|
+| [1 — Entrenamiento](docs/pages/01_entrenamiento.md) | admin, analyst | Carga, validación, entrenamiento SARIMA + Optuna, comparación y aprobación de modelos |
+| [2 — Comparativa ML](docs/pages/02_comparativa_ml.md) | admin, analyst | Comparativa de 5 modelos (SARIMAX · Prophet · LR · RF · XGBoost) |
+| [3 — Dashboard](docs/pages/03_dashboard.md) | todos los roles | KPIs, predicciones, recomendaciones, métricas técnicas y asistente IA |
+| [4 — Concesionarios](docs/pages/04_concesionarios.md) | admin, analyst, manager | Análisis histórico y predicciones por tienda con shares ajustables |
+| [5 — Proyección Ingresos](docs/pages/05_proyeccion_ingresos.md) | admin, analyst, financiero | Proyección financiera a 6 meses en USD + calculadora de ROI |
+| [6 — Escalabilidad](docs/pages/06_escalabilidad.md) | todos los roles | Hoja de ruta multi-marca, portafolio, líneas de negocio y expansión LatAm |
+| [7 — Registrar Ventas](docs/pages/07_registrar_ventas.md) | admin, analyst | Feedback loop: ventas reales vs predicción, drift alert y scoreboard |
+| [8 — Administración](docs/pages/08_administracion.md) | admin | Usuarios, audit log y ciclo de vida de modelos entrenados |
+
 ---
 
 ## Arquitectura
