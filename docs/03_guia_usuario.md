@@ -242,6 +242,26 @@ El sistema calcula automáticamente el patrón estacional a partir de los datos 
 - **Estrategia Agresiva** — IC superior + 20%: maximiza cobertura; recomendada cuando la tendencia es creciente o el lead time de importación es largo.
 - **Señal de tendencia** — comparación de los últimos 3 meses vs el promedio histórico (umbral ±10%).
 
+**Bloque 3 — Cadena de suministro: ¿Cuándo hacer el pedido?**
+
+> El sistema detecta automáticamente la fecha de hoy y calcula las fechas de pedido para el **mes siguiente al mes en curso**. No depende de cuándo se entrenó el modelo.
+
+Tres KPIs en cabecera:
+- **Lead time promedio Chery**: 22–24 días (histórico 2025, rango 15–30 días).
+- **Fecha de pedido óptima**: fecha exacta en que deberías emitir el pedido para recibir las unidades al inicio del mes objetivo.
+- **Días al deadline óptimo**: cuenta atrás con semáforo (verde si hay margen, ámbar si quedan menos de 7 días, rojo si ya se pasó).
+
+Timeline visual con cuatro hitos:
+
+| Hito | Cuándo | Por qué |
+|------|--------|---------|
+| ✅ Conservador | Inicio mes − 30 días | Cubre el escenario de lead time máximo (30 d) |
+| ⭐ Óptimo | Inicio mes − 23 días | Lead time promedio real Chery 2025 |
+| ⚡ Agresivo | Inicio mes − 15 días | Lead time mínimo histórico; mayor riesgo de retraso |
+| 🎯 Inicio del mes | Día 1 del mes objetivo | Fecha en que se necesita stock disponible |
+
+Debajo del timeline aparece el mapa logístico de la ruta Chery (Puerto Callao → Almacén Lima → Piura/Chiclayo → Tarapoto/Cajamarca) y una nota sobre la ventana de financiación sin interés (60 días gratis, luego 8% anual): pedir cerca del inicio del mes maximiza esa ventana libre.
+
 **Expander "📚 Marco teórico — ¿Por qué estas estrategias?"** *(disponible para profundizar)*
 
 Explica el fundamento académico de cada recomendación:

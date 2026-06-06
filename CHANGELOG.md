@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-06 (hotfix #3)
+
+- **fix(dashboard/cadena_suministro)**: La sección "🚚 ¿Cuándo hacer el pedido?" ahora ancla siempre al **mes siguiente al mes actual** en lugar del primer mes del horizonte del modelo. La lógica anterior usaba `pred_total.iloc[0]`, que depende de cuándo se entrenó el modelo — si el run fue aprobado hace varias semanas, el primer mes del forecast ya podría haber pasado o no coincidir con el mes siguiente real desde hoy. **Fix:** se detecta la fecha real con `pd.Timestamp.today()`, se calcula el inicio del mes siguiente con `pd.DateOffset(months=1)`, y se busca la predicción correspondiente en `pred_total` por período mensual. Si el mes siguiente no está en el horizonte activo (edge case), hace fallback gracioso al primer mes disponible del forecast. Los KPIs de "Días al deadline óptimo", las fechas del timeline y las unidades proyectadas se calculan ahora contra el mes correcto desde cualquier fecha de ejecución.
+
+---
+
 ### 2026-06-06 (hotfix #2)
 
 - **fix(dashboard/seguimiento_produccion)**: La sección "📡 Seguimiento en Producción — Real vs Predicción" siempre mostraba el mensaje *"Hay ventas reales registradas, pero no coinciden con las fechas de predicción del modelo activo"* aunque las ventas estuviesen correctamente registradas. Causa: `pred_total["Fecha"]` usa frecuencia `ME` (fin de mes, ej. `2026-04-30`), mientras que las ventas reales se guardan con fecha `2026-04-01`. El lookup por diccionario `{pd.Timestamp(row["Fecha"]): ...}` nunca encontraba coincidencia exacta. **Fix:** ambas fechas se normalizan a inicio de mes con `.to_period("M").to_timestamp()` antes del lookup, igual que lo hace `7_Registrar_Ventas.py`. El gráfico real vs predicción y la alerta de drift ahora se muestran correctamente.

@@ -455,11 +455,32 @@ Badge en la barra lateral con la antigüedad del run activo:
 
 ### Tab Recomendaciones de Compra — análisis de ciclo estacional
 
-El tab incluye ahora un bloque de análisis estacional previo al marco teórico:
+El tab incluye tres bloques en secuencia:
 
+**Bloque 1 — Análisis estacional:**
 - **KPIs estacionales**: mes pico histórico, mes valle y ratio pico/valle calculados desde los datos reales del run activo.
 - **Gráfico de media mensual**: barras con color coding (rojo = máximo, azul = sobre la media histórica, gris = bajo la media).
 - **Callout de negocio**: explica el efecto rappel del proveedor en diciembre y la oportunidad operativa de des-estacionalizar los pedidos.
+
+**Bloque 2 — Recomendaciones de compra (análisis del próximo mes):**
+- Predicción puntual y rango IC 95% para el mes siguiente.
+- Estrategia Conservadora (IC sup. + 10%) y Estrategia Agresiva (IC sup. + 20%).
+- Señal de tendencia: comparación de los últimos 3 meses vs el promedio histórico (umbral ±10%).
+
+**Bloque 3 — Cadena de suministro: ¿Cuándo hacer el pedido?**
+
+Anclado dinámicamente a la **fecha actual** — calcula siempre para el mes siguiente al mes en curso:
+
+| Elemento | Descripción |
+|----------|-------------|
+| **KPI Lead time** | 22–24 días promedio Chery 2025 (min 15, max 30) |
+| **KPI Fecha óptima** | Fecha de pedido recomendada = inicio del mes objetivo − 23 días |
+| **KPI Días al deadline** | Días restantes hasta la fecha óptima, con semáforo rojo/ámbar/verde |
+| **Timeline visual** | 4 hitos: Conservador (−30 d) → Óptimo (−23 d) → Agresivo (−15 d) → Inicio del mes |
+| **Mapa logístico** | Puerto Callao → Almacén Lima → Piura/Chiclayo → *(opt.)* Tarapoto/Cajamarca |
+| **Nota financiación** | 0% interés los primeros 60 días en stock; 8% anual a partir del día 61 |
+
+> Si el mes siguiente no está dentro del horizonte del modelo activo (edge case), el bloque hace fallback al primer mes disponible del forecast.
 
 ---
 

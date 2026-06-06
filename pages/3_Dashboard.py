@@ -705,14 +705,28 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         st.markdown(section_header("Cadena de Suministro — ¿Cuándo hacer el pedido?", "🚚"),
                     unsafe_allow_html=True)
 
-        _mes_lt   = pred_total['Mes'].iloc[0]
-        _fecha_lt = pred_total['Fecha'].iloc[0]
+        # Mes objetivo: siempre el mes siguiente al mes actual
+        _hoy_sc        = pd.Timestamp.today().normalize()
+        _next_month_ts = (_hoy_sc + pd.DateOffset(months=1)).replace(day=1)
+        _next_period   = pd.Period(_next_month_ts, 'M')
+
+        _pred_match = pred_total[
+            pd.to_datetime(pred_total['Fecha']).dt.to_period('M') == _next_period
+        ]
+        if not _pred_match.empty:
+            _fecha_lt   = pd.Timestamp(_pred_match['Fecha'].iloc[0])
+            _mes_lt     = _pred_match['Mes'].iloc[0]
+            _proximo_sc = _pred_match['Predicción'].iloc[0]
+        else:
+            _fecha_lt   = pred_total['Fecha'].iloc[0]
+            _mes_lt     = pred_total['Mes'].iloc[0]
+            _proximo_sc = pred_total['Predicción'].iloc[0]
+
         _LT_MIN, _LT_AVG, _LT_MAX = 15, 23, 30
 
         _f_cons = _fecha_lt - pd.Timedelta(days=_LT_MAX)
         _f_opt  = _fecha_lt - pd.Timedelta(days=_LT_AVG)
         _f_agr  = _fecha_lt - pd.Timedelta(days=_LT_MIN)
-        _hoy_sc = pd.Timestamp.today().normalize()
         _dr     = (_f_opt - _hoy_sc).days
 
         _kpi_dias_val   = f"Hace {-_dr}d ⚠️" if _dr < 0 else ("¡Hoy!" if _dr == 0 else f"{_dr} días")
@@ -727,7 +741,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
             padding:18px 22px;margin-top:6px;">
   <div style="font-family:'Rajdhani',sans-serif;font-size:.73rem;font-weight:700;
               color:#3B82F6;text-transform:uppercase;letter-spacing:.12em;margin-bottom:16px;">
-    Ventana de pedido para {_mes_lt} · {int(proximo)} uds proyectadas
+    Ventana de pedido para {_mes_lt} · {int(_proximo_sc)} uds proyectadas
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 22px 1fr 22px 1fr 22px 1fr;
