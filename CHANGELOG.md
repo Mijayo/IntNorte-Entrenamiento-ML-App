@@ -4,6 +4,20 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-06 (v41)
+
+- **feat(dashboard/recomendaciones)**: Nueva sección **"🚚 Cadena de Suministro — ¿Cuándo hacer el pedido?"** en el Tab Recomendaciones, basada en datos reales del cliente Chery 2025.
+  - 3 KPI cards: lead time promedio (22–24 días), fecha de pedido óptima para el mes predicho (calculada dinámicamente desde `pred_total['Fecha'].iloc[0]`), días que quedan al deadline óptimo (con semáforo rojo/ámbar/verde).
+  - Timeline visual con 4 hitos enlazados: **Conservador** (–30 días / máximo histórico), **Óptimo** (–23 días / media real 2025), **Agresivo** (–15 días / mínimo histórico), **Inicio del mes** predicho.
+  - Mapa de ruta logística Chery: Puerto Callao → Almacén Lima → Piura / Chiclayo → *(opt.)* Tarapoto / Cajamarca.
+  - Nota sobre la ventana libre de interés: **0% los primeros 60 días** → 8% anual a partir del día 61. Pedir cercano al inicio del mes demandado maximiza la ventana libre.
+- **fix(dashboard/marco_teorico)**: Tiempo de reposición corregido de *"60–90 días (importaciones)"* → *"15–30 días (promedio Chery 2025: 22–24 días)"* en el expander 📚 Marco teórico del Tab Recomendaciones.
+- **feat(dashboard/asistente_ia)**: Contexto enviado a Gemini enriquecido con datos reales de supply chain: lead time min/avg/max, ruta logística completa (Callao → Lima → Piura/Chiclayo → Tarapoto/Cajamarca), apertura de sedes dic. 2025, y tasa de inventario Chery (60 días gratis + 8% anual).
+- **fix(proyeccion_ingresos)**: Default `costo_fin_pct` actualizado de **1.5% → 0.7%** mensual, reflejando la tasa real Chery: 8% anual = 0.67%/mes. Help text actualizado con la estructura de costos real (60 días libres, tasa desde día 61).
+- **feat(auth)**: **Demo bypass** — cuando `demo_mode = true` en `secrets.toml`, `guard_page()` salta el login y abre sesión automáticamente como rol `admin` con nombre "Demo ISDI". Facilita demostraciones en vivo sin revelar credenciales.
+
+---
+
 ### 2026-06-05 (docs)
 
 - **docs**: Creados `docs/08_conclusiones_iteracion3.md` y `docs/09_conclusiones_release_final.md`. Corregida evolución MAPE en `docs/07_conclusiones_iteracion2.md`.

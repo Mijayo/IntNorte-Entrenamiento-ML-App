@@ -264,6 +264,18 @@ def guard_page(
 ) -> None:
     """Auth guard — call once at the top of every page instead of the 5-line boilerplate."""
     init_session_state()
+
+    # Demo bypass: demo_mode=true en Streamlit Secrets saltea login
+    if st.secrets.get("demo_mode", False) and not st.session_state.authenticated:
+        admin_cfg = USERS_CONFIG.get("admin", {})
+        st.session_state.authenticated = True
+        st.session_state.username      = "demo"
+        st.session_state.role          = "admin"
+        st.session_state.user_name     = admin_cfg.get("name", "Demo ISDI")
+        st.session_state.user_icon     = admin_cfg.get("icon", "🎓")
+        st.session_state.login_time    = datetime.now()
+        st.session_state.permissions   = dict(admin_cfg.get("permissions", {}))
+
     if check_session_timeout():
         st.warning("⏱️ Tu sesión ha expirado. Por favor inicia sesión nuevamente.")
         st.stop()

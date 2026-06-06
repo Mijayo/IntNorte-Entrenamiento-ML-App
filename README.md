@@ -162,6 +162,9 @@ Estructura esperada en `secrets.toml`:
 # Clave API de Google Gemini (para el Asistente IA del Dashboard)
 GENAI_API_KEY = "..."
 
+# Demo bypass — pon 'true' en demos en vivo para saltar el login (rol admin, sin contraseña)
+# demo_mode = true
+
 [supabase]
 url    = "https://<proyecto>.supabase.co"
 key    = "SUPABASE_ANON_KEY"

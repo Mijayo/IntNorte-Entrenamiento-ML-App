@@ -227,7 +227,11 @@ context_tiggo = (
     f"Predicción total horizonte ({_cfg.get('horizonte', 6)} meses): {pred_total['Predicción'].sum():.0f} uds\n"
     f"Tendencia últimos 3 meses vs histórico: {_tendencia_pct:+.1f}%\n"
     f"Promedio histórico mensual: {_prom_hist:.1f}  |  Total ventas: {metricas['datos_limpios']['total_ventas']:,}\n"
-    f"Período de datos: {metricas['datos_limpios']['periodo']}  |  Meses: {metricas['datos_limpios']['meses_datos']}"
+    f"Período de datos: {metricas['datos_limpios']['periodo']}  |  Meses: {metricas['datos_limpios']['meses_datos']}\n"
+    f"Cadena de suministro Chery: lead time promedio 2025 = 22-24 días (mín 15, máx 30 días).\n"
+    f"Ruta logística: Puerto Callao → Almacén Lima → Piura / Chiclayo (sedes principales).\n"
+    f"Tarapoto y Cajamarca (apertura dic 2025): unidades principalmente desde Lima, a veces desde Piura/Chiclayo (flete extra).\n"
+    f"Financiación inventario Chery: 0% interés los primeros 60 días en stock, luego tasa referencial 8% anual."
 )
 
 # ── Tabs según rol ────────────────────────────────────────────────────────────
@@ -695,6 +699,134 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
             st.warning(f"⚠️ La predicción ({proximo:.0f}) difiere >30% del promedio histórico "
                        f"({prom_hist:.1f}). Revisa factores externos.")
 
+        # ── Cadena de Suministro — Línea de Tiempo ───────────────────────────
+        st.markdown("---")
+        st.markdown(section_header("Cadena de Suministro — ¿Cuándo hacer el pedido?", "🚚"),
+                    unsafe_allow_html=True)
+
+        _mes_lt   = pred_total['Mes'].iloc[0]
+        _fecha_lt = pred_total['Fecha'].iloc[0]
+        _LT_MIN, _LT_AVG, _LT_MAX = 15, 23, 30
+
+        _f_cons = _fecha_lt - pd.Timedelta(days=_LT_MAX)
+        _f_opt  = _fecha_lt - pd.Timedelta(days=_LT_AVG)
+        _f_agr  = _fecha_lt - pd.Timedelta(days=_LT_MIN)
+        _hoy_sc = pd.Timestamp.today().normalize()
+        _dr     = (_f_opt - _hoy_sc).days
+
+        _kpi_dias_val   = f"Hace {-_dr}d ⚠️" if _dr < 0 else ("¡Hoy!" if _dr == 0 else f"{_dr} días")
+        _kpi_dias_color = "red" if _dr <= 0 else ("amber" if _dr < 7 else "")
+        ltc1, ltc2, ltc3 = st.columns(3)
+        ltc1.markdown(kpi_card("Lead time promedio Chery", "22–24 días", "⏱️", "blue"), unsafe_allow_html=True)
+        ltc2.markdown(kpi_card(f"Pedido óptimo · {_mes_lt}", _f_opt.strftime("%d %b %Y"), "📅"), unsafe_allow_html=True)
+        ltc3.markdown(kpi_card("Días al deadline óptimo", _kpi_dias_val, "⚡", _kpi_dias_color), unsafe_allow_html=True)
+
+        st.markdown(f"""
+<div style="background:#0D1117;border:1px solid rgba(0,115,255,0.18);border-radius:10px;
+            padding:18px 22px;margin-top:6px;">
+  <div style="font-family:'Rajdhani',sans-serif;font-size:.73rem;font-weight:700;
+              color:#3B82F6;text-transform:uppercase;letter-spacing:.12em;margin-bottom:16px;">
+    Ventana de pedido para {_mes_lt} · {int(proximo)} uds proyectadas
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 22px 1fr 22px 1fr 22px 1fr;
+              align-items:center;gap:2px;text-align:center;">
+
+    <div style="background:rgba(0,245,160,0.08);border:1px solid rgba(0,245,160,0.22);
+                border-radius:8px;padding:10px 8px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:.63rem;font-weight:700;
+                  color:#00F5A0;text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px;">
+        ✅ Conservador
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
+        {_f_cons.strftime("%d %b")}
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
+        –{_LT_MAX} días
+      </div>
+    </div>
+
+    <div style="color:#3F5060;font-size:1rem;text-align:center;">→</div>
+
+    <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.22);
+                border-radius:8px;padding:10px 8px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:.63rem;font-weight:700;
+                  color:#FCD34D;text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px;">
+        ⭐ Óptimo
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
+        {_f_opt.strftime("%d %b")}
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
+        –{_LT_AVG} días (media 2025)
+      </div>
+    </div>
+
+    <div style="color:#3F5060;font-size:1rem;text-align:center;">→</div>
+
+    <div style="background:rgba(255,58,92,0.08);border:1px solid rgba(255,58,92,0.22);
+                border-radius:8px;padding:10px 8px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:.63rem;font-weight:700;
+                  color:#FF3A5C;text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px;">
+        ⚡ Agresivo
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
+        {_f_agr.strftime("%d %b")}
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
+        –{_LT_MIN} días (mín. histórico)
+      </div>
+    </div>
+
+    <div style="color:#3F5060;font-size:1rem;text-align:center;">→</div>
+
+    <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.22);
+                border-radius:8px;padding:10px 8px;">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:.63rem;font-weight:700;
+                  color:#A78BFA;text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px;">
+        🎯 Inicio mes
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
+        {_fecha_lt.strftime("%d %b")}
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
+        {_mes_lt}
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.05);">
+    <div style="font-family:'Rajdhani',sans-serif;font-size:.68rem;font-weight:700;
+                color:#3F5060;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">
+      Ruta logística Chery
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span style="background:rgba(0,115,255,0.10);border:1px solid rgba(0,115,255,0.20);
+                   border-radius:4px;padding:4px 10px;font-family:'JetBrains Mono',monospace;
+                   font-size:.72rem;color:#60A5FA;">🚢 Puerto Callao</span>
+      <span style="color:#3F5060;font-size:.85rem;">→</span>
+      <span style="background:rgba(0,115,255,0.07);border:1px solid rgba(0,115,255,0.14);
+                   border-radius:4px;padding:4px 10px;font-family:'JetBrains Mono',monospace;
+                   font-size:.72rem;color:#60A5FA;">🏭 Almacén Lima</span>
+      <span style="color:#3F5060;font-size:.85rem;">→</span>
+      <span style="background:rgba(0,245,160,0.07);border:1px solid rgba(0,245,160,0.18);
+                   border-radius:4px;padding:4px 10px;font-family:'JetBrains Mono',monospace;
+                   font-size:.72rem;color:#4ADE80;">🏢 Piura / Chiclayo</span>
+      <span style="color:#3F5060;font-size:.85rem;margin:0 2px;">⤷ opt.</span>
+      <span style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.18);
+                   border-radius:4px;padding:4px 10px;font-family:'JetBrains Mono',monospace;
+                   font-size:.72rem;color:#A78BFA;">📍 Tarapoto / Cajamarca</span>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;color:#3F5060;margin-top:8px;line-height:1.6;">
+      * Tarapoto y Cajamarca (apertura dic. 2025): flete extra cargado al cliente o con apoyo de marca Chery.<br>
+      💡 Financiación Chery: <strong style="color:#94A3B8;">0% interés los primeros 60 días en stock</strong>
+      → tasa referencial 8% anual a partir del día 61. Pedir cerca del inicio del mes demandado maximiza la ventana libre.
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
         # ── Análisis del Ciclo de Valor ───────────────────────────────────────
         st.markdown("---")
         st.subheader("📆 Análisis del Ciclo de Valor — Estacionalidad y Negocio")
@@ -827,7 +959,7 @@ percentil de la distribución de demanda que se debe cubrir. Un buffer del +20% 
 97.5 del modelo equivale a apuntar a un nivel de servicio del orden del **99%**, apropiado cuando:
 
 - La tendencia reciente es **creciente** (la demanda puede superar la distribución histórica).
-- El tiempo de reposición es largo (importaciones: 60–90 días), haciendo costoso un stockout.
+- El tiempo de reposición Chery es de **15–30 días** (promedio 2025: 22–24 días), haciendo que un stockout tarde entre 2–4 semanas en resolverse — suficiente para perder ventas de un mes completo.
 - La elasticidad precio-demanda del Tiggo 2 es baja (el cliente espera la unidad en vez de
   sustituir el modelo).
 

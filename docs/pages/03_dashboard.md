@@ -114,6 +114,19 @@ Cada 30 segundos comprueba si hay un nuevo run en Supabase. Si aparece uno, mues
 - **Estrategia Agresiva** — IC superior × 1.20 (maximiza cobertura).
 - Señal de tendencia (últimos 3m vs histórico): CRECIENTE (+10%) → estrategia agresiva; DECRECIENTE (−10%) → conservadora; ESTABLE → predicción directa.
 
+**Cadena de Suministro — ¿Cuándo hacer el pedido?** *(nueva sección v41)*
+
+Sección accionable con datos reales Chery 2025:
+
+| Elemento | Descripción |
+|----------|-------------|
+| KPI Lead time | "22–24 días" (promedio real 2025) |
+| KPI Pedido óptimo | Fecha calculada como `Fecha_inicio_mes - 23 días` |
+| KPI Días al deadline | Días hasta el deadline óptimo, con semáforo (verde / ámbar / rojo) |
+| Timeline visual | 4 hitos: Conservador (–30d), Óptimo (–23d), Agresivo (–15d), Inicio del mes |
+| Mapa logístico | Puerto Callao → Almacén Lima → Piura/Chiclayo → Tarapoto/Cajamarca *(opt.)* |
+| Nota financiera | 0% interés primeros 60 días en stock → 8% anual a partir del día 61 |
+
 **Análisis del Ciclo de Valor:**
 - KPIs: mes pico histórico, mes valle, ratio pico/valle.
 - Gráfico de barras de media histórica por mes del año.
@@ -122,7 +135,7 @@ Cada 30 segundos comprueba si hay un nuevo run en Supabase. Si aparece uno, mues
 **Expander "📚 Marco teórico — ¿Por qué estas estrategias?":**
 - Newsvendor Problem (Scarf, 1958).
 - Stock de seguridad SS = z · σ_L (Silver, Pyke & Thomas, 1998).
-- Nivel de servicio Tipo I (Zipkin, 2000).
+- Nivel de servicio Tipo I (Zipkin, 2000): lead time real Chery **15–30 días** (promedio 2025: 22–24 días).
 - Tabla de condiciones de validez y limitaciones.
 
 ---
@@ -178,6 +191,7 @@ Consulta en lenguaje natural a **Gemini 2.5 Flash** sobre el modelo activo.
 - Predicción total del horizonte.
 - Tendencia de los últimos 3 meses vs histórico.
 - Período de datos y total de ventas.
+- **Cadena de suministro Chery** *(v41)*: lead time min/avg/max, ruta logística, sedes, tasa de inventario (60d gratis + 8% anual).
 
 **Caché LLM:** las respuestas se cachean en Supabase por run. Si el mismo run ya tiene respuestas guardadas, se recuperan instantáneamente sin llamar a la API.
 

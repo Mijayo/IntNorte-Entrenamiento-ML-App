@@ -79,7 +79,7 @@ Calculadora interactiva para cuantificar el retorno económico del sistema de pr
 | Campo | Por defecto | Descripción |
 |-------|:-----------:|-------------|
 | Sobrestock promedio sin predicción (uds/mes) | 5 | Unidades extra compradas en exceso por mes |
-| Costo mensual de capital inmovilizado (%) | 1.5 | % del precio/ud que cuesta tener la unidad en inventario |
+| Costo mensual de capital inmovilizado (%) | **0.7** | % del precio/ud en inventario. Chery: 8% anual = 0.67%/mes (0% primeros 60 días) |
 
 **Parámetros de venta perdida:**
 

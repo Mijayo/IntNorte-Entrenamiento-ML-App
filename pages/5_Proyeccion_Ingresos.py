@@ -265,8 +265,12 @@ Ajusta los parámetros de negocio para calcular el ahorro anual estimado vs. ges
         )
         costo_fin_pct = st.number_input(
             "Costo mensual de capital inmovilizado (% del precio/ud)",
-            min_value=0.5, max_value=5.0, value=1.5, step=0.1, format="%.1f",
-            help="Costo financiero + almacenamiento mensual por unidad en inventario (típico: 1–2%).",
+            min_value=0.1, max_value=5.0, value=0.7, step=0.1, format="%.1f",
+            help=(
+                "Costo financiero mensual por unidad en inventario. "
+                "Chery: tasa referencial 8% anual = 0.67%/mes. "
+                "Primeros 60 días en stock son libres de interés — el costo aplica desde el día 61."
+            ),
         )
     with roi_c2:
         st.markdown("**Parámetros de venta perdida**")
