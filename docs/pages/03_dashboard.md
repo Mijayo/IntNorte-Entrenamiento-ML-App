@@ -174,7 +174,12 @@ Gráficos de autocorrelación y autocorrelación parcial guardados durante el en
 
 Muestra los resultados de la Comparativa ML para el run activo:
 - Si se ejecutó la Comparativa ML en la sesión actual o está guardada en Supabase → tabla de métricas de los 5 modelos + gráfico de barras MAPE con línea de objetivo 15%.
-- Si no → muestra la justificación metodológica de por qué se eligió SARIMA sobre las otras familias (tabla con estacionalidad, variable exógena, requisito mínimo y motivo de descarte).
+- Si no → muestra la justificación metodológica de por qué se eligió SARIMA sobre las otras familias, renderizada como **tabla HTML personalizada** *(hotfix #4 2026-06-06)*:
+  - Fila SARIMA en fondo verde oscuro con badge **✓ SELECCIONADO**.
+  - Filas descartadas en fondo azul oscuro con badge **✗ DESCARTADO**.
+  - Columnas "Por qué ganó / Por qué no" unificadas en "Veredicto" — texto completo, sin truncar.
+  - Badges de familia con color propio (azul violeta) y tags secundarios en azul tenue.
+  - Hover brightness para facilitar la lectura fila a fila.
 
 ---
 

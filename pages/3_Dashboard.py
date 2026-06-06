@@ -1258,49 +1258,87 @@ Resultados en tiempo real &nbsp;·&nbsp; Comparativa ejecutada en esta sesión
             # Tabla de justificación metodológica (siempre visible)
             st.markdown(section_header("¿Por qué se descartaron las otras familias?", "📋"),
                         unsafe_allow_html=True)
-            df_eval = pd.DataFrame([
-                {
-                    "Modelo":         "SARIMA (p,d,q)(P,D,Q)[12]  ✅",
-                    "Familia":        "Serie Temporal",
-                    "Estacionalidad": "Explícita — periodo m=12",
-                    "Variable exóg.": "✅ ventas_otros (Pearson)",
-                    "Req. mínimo":    "24 meses",
-                    "Por qué ganó":   "Modela directamente la estructura AR+MA estacional del Tiggo 2 con exógena; menor MAPE en test.",
-                },
-                {
-                    "Modelo":         "Prophet",
-                    "Familia":        "Serie Temporal",
-                    "Estacionalidad": "Automática (changepoints)",
-                    "Variable exóg.": "❌ no incorporada",
-                    "Req. mínimo":    "24 meses",
-                    "Por qué no":     "Sin variable exógena pierde el efecto Pearson. Sobreajusta en series cortas con picos de diciembre.",
-                },
-                {
-                    "Modelo":         "Regresión Lineal",
-                    "Familia":        "ML — lag features",
-                    "Estacionalidad": "Implícita (lag_12)",
-                    "Variable exóg.": "Como feature",
-                    "Req. mínimo":    "17 meses + test",
-                    "Por qué no":     "Asume relación lineal entre lags y ventas futuras; no captura tendencia ni no-linealidad estacional.",
-                },
-                {
-                    "Modelo":         "Random Forest",
-                    "Familia":        "ML — lag features",
-                    "Estacionalidad": "Implícita (lag_12)",
-                    "Variable exóg.": "Como feature",
-                    "Req. mínimo":    "17 meses + test",
-                    "Por qué no":     "Overfitting con n pequeño (51 meses). No extrapola tendencia — predice dentro del rango de entrenamiento.",
-                },
-                {
-                    "Modelo":         "XGBoost",
-                    "Familia":        "ML — lag features",
-                    "Estacionalidad": "Implícita (lag_12)",
-                    "Variable exóg.": "Como feature",
-                    "Req. mínimo":    "17 meses + test",
-                    "Por qué no":     "Igual que RF. Los árboles no extrapolan — MAPE se dispara fuera del rango histórico.",
-                },
-            ])
-            st.dataframe(df_eval.set_index("Modelo"), use_container_width=True)
+            _models_html = """
+<style>
+.model-table { width:100%; border-collapse:collapse; font-size:0.82rem; font-family:monospace; }
+.model-table th {
+    background:#1a1a2e; color:#8888aa; font-weight:600; text-align:left;
+    padding:8px 12px; border-bottom:2px solid #2a2a4a; white-space:nowrap;
+}
+.model-table td { padding:9px 12px; border-bottom:1px solid #1e1e2e; vertical-align:top; }
+.model-table tr.winner td { background:#0d2b1a; }
+.model-table tr.loser  td { background:#0e0e1a; }
+.model-table tr:hover td { filter:brightness(1.15); }
+.model-name   { font-weight:700; font-size:0.85rem; white-space:nowrap; }
+.badge-win    { display:inline-block; background:#1a4a2e; color:#4ade80;
+                border:1px solid #22c55e; border-radius:4px; padding:1px 7px;
+                font-size:0.72rem; font-weight:700; white-space:nowrap; }
+.badge-lose   { display:inline-block; background:#3a1a1a; color:#f87171;
+                border:1px solid #ef4444; border-radius:4px; padding:1px 7px;
+                font-size:0.72rem; font-weight:700; white-space:nowrap; }
+.badge-family { display:inline-block; background:#1a1a3a; color:#818cf8;
+                border:1px solid #4f46e5; border-radius:4px; padding:1px 7px;
+                font-size:0.72rem; white-space:nowrap; }
+.verdict-win  { color:#4ade80; line-height:1.5; }
+.verdict-lose { color:#94a3b8; line-height:1.5; }
+.tag          { color:#60a5fa; font-size:0.78rem; }
+</style>
+<table class="model-table">
+  <thead>
+    <tr>
+      <th>Modelo</th>
+      <th>Familia</th>
+      <th>Estacionalidad</th>
+      <th>Variable exóg.</th>
+      <th>Req. mínimo</th>
+      <th>Veredicto</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="winner">
+      <td><span class="model-name">SARIMA<br><span class="tag">(p,d,q)(P,D,Q)[12]</span></span></td>
+      <td><span class="badge-family">Serie Temporal</span></td>
+      <td>Explícita<br><span class="tag">periodo m=12</span></td>
+      <td>✅ <em>ventas_otros</em><br><span class="tag">Pearson</span></td>
+      <td>24 meses</td>
+      <td><span class="badge-win">✓ SELECCIONADO</span><br><span class="verdict-win">Modela AR+MA estacional directamente con variable exógena; menor MAPE en test walk-forward.</span></td>
+    </tr>
+    <tr class="loser">
+      <td><span class="model-name">Prophet</span></td>
+      <td><span class="badge-family">Serie Temporal</span></td>
+      <td>Automática<br><span class="tag">changepoints</span></td>
+      <td>❌ no incorporada</td>
+      <td>24 meses</td>
+      <td><span class="badge-lose">✗ DESCARTADO</span><br><span class="verdict-lose">Sin variable exógena pierde el efecto Pearson. Sobreajusta en series cortas con picos de diciembre.</span></td>
+    </tr>
+    <tr class="loser">
+      <td><span class="model-name">Regresión<br>Lineal</span></td>
+      <td><span class="badge-family">ML — lag features</span></td>
+      <td>Implícita<br><span class="tag">lag_12</span></td>
+      <td>Como feature</td>
+      <td>17 meses + test</td>
+      <td><span class="badge-lose">✗ DESCARTADO</span><br><span class="verdict-lose">Asume relación lineal entre lags y ventas futuras; no captura tendencia ni no-linealidad estacional.</span></td>
+    </tr>
+    <tr class="loser">
+      <td><span class="model-name">Random<br>Forest</span></td>
+      <td><span class="badge-family">ML — lag features</span></td>
+      <td>Implícita<br><span class="tag">lag_12</span></td>
+      <td>Como feature</td>
+      <td>17 meses + test</td>
+      <td><span class="badge-lose">✗ DESCARTADO</span><br><span class="verdict-lose">Overfitting con n pequeño (51 meses). No extrapola tendencia — predice dentro del rango de entrenamiento.</span></td>
+    </tr>
+    <tr class="loser">
+      <td><span class="model-name">XGBoost</span></td>
+      <td><span class="badge-family">ML — lag features</span></td>
+      <td>Implícita<br><span class="tag">lag_12</span></td>
+      <td>Como feature</td>
+      <td>17 meses + test</td>
+      <td><span class="badge-lose">✗ DESCARTADO</span><br><span class="verdict-lose">Igual que RF. Los árboles no extrapolan — MAPE se dispara fuera del rango histórico.</span></td>
+    </tr>
+  </tbody>
+</table>
+"""
+            st.markdown(_models_html, unsafe_allow_html=True)
 
 # ── Tab LLM (admin / analyst) ────────────────────────────────────────────────
 

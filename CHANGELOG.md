@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-06 (hotfix #4)
+
+- **ux(dashboard/vs_descartados)**: La tabla "¿Por qué se descartaron las otras familias?" reemplaza `st.dataframe` por una tabla HTML personalizada con estilos CSS inline. Mejoras: (1) fila SARIMA destacada en verde con badge **✓ SELECCIONADO**, filas descartadas en gris oscuro con badge **✗ DESCARTADO**; (2) columnas "Por qué ganó" / "Por qué no" unificadas en una sola columna "Veredicto" con texto completo sin truncar; (3) badges de familia con color propio (azul violeta) para distinguir visualmente "Serie Temporal" de "ML — lag features"; (4) tags secundarios (`(p,d,q)(P,D,Q)[12]`, `Pearson`, `lag_12`) en azul tenue para desambiguar sin saturar; (5) hover brightness para facilitar la lectura fila a fila.
+
+---
+
 ### 2026-06-06 (hotfix #3)
 
 - **fix(dashboard/cadena_suministro)**: La sección "🚚 ¿Cuándo hacer el pedido?" ahora ancla siempre al **mes siguiente al mes actual** en lugar del primer mes del horizonte del modelo. La lógica anterior usaba `pred_total.iloc[0]`, que depende de cuándo se entrenó el modelo — si el run fue aprobado hace varias semanas, el primer mes del forecast ya podría haber pasado o no coincidir con el mes siguiente real desde hoy. **Fix:** se detecta la fecha real con `pd.Timestamp.today()`, se calcula el inicio del mes siguiente con `pd.DateOffset(months=1)`, y se busca la predicción correspondiente en `pred_total` por período mensual. Si el mes siguiente no está en el horizonte activo (edge case), hace fallback gracioso al primer mes disponible del forecast. Los KPIs de "Días al deadline óptimo", las fechas del timeline y las unidades proyectadas se calculan ahora contra el mes correcto desde cualquier fecha de ejecución.
