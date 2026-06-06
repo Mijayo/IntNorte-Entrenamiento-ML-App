@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-06 (hotfix #2)
+
+- **fix(dashboard/seguimiento_produccion)**: La sección "📡 Seguimiento en Producción — Real vs Predicción" siempre mostraba el mensaje *"Hay ventas reales registradas, pero no coinciden con las fechas de predicción del modelo activo"* aunque las ventas estuviesen correctamente registradas. Causa: `pred_total["Fecha"]` usa frecuencia `ME` (fin de mes, ej. `2026-04-30`), mientras que las ventas reales se guardan con fecha `2026-04-01`. El lookup por diccionario `{pd.Timestamp(row["Fecha"]): ...}` nunca encontraba coincidencia exacta. **Fix:** ambas fechas se normalizan a inicio de mes con `.to_period("M").to_timestamp()` antes del lookup, igual que lo hace `7_Registrar_Ventas.py`. El gráfico real vs predicción y la alerta de drift ahora se muestran correctamente.
+
+---
+
 ### 2026-06-06 (hotfix)
 
 - **fix(dashboard/cadena_suministro)**: El timeline visual de la sección "🚚 Cadena de Suministro — ¿Cuándo hacer el pedido?" aparecía como código HTML en bruto en la app. Causa: `st.markdown(..., unsafe_allow_html=True)` no renderizaba el bloque en Streamlit 1.50. **Fix:** reemplazado por `st.html()` (disponible desde Streamlit 1.31), la API dedicada para renderizar HTML arbitrario sin pasar por el procesador de Markdown.

@@ -319,9 +319,10 @@ with tabs[0]:
         _vr_df = _vr_df.sort_values("fecha")
 
         _pred_lookup = {
-            pd.Timestamp(row["Fecha"]): row["Predicción"]
+            pd.Timestamp(row["Fecha"]).to_period("M").to_timestamp(): row["Predicción"]
             for _, row in pred_total.iterrows()
         }
+        _vr_df["fecha"] = _vr_df["fecha"].dt.to_period("M").dt.to_timestamp()
         _vr_df["prediccion"] = _vr_df["fecha"].map(_pred_lookup)
         _vr_matched = _vr_df.dropna(subset=["prediccion"])
 

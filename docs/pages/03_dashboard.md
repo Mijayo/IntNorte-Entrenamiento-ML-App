@@ -65,7 +65,7 @@ Cada 30 segundos comprueba si hay un nuevo run en Supabase. Si aparece uno, mues
 
 **Estadísticas descriptivas** *(admin/analyst únicamente)* — promedio, mediana, mínimo, máximo, desviación estándar + parámetros SARIMA y AIC/BIC.
 
-**Seguimiento en producción** — si hay ventas reales registradas (ver página 7), muestra un panel de drift con gráfico real vs predicción y alerta si el error máximo supera el 15%.
+**Seguimiento en producción** — si hay ventas reales registradas (ver página 7), muestra un panel de drift con gráfico real vs predicción y alerta si el error máximo supera el 15%. Las fechas se normalizan a inicio de mes (`.to_period("M").to_timestamp()`) antes del lookup para evitar mismatch con la frecuencia `ME` de `pred_total` *(fix hotfix #2 2026-06-06)*.
 
 **Contexto de Mercado** *(admin/analyst/manager)* — market share automotriz estimado Perú 2024 (Toyota, Hyundai, Kia, **Chery**, Chevrolet, etc.) con barra destacada para Chery y callout de posición competitiva.
 
