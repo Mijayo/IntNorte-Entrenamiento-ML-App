@@ -15,6 +15,8 @@ Sistema multipage en Streamlit para entrenar modelos SARIMA, comparar múltiples
 | [05 — Despliegue](docs/05_despliegue.md) | Streamlit Cloud, Supabase, configuración de secretos y tablas SQL |
 | [06 — Conclusiones Iteración 1](docs/06_conclusiones_iteracion1.md) | Resultados, aprendizajes y decisiones de la primera iteración |
 | [07 — Conclusiones Iteración 2](docs/07_conclusiones_iteracion2.md) | Resultados, aprendizajes y decisiones de la segunda iteración |
+| [08 — Conclusiones Iteración 3](docs/08_conclusiones_iteracion3.md) | Resultados, aprendizajes y decisiones de la tercera iteración |
+| [09 — Conclusiones Release Final](docs/09_conclusiones_release_final.md) | Resumen ejecutivo, ROI cuantificado, roadmap y aprendizajes del proyecto |
 
 ### Documentación por página
 
@@ -66,7 +68,9 @@ docs/
 ├── 04_modelos_ml.md
 ├── 05_despliegue.md
 ├── 06_conclusiones_iteracion1.md
-└── 07_conclusiones_iteracion2.md
+├── 07_conclusiones_iteracion2.md
+├── 08_conclusiones_iteracion3.md
+└── 09_conclusiones_release_final.md
 requirements.txt
 .streamlit/
 ├── secrets.toml              ← Credenciales reales (NO en el repo)

@@ -721,7 +721,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         ltc2.markdown(kpi_card(f"Pedido óptimo · {_mes_lt}", _f_opt.strftime("%d %b %Y"), "📅"), unsafe_allow_html=True)
         ltc3.markdown(kpi_card("Días al deadline óptimo", _kpi_dias_val, "⚡", _kpi_dias_color), unsafe_allow_html=True)
 
-        st.markdown(f"""
+        st.html(f"""
 <div style="background:#0D1117;border:1px solid rgba(0,115,255,0.18);border-radius:10px;
             padding:18px 22px;margin-top:6px;">
   <div style="font-family:'Rajdhani',sans-serif;font-size:.73rem;font-weight:700;
@@ -825,7 +825,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
     </div>
   </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
         # ── Análisis del Ciclo de Valor ───────────────────────────────────────
         st.markdown("---")

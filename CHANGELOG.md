@@ -4,6 +4,12 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-06 (hotfix)
+
+- **fix(dashboard/cadena_suministro)**: El timeline visual de la sección "🚚 Cadena de Suministro — ¿Cuándo hacer el pedido?" aparecía como código HTML en bruto en la app. Causa: `st.markdown(..., unsafe_allow_html=True)` no renderizaba el bloque en Streamlit 1.50. **Fix:** reemplazado por `st.html()` (disponible desde Streamlit 1.31), la API dedicada para renderizar HTML arbitrario sin pasar por el procesador de Markdown.
+
+---
+
 ### 2026-06-06 (v41)
 
 - **feat(dashboard/recomendaciones)**: Nueva sección **"🚚 Cadena de Suministro — ¿Cuándo hacer el pedido?"** en el Tab Recomendaciones, basada en datos reales del cliente Chery 2025.

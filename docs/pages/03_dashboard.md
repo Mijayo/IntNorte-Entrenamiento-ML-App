@@ -114,9 +114,9 @@ Cada 30 segundos comprueba si hay un nuevo run en Supabase. Si aparece uno, mues
 - **Estrategia Agresiva** — IC superior × 1.20 (maximiza cobertura).
 - Señal de tendencia (últimos 3m vs histórico): CRECIENTE (+10%) → estrategia agresiva; DECRECIENTE (−10%) → conservadora; ESTABLE → predicción directa.
 
-**Cadena de Suministro — ¿Cuándo hacer el pedido?** *(nueva sección v41)*
+**Cadena de Suministro — ¿Cuándo hacer el pedido?** *(nueva sección v41 · fix hotfix 2026-06-06)*
 
-Sección accionable con datos reales Chery 2025:
+Sección accionable con datos reales Chery 2025. El timeline se renderiza con `st.html()` (en lugar de `st.markdown(..., unsafe_allow_html=True)`) para garantizar la correcta representación del HTML en Streamlit 1.50+.
 
 | Elemento | Descripción |
 |----------|-------------|
