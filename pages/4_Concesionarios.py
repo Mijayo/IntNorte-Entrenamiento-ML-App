@@ -22,6 +22,29 @@ import core.supabase_io as sio
 from core.auth_system import (guard_page, show_user_info, show_header, has_permission)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
+# ── Contorno simplificado de Perú (GeoJSON inline) ───────────────────────────
+
+_PERU_BORDER_GEOJSON = {
+    "type": "FeatureCollection",
+    "features": [{
+        "type": "Feature",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+                [-80.30, -3.40], [-80.64, -1.77], [-80.51,  0.00],
+                [-78.89, -0.27], [-75.24, -0.11], [-75.54,  0.13],
+                [-73.65, -1.26], [-72.12, -2.12], [-70.85, -4.22],
+                [-70.39, -9.67], [-72.65,-10.98], [-70.64,-11.01],
+                [-69.58,-13.98], [-69.50,-16.50], [-69.51,-17.50],
+                [-69.85,-18.30], [-70.41,-18.35], [-75.71,-16.20],
+                [-76.19,-14.00], [-77.61,-11.01], [-79.57, -8.46],
+                [-80.68, -6.24], [-81.18, -4.78], [-80.30, -3.40],
+            ]]
+        },
+        "properties": {}
+    }]
+}
+
 # ── Coordenadas de ciudades peruanas ─────────────────────────────────────────
 
 _COORDS_PERU = {
@@ -358,6 +381,13 @@ with tab_hist:
                 xanchor='left',
                 yanchor='bottom',
             ),
+            mapbox_layers=[{
+                "sourcetype": "geojson",
+                "source": _PERU_BORDER_GEOJSON,
+                "type": "line",
+                "color": "#F59E0B",
+                "line": {"width": 2},
+            }],
         )
         st.plotly_chart(fig_map, use_container_width=True, config={
             'displayModeBar': True,
