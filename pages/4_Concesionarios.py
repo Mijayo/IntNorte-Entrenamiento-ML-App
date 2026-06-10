@@ -335,7 +335,7 @@ with tab_hist:
             hover_data={'Ventas': True, '% Total': True, 'lat': False, 'lon': False},
             color_discrete_sequence=COLORS['series'][:len(df_map)],
             size_max=55,
-            zoom=4.5,
+            zoom=5.5,
             center={'lat': -9.19, 'lon': -75.0},
             mapbox_style='open-street-map',
             height=520,
