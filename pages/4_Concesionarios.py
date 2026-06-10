@@ -72,6 +72,39 @@ def _coords_concesionario(nombre: str):
     return None
 
 
+# Mapeo ciudad → nombre de departamento en el GeoJSON de GADM/naturalearth
+_CIUDAD_TO_DPTO = {
+    'lima':      'LIMA',
+    'callao':    'CALLAO',
+    'piura':     'PIURA',
+    'chiclayo':  'LAMBAYEQUE',
+    'tarapoto':  'SAN MARTIN',
+    'cajamarca': 'CAJAMARCA',
+    'trujillo':  'LA LIBERTAD',
+    'arequipa':  'AREQUIPA',
+    'cusco':     'CUSCO',
+    'iquitos':   'LORETO',
+    'huancayo':  'JUNIN',
+    'puno':      'PUNO',
+}
+
+
+@st.cache_data(show_spinner=False)
+def _get_peru_geojson():
+    import urllib.request, json
+    urls = [
+        "https://raw.githubusercontent.com/gk-8/PE_GeoJSON/master/departamentos.json",
+        "https://raw.githubusercontent.com/marcolivierardon/mapaPeru/master/departamentos.geojson",
+    ]
+    for url in urls:
+        try:
+            with urllib.request.urlopen(url, timeout=10) as r:
+                return json.loads(r.read())
+        except Exception:
+            continue
+    return None
+
+
 # ── Datos precargados ─────────────────────────────────────────────────────────
 
 def _normalizar_df(raw: pd.DataFrame) -> pd.DataFrame:
@@ -353,42 +386,137 @@ with tab_hist:
 
     if _map_rows:
         df_map = pd.DataFrame(_map_rows)
-        fig_map = px.scatter_mapbox(
-            df_map,
-            lat='lat', lon='lon',
-            size='Ventas',
-            color='Concesionario',
-            hover_name='Concesionario',
-            hover_data={'Ventas': True, '% Total': True, 'lat': False, 'lon': False},
-            color_discrete_sequence=COLORS['series'][:len(df_map)],
-            size_max=55,
-            zoom=5.5,
-            center={'lat': -9.19, 'lon': -75.0},
-            mapbox_style='open-street-map',
-            height=520,
-        )
-        fig_map.update_layout(
-            paper_bgcolor='#080D18',
-            plot_bgcolor='#080D18',
-            margin=dict(l=0, r=0, t=36, b=0),
-            legend=dict(
-                bgcolor='rgba(8,13,24,0.85)',
-                bordercolor='rgba(255,255,255,0.12)',
-                borderwidth=1,
-                font=dict(color='#C9D8E6', size=12),
-                x=0.01,
-                y=0.01,
-                xanchor='left',
-                yanchor='bottom',
-            ),
-            mapbox_layers=[{
-                "sourcetype": "geojson",
-                "source": _PERU_BORDER_GEOJSON,
-                "type": "line",
-                "color": "#F59E0B",
-                "line": {"width": 2},
-            }],
-        )
+        _geo = _get_peru_geojson()
+
+        # Detectar la clave de nombre de departamento en el GeoJSON
+        _prop_key = None
+        if _geo and _geo.get('features'):
+            _fp = _geo['features'][0].get('properties', {})
+            _prop_key = next(
+                (k for k in ['DEPARTAMEN', 'NOMBDEP', 'NAME_1', 'NOMBRE', 'NOM_DEP', 'name'] if k in _fp),
+                None
+            )
+
+        if _geo and _prop_key:
+            # ── Choropleth por departamentos ──────────────────────────────────
+            _all_depts = [f['properties'][_prop_key] for f in _geo['features']]
+            _all_upper = {d.upper(): d for d in _all_depts}
+
+            # Mapear cada concesionario a su departamento GeoJSON
+            _conc_dpto: dict[str, str] = {}
+            for row in _map_rows:
+                for ciudad, dpto_key in _CIUDAD_TO_DPTO.items():
+                    if ciudad in row['Concesionario'].lower():
+                        matched = _all_upper.get(dpto_key.upper())
+                        if matched:
+                            _conc_dpto[row['Concesionario']] = matched
+                        break
+
+            # Asignar color index a cada departamento destacado (orden desc. ventas)
+            _highlighted: dict[str, int] = {}
+            for row in sorted(_map_rows, key=lambda r: r['Ventas'], reverse=True):
+                dpto = _conc_dpto.get(row['Concesionario'])
+                if dpto and dpto not in _highlighted:
+                    _highlighted[dpto] = len(_highlighted)
+
+            fig_map = go.Figure()
+
+            # Traza base: departamentos sin concesionario (gris oscuro)
+            _bg_depts = [d for d in _all_depts if d not in _highlighted]
+            if _bg_depts:
+                fig_map.add_trace(go.Choroplethmapbox(
+                    geojson=_geo,
+                    locations=_bg_depts,
+                    z=[0] * len(_bg_depts),
+                    featureidkey=f'properties.{_prop_key}',
+                    colorscale=[[0, '#1A2742'], [1, '#1A2742']],
+                    zmin=0, zmax=1,
+                    showscale=False,
+                    showlegend=False,
+                    marker=dict(opacity=0.80, line=dict(color='rgba(160,190,220,0.20)', width=0.6)),
+                    hovertemplate='<b>%{location}</b><extra></extra>',
+                ))
+
+            # Una traza por cada departamento destacado (color propio)
+            for dpto, cidx in _highlighted.items():
+                color = COLORS['series'][cidx % len(COLORS['series'])]
+                fig_map.add_trace(go.Choroplethmapbox(
+                    geojson=_geo,
+                    locations=[dpto],
+                    z=[1],
+                    featureidkey=f'properties.{_prop_key}',
+                    colorscale=[[0, color], [1, color]],
+                    zmin=0, zmax=1,
+                    showscale=False,
+                    showlegend=False,
+                    marker=dict(opacity=0.85, line=dict(color='rgba(200,220,240,0.35)', width=0.8)),
+                    hovertemplate='<b>%{location}</b><extra></extra>',
+                ))
+
+            # Puntos + nombres encima
+            for i, row in enumerate(_map_rows):
+                color = COLORS['series'][
+                    _highlighted.get(_conc_dpto.get(row['Concesionario'], ''), i)
+                    % len(COLORS['series'])
+                ]
+                fig_map.add_trace(go.Scattermapbox(
+                    lat=[row['lat']], lon=[row['lon']],
+                    mode='markers+text',
+                    marker=dict(size=13, color='white', opacity=1.0),
+                    text=[f"  {row['Concesionario'].split()[-1].upper()}"],
+                    textposition='middle right',
+                    textfont=dict(color='white', size=12, family='Arial Black'),
+                    name=row['Concesionario'],
+                    hovertemplate=(
+                        f"<b>{row['Concesionario']}</b><br>"
+                        f"Ventas: {row['Ventas']:,}<br>"
+                        f"Share: {row['% Total']}%<extra></extra>"
+                    ),
+                ))
+
+            fig_map.update_layout(
+                mapbox_style='carto-darkmatter',
+                mapbox_zoom=4.5,
+                mapbox_center={'lat': -9.19, 'lon': -75.0},
+                paper_bgcolor='#080D18',
+                height=520,
+                margin=dict(l=0, r=0, t=36, b=0),
+                legend=dict(
+                    bgcolor='rgba(8,13,24,0.85)',
+                    bordercolor='rgba(255,255,255,0.12)',
+                    borderwidth=1,
+                    font=dict(color='#C9D8E6', size=12),
+                    title_text='Concesionario',
+                    x=0.01, y=0.01,
+                    xanchor='left', yanchor='bottom',
+                ),
+            )
+        else:
+            # Fallback: scatter sobre open-street-map si falla el fetch GeoJSON
+            fig_map = px.scatter_mapbox(
+                df_map, lat='lat', lon='lon',
+                size='Ventas', color='Concesionario',
+                hover_name='Concesionario',
+                hover_data={'Ventas': True, '% Total': True, 'lat': False, 'lon': False},
+                color_discrete_sequence=COLORS['series'][:len(df_map)],
+                size_max=55, zoom=5.5,
+                center={'lat': -9.19, 'lon': -75.0},
+                mapbox_style='open-street-map', height=520,
+            )
+            fig_map.update_layout(
+                paper_bgcolor='#080D18', plot_bgcolor='#080D18',
+                margin=dict(l=0, r=0, t=36, b=0),
+                legend=dict(
+                    bgcolor='rgba(8,13,24,0.85)', bordercolor='rgba(255,255,255,0.12)',
+                    borderwidth=1, font=dict(color='#C9D8E6', size=12),
+                    x=0.01, y=0.01, xanchor='left', yanchor='bottom',
+                ),
+                mapbox_layers=[{
+                    "sourcetype": "geojson", "source": _PERU_BORDER_GEOJSON,
+                    "type": "line", "color": "#F59E0B", "line": {"width": 2},
+                }],
+            )
+
         st.plotly_chart(fig_map, use_container_width=True, config={
             'displayModeBar': True,
             'modeBarButtonsToKeep': ['zoomInMapbox', 'zoomOutMapbox', 'resetViewMapbox'],
