@@ -347,12 +347,16 @@ with tab_hist:
         fig_map.update_layout(
             paper_bgcolor='#080D18',
             plot_bgcolor='#080D18',
-            margin=dict(l=0, r=0, t=0, b=0),
+            margin=dict(l=0, r=0, t=36, b=0),
             legend=dict(
                 bgcolor='rgba(8,13,24,0.85)',
                 bordercolor='rgba(255,255,255,0.12)',
                 borderwidth=1,
                 font=dict(color='#C9D8E6', size=12),
+                x=0.01,
+                y=0.01,
+                xanchor='left',
+                yanchor='bottom',
             ),
         )
         st.plotly_chart(fig_map, use_container_width=True, config={
