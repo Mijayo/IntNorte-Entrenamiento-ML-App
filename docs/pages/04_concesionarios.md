@@ -56,6 +56,12 @@ El estado activo se muestra en el expander **📂 Fuente de datos**, que incluye
 
 **Ventas totales por concesionario** — barras horizontales con unidades y % del total.
 
+**Mapa geográfico de Perú** — `px.scatter_mapbox` sobre tiles OpenStreetMap (sin API key).
+- Burbujas con tamaño proporcional a ventas y color por concesionario (paleta `COLORS['series']`).
+- Tooltip: nombre, unidades vendidas y % del total.
+- Matching automático: `_coords_concesionario()` busca el nombre de ciudad dentro del nombre del concesionario. Ciudades cubiertas: Lima, Callao, Piura, Chiclayo, Tarapoto, Cajamarca, Trujillo, Arequipa, Cusco, Iquitos, Huancayo, Puno.
+- Si ningún concesionario contiene una ciudad reconocible, se muestra un `st.info()` indicando que el nombre debe incluir la ciudad.
+
 **Distribución de modelos por concesionario** — barras apiladas 100% coloreadas por modelo.
 
 ---

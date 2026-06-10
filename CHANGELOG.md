@@ -4,6 +4,18 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-10
+
+- **feat(concesionarios/mapa)**: Mapa geográfico interactivo de Perú añadido al tab **📊 Resumen** de `pages/4_Concesionarios.py`, entre el gráfico de barras de ventas totales y la distribución de modelos.
+  - Renderizado con `px.scatter_mapbox` sobre tiles **OpenStreetMap** (sin API key, funciona en local y Streamlit Cloud).
+  - Burbujas con **tamaño proporcional a ventas** y **color por concesionario** (misma paleta `COLORS['series']`).
+  - Tooltip: nombre del concesionario, unidades vendidas y % del total.
+  - Matching automático nombre → coordenadas: busca el nombre de ciudad dentro del nombre del concesionario. Ciudades incluidas: Lima, Callao, Piura, Chiclayo, Tarapoto, Cajamarca, Trujillo, Arequipa, Cusco, Iquitos, Huancayo, Puno.
+  - Si ningún concesionario contiene una ciudad reconocible, se muestra un mensaje de ayuda descriptivo en lugar del mapa.
+  - Diccionario `_COORDS_PERU` y función `_coords_concesionario()` añadidos como utilidades al inicio del módulo.
+
+---
+
 ### 2026-06-06 (hotfix #4)
 
 - **ux(dashboard/vs_descartados)**: La tabla "¿Por qué se descartaron las otras familias?" reemplaza `st.dataframe` por una tabla HTML personalizada con estilos CSS inline. Mejoras: (1) fila SARIMA destacada en verde con badge **✓ SELECCIONADO**, filas descartadas en gris oscuro con badge **✗ DESCARTADO**; (2) columnas "Por qué ganó" / "Por qué no" unificadas en una sola columna "Veredicto" con texto completo sin truncar; (3) badges de familia con color propio (azul violeta) para distinguir visualmente "Serie Temporal" de "ML — lag features"; (4) tags secundarios (`(p,d,q)(P,D,Q)[12]`, `Pearson`, `lag_12`) en azul tenue para desambiguar sin saturar; (5) hover brightness para facilitar la lectura fila a fila.

@@ -22,6 +22,33 @@ import core.supabase_io as sio
 from core.auth_system import (guard_page, show_user_info, show_header, has_permission)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
+# ── Coordenadas de ciudades peruanas ─────────────────────────────────────────
+
+_COORDS_PERU = {
+    'lima':      (-12.0464, -77.0428),
+    'callao':    (-12.0565, -77.1197),
+    'piura':     (-5.1945,  -80.6328),
+    'chiclayo':  (-6.7714,  -79.8409),
+    'tarapoto':  (-6.4870,  -76.3710),
+    'cajamarca': (-7.1638,  -78.5128),
+    'trujillo':  (-8.1116,  -79.0287),
+    'arequipa':  (-16.4090, -71.5375),
+    'cusco':     (-13.5319, -71.9675),
+    'iquitos':   (-3.7489,  -73.2500),
+    'huancayo':  (-12.0653, -75.2049),
+    'puno':      (-15.8422, -70.0199),
+}
+
+
+def _coords_concesionario(nombre: str):
+    """Devuelve (lat, lon) buscando nombre de ciudad dentro del nombre del concesionario."""
+    n = nombre.lower()
+    for ciudad, coords in _COORDS_PERU.items():
+        if ciudad in n:
+            return coords
+    return None
+
+
 # ── Datos precargados ─────────────────────────────────────────────────────────
 
 def _normalizar_df(raw: pd.DataFrame) -> pd.DataFrame:
@@ -281,6 +308,55 @@ with tab_hist:
         showlegend=False,
     )
     st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+
+    # Mapa geográfico de concesionarios
+    st.markdown(section_header("Ubicación Geográfica de Concesionarios", "🗺️"), unsafe_allow_html=True)
+
+    _map_rows = []
+    for conc, ventas in ventas_por_conc.items():
+        coords = _coords_concesionario(conc)
+        if coords:
+            _map_rows.append({
+                'Concesionario': conc,
+                'Ventas': int(ventas),
+                'lat': coords[0],
+                'lon': coords[1],
+                '% Total': round(ventas / ventas_por_conc.sum() * 100, 1),
+            })
+
+    if _map_rows:
+        df_map = pd.DataFrame(_map_rows)
+        fig_map = px.scatter_mapbox(
+            df_map,
+            lat='lat', lon='lon',
+            size='Ventas',
+            color='Concesionario',
+            hover_name='Concesionario',
+            hover_data={'Ventas': True, '% Total': True, 'lat': False, 'lon': False},
+            color_discrete_sequence=COLORS['series'][:len(df_map)],
+            size_max=55,
+            zoom=4.5,
+            center={'lat': -9.19, 'lon': -75.0},
+            mapbox_style='open-street-map',
+            height=520,
+        )
+        fig_map.update_layout(
+            paper_bgcolor='#080D18',
+            plot_bgcolor='#080D18',
+            margin=dict(l=0, r=0, t=0, b=0),
+            legend=dict(
+                bgcolor='rgba(8,13,24,0.85)',
+                bordercolor='rgba(255,255,255,0.12)',
+                borderwidth=1,
+                font=dict(color='#C9D8E6', size=12),
+            ),
+        )
+        st.plotly_chart(fig_map, use_container_width=True, config={'displayModeBar': False})
+    else:
+        st.info(
+            "ℹ️ No se identificaron ciudades en los nombres de los concesionarios. "
+            "Para mostrar el mapa, el nombre debe incluir la ciudad (ej. 'Lima', 'Piura', 'Chiclayo')."
+        )
 
     # Distribución de modelos por concesionario
     if modelo_col:
