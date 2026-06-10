@@ -355,7 +355,11 @@ with tab_hist:
                 font=dict(color='#C9D8E6', size=12),
             ),
         )
-        st.plotly_chart(fig_map, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_map, use_container_width=True, config={
+            'displayModeBar': True,
+            'modeBarButtonsToKeep': ['zoomInMapbox', 'zoomOutMapbox', 'resetViewMapbox'],
+            'displaylogo': False,
+        })
     else:
         st.info(
             "ℹ️ No se identificaron ciudades en los nombres de los concesionarios. "
