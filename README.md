@@ -545,7 +545,7 @@ Página independiente disponible para **Admin**, **Analista** y **Manager**. Com
 
 | Tab | Descripción |
 |-----|-------------|
-| 📊 Resumen | Barras horizontales de ventas totales + **mapa geográfico de Perú** (burbujas por ciudad, tamaño ∝ ventas) + mix de modelos apilado por concesionario |
+| 📊 Resumen | Barras horizontales de ventas totales + **mapa geográfico de Perú** (burbujas por ciudad, tamaño ∝ ventas; zoom 5.5; controlador **+/−/reset** en esquina superior derecha) + mix de modelos apilado por concesionario |
 | 📈 Evolución Mensual | Líneas por concesionario, share % 100% stacked area, variación MoM agrupada |
 | 🔮 Predicciones por Tienda | KPIs próximo mes, gráfico histórico + predicción con IC 95%, barras de horizonte completo, tabla exportable |
 | 📋 Detalle | Ranking acumulado + pivot mensual exportable |

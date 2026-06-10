@@ -350,7 +350,7 @@ Página independiente que combina el análisis histórico de ventas por tienda c
 
 **Filtros disponibles (barra lateral):** año, modelo de vehículo, concesionarios a incluir.
 
-**Tab 📊 Resumen:** barras horizontales de ventas totales por tienda con porcentaje del total + **mapa geográfico interactivo de Perú** (burbujas proporcionales a ventas, coloreadas por concesionario, con tooltip de unidades y % del total; el matching ciudad → coordenada es automático a partir del nombre del concesionario) + gráfico de mix de modelos apilado por concesionario.
+**Tab 📊 Resumen:** barras horizontales de ventas totales por tienda con porcentaje del total + **mapa geográfico interactivo de Perú** (burbujas proporcionales a ventas, coloreadas por concesionario, con tooltip de unidades y % del total; el matching ciudad → coordenada es automático a partir del nombre del concesionario; controlador de zoom **+/−/reset** en la esquina superior derecha del mapa; scroll y drag también disponibles) + gráfico de mix de modelos apilado por concesionario.
 
 **Tab 📈 Evolución Mensual:** evolución mensual con líneas por tienda, gráfico de share de mercado mensual en área 100% apilada, y barras de variación MoM agrupada por concesionario.
 

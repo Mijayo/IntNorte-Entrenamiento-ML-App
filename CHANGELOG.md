@@ -4,6 +4,13 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-10 (hotfix #2)
+
+- **ux(concesionarios/mapa)**: Zoom inicial del mapa de Perú aumentado de `4.5` → `5.5` para mostrar los concesionarios más próximos al visualizar la página.
+- **feat(concesionarios/mapa)**: Controlador de zoom nativo añadido al mapa. La barra de herramientas del mapa muestra tres botones (**+**, **−**, **reset vista**) en la esquina superior derecha mediante `modeBarButtonsToKeep: ['zoomInMapbox', 'zoomOutMapbox', 'resetViewMapbox']`. El scroll con ratón y el drag para desplazar el mapa siguen operativos.
+
+---
+
 ### 2026-06-10
 
 - **feat(concesionarios/mapa)**: Mapa geográfico interactivo de Perú añadido al tab **📊 Resumen** de `pages/4_Concesionarios.py`, entre el gráfico de barras de ventas totales y la distribución de modelos.
