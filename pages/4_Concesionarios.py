@@ -472,8 +472,7 @@ with tab_hist:
                 fig_map.add_trace(go.Scattermapbox(
                     lat=[row['lat']], lon=[row['lon']],
                     mode='markers+text',
-                    marker=dict(size=13, color=color, opacity=1.0,
-                                line=dict(color='white', width=1.5)),
+                    marker=dict(size=13, color=color, opacity=1.0),
                     text=[f"  {row['Concesionario'].split()[-1].upper()}"],
                     textposition='middle right',
                     textfont=dict(color='white', size=12, family='Arial Black'),
