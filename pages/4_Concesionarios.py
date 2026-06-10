@@ -406,6 +406,14 @@ with tab_hist:
                 None
             )
 
+        # Paleta extendida para el mapa (>8 colores garantiza unicidad)
+        _MAP_COLORS = [
+            '#0073FF', '#C2FF00', '#00F5A0', '#FF3A5C',
+            '#A78BFA', '#F97316', '#38BDF8', '#FB7185',
+            '#FBBF24', '#34D399', '#E879F9', '#F43F5E',
+            '#22D3EE', '#84CC16', '#FB923C', '#818CF8',
+        ]
+
         if _geo and _prop_key:
             # ── Choropleth por departamentos ──────────────────────────────────
             _all_depts = [f['properties'][_prop_key] for f in _geo['features']]
@@ -449,7 +457,7 @@ with tab_hist:
 
             # Una traza por cada departamento destacado (color propio)
             for dpto, cidx in _highlighted.items():
-                color = COLORS['series'][cidx % len(COLORS['series'])]
+                color = _MAP_COLORS[cidx % len(_MAP_COLORS)]
                 fig_map.add_trace(go.Choroplethmapbox(
                     geojson=_geo,
                     locations=[dpto],
@@ -465,9 +473,9 @@ with tab_hist:
 
             # Puntos + nombres encima
             for i, row in enumerate(_map_rows):
-                color = COLORS['series'][
+                color = _MAP_COLORS[
                     _highlighted.get(_conc_dpto.get(row['Concesionario'], ''), i)
-                    % len(COLORS['series'])
+                    % len(_MAP_COLORS)
                 ]
                 fig_map.add_trace(go.Scattermapbox(
                     lat=[row['lat']], lon=[row['lon']],
