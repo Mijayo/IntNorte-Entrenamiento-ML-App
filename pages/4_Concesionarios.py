@@ -228,27 +228,31 @@ if not conc_col or len(df_raw) == 0:
     st.error("⚠️ No se encontró columna CONCESIONARIO o no hay registros CHERY.")
     st.stop()
 
-# ── Filtros sidebar ───────────────────────────────────────────────────────────
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Filtros**")
+# ── Filtros inline ────────────────────────────────────────────────────────────
 
 df = df_raw.copy()
+_f1, _f2, _f3 = st.columns([2, 2, 4])
 
 if fecha_col:
     years_all = sorted(df[fecha_col].dt.year.dropna().unique().astype(int), reverse=True)
-    years_sel = st.sidebar.multiselect("Año", years_all, default=years_all)
+    years_sel = _f1.multiselect("", years_all, default=years_all,
+                                placeholder="Año", label_visibility="collapsed")
     if years_sel:
         df = df[df[fecha_col].dt.year.isin(years_sel)]
+else:
+    years_sel = []
 
 if modelo_col:
     modelos_all = ['Todos'] + sorted(df[modelo_col].dropna().unique())
-    modelo_sel = st.sidebar.selectbox("Modelo", modelos_all)
+    modelo_sel = _f2.selectbox("", modelos_all, label_visibility="collapsed")
     if modelo_sel != 'Todos':
         df = df[df[modelo_col] == modelo_sel]
+else:
+    modelo_sel = 'Todos'
 
 concs_all = sorted(df[conc_col].dropna().unique())
-concs_sel = st.sidebar.multiselect("Concesionarios", concs_all, default=concs_all)
+concs_sel = _f3.multiselect("", concs_all, default=concs_all,
+                            placeholder="Concesionarios", label_visibility="collapsed")
 if concs_sel:
     df = df[df[conc_col].isin(concs_sel)]
 
