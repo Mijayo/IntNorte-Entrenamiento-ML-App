@@ -72,34 +72,43 @@ def _coords_concesionario(nombre: str):
     return None
 
 
-# Mapeo ciudad → nombre de departamento en el GeoJSON de GADM/naturalearth
+# Mapeo ciudad → nombre de departamento (normalizado sin acentos)
 _CIUDAD_TO_DPTO = {
-    'lima':      'LIMA',
-    'callao':    'CALLAO',
-    'piura':     'PIURA',
-    'chiclayo':  'LAMBAYEQUE',
-    'tarapoto':  'SAN MARTIN',
-    'cajamarca': 'CAJAMARCA',
-    'trujillo':  'LA LIBERTAD',
-    'arequipa':  'AREQUIPA',
-    'cusco':     'CUSCO',
-    'iquitos':   'LORETO',
-    'huancayo':  'JUNIN',
-    'puno':      'PUNO',
+    'lima':      'Lima',
+    'callao':    'Lima',
+    'piura':     'Piura',
+    'chiclayo':  'Lambayeque',
+    'tarapoto':  'San Martin',
+    'cajamarca': 'Cajamarca',
+    'trujillo':  'La Libertad',
+    'arequipa':  'Arequipa',
+    'cusco':     'Cusco',
+    'iquitos':   'Loreto',
+    'huancayo':  'Junin',
+    'puno':      'Puno',
 }
+
+
+def _norm_dpto(s: str) -> str:
+    """Normaliza a ASCII uppercase para comparación insensible a acentos."""
+    import unicodedata
+    return unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode('ascii').upper()
 
 
 @st.cache_data(show_spinner=False)
 def _get_peru_geojson():
     import urllib.request, json
+    # GADM 4.1 — fuente oficial, property NAME_1 = nombre del departamento
     urls = [
-        "https://raw.githubusercontent.com/gk-8/PE_GeoJSON/master/departamentos.json",
-        "https://raw.githubusercontent.com/marcolivierardon/mapaPeru/master/departamentos.geojson",
+        "https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_PER_1.json",
+        "https://raw.githubusercontent.com/juliansotelo/peruviandatasets/master/peruviandatasets/geo/departamentos.json",
     ]
     for url in urls:
         try:
-            with urllib.request.urlopen(url, timeout=10) as r:
-                return json.loads(r.read())
+            with urllib.request.urlopen(url, timeout=20) as r:
+                data = json.loads(r.read())
+                if data.get('features'):
+                    return data
         except Exception:
             continue
     return None
@@ -400,14 +409,15 @@ with tab_hist:
         if _geo and _prop_key:
             # ── Choropleth por departamentos ──────────────────────────────────
             _all_depts = [f['properties'][_prop_key] for f in _geo['features']]
-            _all_upper = {d.upper(): d for d in _all_depts}
+            # Índice normalizado (sin acentos, uppercase) → nombre real en GeoJSON
+            _all_norm = {_norm_dpto(d): d for d in _all_depts}
 
             # Mapear cada concesionario a su departamento GeoJSON
             _conc_dpto: dict[str, str] = {}
             for row in _map_rows:
                 for ciudad, dpto_key in _CIUDAD_TO_DPTO.items():
                     if ciudad in row['Concesionario'].lower():
-                        matched = _all_upper.get(dpto_key.upper())
+                        matched = _all_norm.get(_norm_dpto(dpto_key))
                         if matched:
                             _conc_dpto[row['Concesionario']] = matched
                         break
