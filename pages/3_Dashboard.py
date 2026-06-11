@@ -30,6 +30,27 @@ import core.supabase_io as sio
 from core.auth_system import (guard_page, show_user_info, has_permission, show_header)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
+_MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+             'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+_MESES_EN = ['January','February','March','April','May','June',
+             'July','August','September','October','November','December']
+_MESES_EN_ABBR = ['Jan','Feb','Mar','Apr','May','Jun',
+                  'Jul','Aug','Sep','Oct','Nov','Dec']
+
+def _mes_es(dt: pd.Timestamp, fmt: str = 'largo') -> str:
+    """Devuelve nombre del mes en español. fmt='largo' → 'Julio 2026', 'corto' → '08 Jul 2026'."""
+    nombre = _MESES_ES[dt.month - 1]
+    abrev  = nombre[:3]
+    if fmt == 'largo':
+        return f"{nombre} {dt.year}"
+    return dt.strftime('%d ') + abrev + dt.strftime(' %Y')
+
+def _traducir_mes(texto: str) -> str:
+    """Traduce nombres de mes en inglés a español en un string (ej. 'July 2026' → 'Julio 2026')."""
+    for en, es in zip(_MESES_EN, _MESES_ES):
+        texto = texto.replace(en, es)
+    return texto
+
 # ── Config ───────────────────────────────────────────────────────────────────
 
 st.set_page_config(
@@ -221,6 +242,21 @@ def _build_llm_context(run_name: str) -> str:
     _ultimos_3  = hist_total.iloc[-3:].mean()
     _tendencia_pct = ((_ultimos_3 - _prom_hist) / _prom_hist) * 100
     _cfg        = metricas.get('configuracion', {})
+
+    # Cadena de suministro: ventanas de pedido para cada mes del horizonte
+    _LT_MIN, _LT_AVG, _LT_MAX = 15, 23, 30
+    _sc_lines = []
+    for _, row in pred_total.iterrows():
+        _f_inicio = pd.Timestamp(row['Fecha'])
+        _f_cons = _f_inicio - pd.Timedelta(days=_LT_MAX)
+        _f_opt  = _f_inicio - pd.Timedelta(days=_LT_AVG)
+        _f_agr  = _f_inicio - pd.Timedelta(days=_LT_MIN)
+        _sc_lines.append(
+            f"  {row['Mes']}: conservador={_f_cons.strftime('%d %b %Y')}, "
+            f"óptimo={_f_opt.strftime('%d %b %Y')}, "
+            f"agresivo={_f_agr.strftime('%d %b %Y')}"
+        )
+
     return (
         f"Modelo SARIMA{_orden}{_orden_est}\n"
         f"AIC: {metricas['mejor_modelo']['aic']:.2f}  |  "
@@ -228,7 +264,13 @@ def _build_llm_context(run_name: str) -> str:
         f"MAPE (walk-forward): {_mape:.2f}%\n"
         f"Próxima predicción: {_proximo:.1f} uds "
         f"[IC 95%: {_ic_inf:.1f}–{_ic_sup:.1f}]\n"
-        f"Tendencia reciente vs histórico: {_tendencia_pct:+.1f}%"
+        f"Tendencia reciente vs histórico: {_tendencia_pct:+.1f}%\n\n"
+        f"## CADENA DE SUMINISTRO CHERY\n"
+        f"Lead time: mínimo {_LT_MIN}d · promedio {_LT_AVG}d · máximo {_LT_MAX}d\n"
+        f"Financiación: 0% interés primeros 60 días en stock; 8% anual desde día 61.\n"
+        f"Ruta logística: Puerto Callao → Almacén Lima → Piura/Chiclayo → (Tarapoto/Cajamarca opt.)\n"
+        f"Ventanas de pedido por mes (para tener stock el día 1 del mes objetivo):\n"
+        + "\n".join(_sc_lines)
     )
 
 context_tiggo = _build_llm_context(selected_run)
@@ -580,7 +622,9 @@ Es la estimación más honesta del error real del sistema.
     with col_t2:
         st.subheader("🔄 Walk-forward (caso de uso real)")
         wf_show = walk_forward.copy()
-        wf_show['fecha'] = wf_show['fecha'].dt.strftime('%B %Y')
+        wf_show['fecha'] = wf_show['fecha'].apply(
+            lambda d: f"{_MESES_ES[d.month-1]} {d.year}"
+        )
         wf_show.columns = ['Mes', 'Real', 'Predicción', 'Error Abs', 'Error %']
         st.dataframe(
             wf_show.style
@@ -752,9 +796,10 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
 
         _kpi_dias_val   = f"Hace {-_dr}d ⚠️" if _dr < 0 else ("¡Hoy!" if _dr == 0 else f"{_dr} días")
         _kpi_dias_color = "red" if _dr <= 0 else ("amber" if _dr < 7 else "")
+        _mes_lt_es = _traducir_mes(_mes_lt)
         ltc1, ltc2, ltc3 = st.columns(3)
         ltc1.markdown(kpi_card("Lead time promedio Chery", "22–24 días", "⏱️", "blue"), unsafe_allow_html=True)
-        ltc2.markdown(kpi_card(f"Pedido óptimo · {_mes_lt}", _f_opt.strftime("%d %b %Y"), "📅"), unsafe_allow_html=True)
+        ltc2.markdown(kpi_card(f"Pedido óptimo · {_mes_lt_es}", _mes_es(_f_opt, 'corto'), "📅"), unsafe_allow_html=True)
         ltc3.markdown(kpi_card("Días al deadline óptimo", _kpi_dias_val, "⚡", _kpi_dias_color), unsafe_allow_html=True)
 
         st.html(f"""
@@ -762,7 +807,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
             padding:18px 22px;margin-top:6px;">
   <div style="font-family:'Rajdhani',sans-serif;font-size:.73rem;font-weight:700;
               color:#3B82F6;text-transform:uppercase;letter-spacing:.12em;margin-bottom:16px;">
-    Ventana de pedido para {_mes_lt} · {int(_proximo_sc)} uds proyectadas
+    Ventana de pedido para {_mes_lt_es} · {int(_proximo_sc)} uds proyectadas
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 22px 1fr 22px 1fr 22px 1fr;
@@ -775,7 +820,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         ✅ Conservador
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
-        {_f_cons.strftime("%d %b")}
+        {_f_cons.strftime("%d")} {_MESES_ES[_f_cons.month-1][:3]}
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
         –{_LT_MAX} días
@@ -791,7 +836,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         ⭐ Óptimo
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
-        {_f_opt.strftime("%d %b")}
+        {_f_opt.strftime("%d")} {_MESES_ES[_f_opt.month-1][:3]}
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
         –{_LT_AVG} días (media 2025)
@@ -807,7 +852,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         ⚡ Agresivo
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
-        {_f_agr.strftime("%d %b")}
+        {_f_agr.strftime("%d")} {_MESES_ES[_f_agr.month-1][:3]}
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
         –{_LT_MIN} días (mín. histórico)
@@ -823,10 +868,10 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         🎯 Inicio mes
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
-        {_fecha_lt.strftime("%d %b")}
+        {_fecha_lt.strftime("%d")} {_MESES_ES[_fecha_lt.month-1][:3]}
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
-        {_mes_lt}
+        {_mes_lt_es}
       </div>
     </div>
 
@@ -1106,7 +1151,9 @@ if st.session_state.role in ['admin', 'analyst']:
         st.plotly_chart(fig_wf, use_container_width=True, config={'displayModeBar': False})
 
         wf_display = walk_forward.copy()
-        wf_display['fecha'] = wf_display['fecha'].dt.strftime('%B %Y')
+        wf_display['fecha'] = wf_display['fecha'].apply(
+            lambda d: f"{_MESES_ES[d.month-1]} {d.year}"
+        )
         wf_display.columns = ['Mes', 'Real', 'Predicción', 'Error Abs', 'Error %']
         st.dataframe(
             wf_display.style

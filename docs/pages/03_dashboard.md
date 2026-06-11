@@ -114,16 +114,16 @@ Cada 30 segundos comprueba si hay un nuevo run en Supabase. Si aparece uno, mues
 - **Estrategia Agresiva** — IC superior × 1.20 (maximiza cobertura).
 - Señal de tendencia (últimos 3m vs histórico): CRECIENTE (+10%) → estrategia agresiva; DECRECIENTE (−10%) → conservadora; ESTABLE → predicción directa.
 
-**Cadena de Suministro — ¿Cuándo hacer el pedido?** *(nueva sección v41 · fix hotfix 2026-06-06)*
+**Cadena de Suministro — ¿Cuándo hacer el pedido?** *(nueva sección v41 · fix hotfix 2026-06-06 · i18n fix 2026-06-11)*
 
-Sección accionable con datos reales Chery 2025. El timeline se renderiza con `st.html()` (en lugar de `st.markdown(..., unsafe_allow_html=True)`) para garantizar la correcta representación del HTML en Streamlit 1.50+.
+Sección accionable con datos reales Chery 2025. El timeline se renderiza con `st.html()` (en lugar de `st.markdown(..., unsafe_allow_html=True)`) para garantizar la correcta representación del HTML en Streamlit 1.50+. Los nombres de mes se muestran en español mediante el helper `_traducir_mes()` aplicado sobre la columna `'Mes'` de `pred_total` *(fix i18n 2026-06-11)*.
 
 | Elemento | Descripción |
 |----------|-------------|
 | KPI Lead time | "22–24 días" (promedio real 2025) |
-| KPI Pedido óptimo | Fecha calculada como `Fecha_inicio_mes - 23 días` |
+| KPI Pedido óptimo | Fecha calculada como `Fecha_inicio_mes - 23 días` (mostrada en español con `_mes_es()`) |
 | KPI Días al deadline | Días hasta el deadline óptimo, con semáforo (verde / ámbar / rojo) |
-| Timeline visual | 4 hitos: Conservador (–30d), Óptimo (–23d), Agresivo (–15d), Inicio del mes |
+| Timeline visual | 4 hitos: Conservador (–30d), Óptimo (–23d), Agresivo (–15d), Inicio del mes — fechas usando `_MESES_ES[dt.month-1][:3]` |
 | Mapa logístico | Puerto Callao → Almacén Lima → Piura/Chiclayo → Tarapoto/Cajamarca *(opt.)* |
 | Nota financiera | 0% interés primeros 60 días en stock → 8% anual a partir del día 61 |
 
@@ -189,11 +189,13 @@ Muestra los resultados de la Comparativa ML para el run activo:
 
 Consulta en lenguaje natural a **Gemini 2.5 Flash** sobre el modelo activo.
 
-**Construcción del contexto:** la función `_build_llm_context(run_name)` (`@st.cache_data ttl=300`) llama a `sio.load_precargados` internamente y construye el string de contexto una sola vez por run y por TTL. El string incluye:
+**Construcción del contexto:** la función `_build_llm_context(run_name)` (`@st.cache_data ttl=300`) llama a `sio.load_precargados` internamente y construye el string de contexto una sola vez por run y por TTL. El string incluye *(ampliado 2026-06-11)*:
 - Modelo SARIMA y parámetros (order, seasonal_order).
 - AIC, BIC, MAPE walk-forward.
 - Próxima predicción e IC 95% a 1 decimal.
 - Tendencia reciente vs histórico (%).
+- **Cadena de suministro Chery:** lead times (mín. 15d · promedio 23d · máx. 30d), financiación (0% interés primeros 60d, 8% anual desde el día 61), ruta logística.
+- **Ventanas de pedido por mes:** para cada mes del horizonte, las tres fechas (conservadora, óptima, agresiva) calculadas dinámicamente a partir de `pred_total`.
 
 **Caché LLM:** las respuestas se cachean en Supabase por run (`sio.load_llm_cache` / `sio.save_llm_cache`). Si el mismo run ya tiene respuestas guardadas, se recuperan instantáneamente sin llamar a la API.
 
@@ -205,3 +207,4 @@ Consulta en lenguaje natural a **Gemini 2.5 Flash** sobre el modelo activo.
 **Ejemplos de preguntas (rol gerente):**
 - *"¿Debería pedir más o menos unidades que el mes pasado?"*
 - *"¿Cuál es el rango realista de ventas para el próximo mes?"*
+- *"¿Cuándo tengo que hacer el pedido para el mes de julio?"*

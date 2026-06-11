@@ -1048,7 +1048,7 @@ Observando cómo evoluciona el error mensual podemos estimar cuándo el modelo e
 
                 predicciones = pd.DataFrame({
                     'Fecha': fechas_futuras,
-                    'Mes': fechas_futuras.strftime('%B %Y'),
+                    'Mes': [f"{['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][d.month-1]} {d.year}" for d in fechas_futuras],
                     'Predicción': forecast.values.round(1),
                     'IC_Inferior': conf_int.iloc[:, 0].values.round(1),
                     'IC_Superior': conf_int.iloc[:, 1].values.round(1)

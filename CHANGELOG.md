@@ -4,6 +4,19 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-11 (v2) — i18n español + contexto cadena de suministro en asistente IA
+
+#### `pages/3_Dashboard.py`
+
+- **fix(i18n)**: Todos los nombres de mes en el Dashboard ahora se muestran en español. Causa raíz: `strftime('%B %Y')` y `strftime('%b %Y')` usan la locale del sistema operativo (inglés en macOS/Linux), produciendo "July 2026" en lugar de "Julio 2026". Fix: añadidos helpers `_MESES_ES`, `_traducir_mes()` y `_mes_es()` al inicio del módulo; todos los `strftime('%b')` y `strftime('%B')` en la sección de cadena de suministro y en las tablas walk-forward (Tab Predicciones y Tab Walk-Forward) reemplazados por indexación directa en `_MESES_ES[dt.month - 1]`.
+- **feat(asistente_ia)**: El contexto enviado al LLM (Gemini 2.5 Flash) ahora incluye los datos de cadena de suministro Chery: lead times (mín. 15d · promedio 23d · máx. 30d), términos de financiación (0% interés primeros 60 días, 8% anual desde el día 61), ruta logística (Callao → Lima → Piura/Chiclayo → Tarapoto/Cajamarca) y las ventanas de pedido calculadas dinámicamente para cada mes del horizonte de predicción (fechas conservadora, óptima y agresiva). Antes, preguntas como "¿Cuándo tengo que hacer el pedido para julio?" recibían una respuesta incorrecta indicando que la información estaba fuera de alcance.
+
+#### `pages/1_Entrenamiento.py`
+
+- **fix(i18n)**: La columna `'Mes'` de `predicciones` ahora se genera en español (`'Julio 2026'` en lugar de `'July 2026'`) tanto al mostrar en pantalla como al guardar en Supabase. Fix aplicado en la construcción del DataFrame de predicciones futuras (línea que usaba `fechas_futuras.strftime('%B %Y')`).
+
+---
+
 ### 2026-06-11 — Optimización de caché (perf)
 
 #### `core/supabase_io.py`
