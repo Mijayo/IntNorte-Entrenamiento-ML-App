@@ -1095,13 +1095,22 @@ if st.session_state.role == 'manager':
         if gemini is None:
             st.error("⚠️ Configura `GENAI_API_KEY` en `.streamlit/secrets.toml` para usar el asistente.")
         else:
-            with st.form(key='form_llm_tiggo_manager', border=False):
-                question_m = st.text_input(
-                    placeholder='Ej: ¿Cuántas unidades debería pedir para el próximo trimestre?',
-                    key='input_llm_tiggo_manager', label='', label_visibility='collapsed',
-                    max_chars=500
-                )
-                btn_m = st.form_submit_button('Consultar al asistente')
+            _col_form_m, _col_clear_m = st.columns([5, 1])
+            with _col_form_m:
+                with st.form(key='form_llm_tiggo_manager', border=False):
+                    question_m = st.text_input(
+                        placeholder='Ej: ¿Cuántas unidades debería pedir para el próximo trimestre?',
+                        key='input_llm_tiggo_manager', label='', label_visibility='collapsed',
+                        max_chars=500
+                    )
+                    btn_m = st.form_submit_button('Consultar al asistente')
+            with _col_clear_m:
+                st.write("")
+                if st.button("🗑️ Limpiar caché", key='clear_cache_manager',
+                             help="Borra las respuestas guardadas y fuerza nuevas consultas a la IA"):
+                    st.session_state.cache_llm_tiggo = {}
+                    sio.save_llm_cache(selected_run, {})
+                    st.toast("Caché de respuestas borrada", icon="🗑️")
 
             if btn_m and question_m:
                 if question_m not in st.session_state.cache_llm_tiggo:
@@ -1408,13 +1417,22 @@ if st.session_state.role in ['admin', 'analyst']:
         if gemini is None:
             st.error("⚠️ Configura `GENAI_API_KEY` en `.streamlit/secrets.toml` para usar el asistente.")
         else:
-            with st.form(key='form_llm_tiggo_analyst', border=False):
-                question_a = st.text_input(
-                    placeholder='Ej: ¿Qué significa el MAPE obtenido? ¿Es fiable la predicción?',
-                    key='input_llm_tiggo_analyst', label='', label_visibility='collapsed',
-                    max_chars=500
-                )
-                btn_a = st.form_submit_button('Consultar al asistente')
+            _col_form_a, _col_clear_a = st.columns([5, 1])
+            with _col_form_a:
+                with st.form(key='form_llm_tiggo_analyst', border=False):
+                    question_a = st.text_input(
+                        placeholder='Ej: ¿Qué significa el MAPE obtenido? ¿Es fiable la predicción?',
+                        key='input_llm_tiggo_analyst', label='', label_visibility='collapsed',
+                        max_chars=500
+                    )
+                    btn_a = st.form_submit_button('Consultar al asistente')
+            with _col_clear_a:
+                st.write("")
+                if st.button("🗑️ Limpiar caché", key='clear_cache_analyst',
+                             help="Borra las respuestas guardadas y fuerza nuevas consultas a la IA"):
+                    st.session_state.cache_llm_tiggo = {}
+                    sio.save_llm_cache(selected_run, {})
+                    st.toast("Caché de respuestas borrada", icon="🗑️")
 
             if btn_a and question_a:
                 if question_a not in st.session_state.cache_llm_tiggo:
