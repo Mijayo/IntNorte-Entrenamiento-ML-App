@@ -189,13 +189,8 @@ _CARDS = [
 _render_hero(_order_str)
 _render_context()
 
-for i in range(0, len(_CARDS), 3):
-    cols = st.columns(3)
-    for col, card in zip(cols, _CARDS[i : i + 3]):
-        with col:
-            st.markdown(_render_card(card), unsafe_allow_html=True)
-    if i + 3 < len(_CARDS):
-        st.markdown('<div style="margin-top:28px;"></div>', unsafe_allow_html=True)
+_cards_html = "".join(_render_card(c) for c in _CARDS)
+st.markdown(f'<div class="cards-grid">{_cards_html}</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="home-footer">

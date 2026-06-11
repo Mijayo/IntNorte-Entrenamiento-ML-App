@@ -4,6 +4,25 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-11 (perf) — Optimización de latencia de carga del frontend
+
+#### `core/styles.py`
+
+- **perf(fonts)**: Eliminados los `@import url(...)` de Google Fonts dentro de los bloques `<style>` en `get_global_css()` y `get_login_css()`. Los `@import` dentro de `<style>` son render-blocking: el navegador no pinta nada hasta recibir la respuesta de la CDN. Reemplazados por `<link rel="preconnect">` + `<link rel="stylesheet">` inyectados desde la nueva función `get_font_links()`, que abre el túnel TCP/TLS con anticipación y permite que el render avance en paralelo.
+- **perf(css-constants)**: Las tres funciones CSS (`get_global_css`, `get_home_css`, `get_login_css`) ahora devuelven constantes de módulo (`_GLOBAL_CSS`, `_HOME_CSS`, `_LOGIN_CSS`) construidas una sola vez al importar el módulo. Antes reconstruían el string de ~800 líneas en cada rerun de Streamlit.
+- **feat(cards-grid)**: Añadida clase `.cards-grid` al CSS home con `display:grid; grid-template-columns:repeat(3,1fr)` y breakpoints responsive (`2col` < 900px, `1col` < 580px).
+
+#### `core/auth_system.py`
+
+- **perf(login)**: Eliminado `time.sleep(0.8)` tras autenticación exitosa — quitaba 800ms artificiales entre el click de "Ingresar" y la carga de la app sin ningún beneficio funcional.
+- **perf(fonts)**: `show_header()` y `show_login_page()` ahora inyectan `get_font_links()` antes del CSS para activar los preconnect hints en cada página.
+
+#### `app_principal.py`
+
+- **perf(render)**: Las 6 llamadas individuales a `st.markdown` + 2 `st.columns` para las feature cards reemplazadas por una única llamada con un `<div class="cards-grid">` que contiene el HTML de todas las cards concatenado. Reduce el overhead del árbol de componentes de Streamlit y elimina el DOM diffing repetido.
+
+---
+
 ### 2026-06-11 (hotfix) — fechas de pedido corregidas + alineación botón caché
 
 #### `pages/3_Dashboard.py`

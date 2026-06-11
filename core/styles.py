@@ -95,14 +95,27 @@ def section_header(text, icon=''):
 </div>"""
 
 
+# ── Font preload links (inject once, before any CSS) ─────────────────────────
+
+_FONT_LINKS = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?'
+    'family=Rajdhani:wght@400;500;600;700'
+    '&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,300'
+    '&display=swap">'
+)
+
+
+def get_font_links() -> str:
+    """Preconnect + stylesheet <link> tags — inject once per page before CSS."""
+    return _FONT_LINKS
+
+
 # ── CSS Global ────────────────────────────────────────────────────────────────
 
-def get_global_css():
-    """CSS completo — tema Telemetría (inyectar con st.markdown)."""
-    return """
+_GLOBAL_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,300&display=swap');
-
 :root {
   --c-bg:      #0D0C0A;
   --c-surface: #131210;
@@ -481,11 +494,13 @@ footer    { visibility: hidden; }
 </style>"""
 
 
+def get_global_css() -> str:
+    return _GLOBAL_CSS
+
+
 # ── CSS Home ──────────────────────────────────────────────────────────────────
 
-def get_home_css():
-    """CSS específico de la página de inicio — hero, contexto y grid KPIs."""
-    return """
+_HOME_CSS = """
 <style>
 .home-hero {
   padding: 44px 0 40px;
@@ -567,6 +582,20 @@ def get_home_css():
   color: var(--c-muted); text-transform: uppercase; letter-spacing: .12em; margin-top: 3px;
 }
 
+/* ── Cards grid ───────────────────────────────────── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px 16px;
+  margin-top: 8px;
+}
+@media (max-width: 900px) {
+  .cards-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 580px) {
+  .cards-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Home footer ──────────────────────────────────── */
 .home-footer {
   margin-top: 48px; padding-top: 16px;
@@ -579,14 +608,14 @@ def get_home_css():
 </style>"""
 
 
+def get_home_css() -> str:
+    return _HOME_CSS
+
+
 # ── CSS Login ─────────────────────────────────────────────────────────────────
 
-def get_login_css():
-    """CSS para la página de login — tema Telemetría."""
-    return """
+_LOGIN_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
-
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -791,3 +820,8 @@ footer    { visibility: hidden; }
   patchAutocomplete();
 })();
 </script>"""
+
+
+
+def get_login_css() -> str:
+    return _LOGIN_CSS

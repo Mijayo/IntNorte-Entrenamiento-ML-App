@@ -6,13 +6,12 @@ Para App Entrenamiento y Dashboard Negocio
 """
 
 import hashlib
-import time
 from datetime import datetime, timedelta
 
 import streamlit as st
 
 from .logger import get_logger
-from .styles import get_global_css, get_login_css
+from .styles import get_font_links, get_global_css, get_login_css
 from .supabase_io import get_client, log_audit
 
 log = get_logger("auth")
@@ -160,7 +159,7 @@ def logout() -> None:
 
 def show_login_page(app_title: str = "Sistema TIGGO 2") -> None:
     """Mostrar página de login corporativa — dark premium."""
-    st.markdown(get_login_css(), unsafe_allow_html=True)
+    st.markdown(get_font_links() + get_login_css(), unsafe_allow_html=True)
 
     _, col, _ = st.columns([1, 1.4, 1])
 
@@ -183,8 +182,6 @@ def show_login_page(app_title: str = "Sistema TIGGO 2") -> None:
                 if username and password:
                     success, message = login(username, password)
                     if success:
-                        st.success("Acceso concedido")
-                        time.sleep(0.8)
                         st.rerun()
                     else:
                         st.markdown(f'<div class="login-error">⚠ {message}</div>', unsafe_allow_html=True)
@@ -292,7 +289,7 @@ def guard_page(
 
 def show_header(title: str, subtitle: str = "") -> None:
     """Header corporativo premium — inyecta el CSS global y muestra logo + título."""
-    st.markdown(get_global_css(), unsafe_allow_html=True)
+    st.markdown(get_font_links() + get_global_css(), unsafe_allow_html=True)
     sub_html = f'<div class="header-sub">{subtitle}</div>' if subtitle else ''
     st.markdown(f"""
 <div class="page-header">
