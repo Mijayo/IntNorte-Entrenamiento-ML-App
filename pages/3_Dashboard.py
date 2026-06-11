@@ -1106,7 +1106,6 @@ if st.session_state.role == 'manager':
                     )
                     btn_m = st.form_submit_button('Consultar al asistente')
             with _col_clear_m:
-                st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
                 if st.button("🗑️ Limpiar caché", key='clear_cache_manager',
                              help="Borra las respuestas guardadas y fuerza nuevas consultas a la IA"):
                     st.session_state.cache_llm_tiggo = {}
@@ -1349,6 +1348,8 @@ Resultados en tiempo real &nbsp;·&nbsp; Comparativa ejecutada en esta sesión
 .verdict-win  { color:#4ade80; line-height:1.5; }
 .verdict-lose { color:#94a3b8; line-height:1.5; }
 .tag          { color:#60a5fa; font-size:0.78rem; }
+/* Botón Limpiar caché: alineado arriba dentro del bloque horizontal */
+.stHorizontalBlock .st-emotion-cache-zh2fnc { align-self: flex-start !important; }
 </style>
 <table class="model-table">
   <thead>
@@ -1431,7 +1432,6 @@ if st.session_state.role in ['admin', 'analyst']:
                     )
                     btn_a = st.form_submit_button('Consultar al asistente')
             with _col_clear_a:
-                st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
                 if st.button("🗑️ Limpiar caché", key='clear_cache_analyst',
                              help="Borra las respuestas guardadas y fuerza nuevas consultas a la IA"):
                     st.session_state.cache_llm_tiggo = {}
