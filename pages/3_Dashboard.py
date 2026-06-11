@@ -1115,12 +1115,15 @@ if st.session_state.role == 'manager':
             if btn_m and question_m:
                 if question_m not in st.session_state.cache_llm_tiggo:
                     try:
+                        _hoy_llm = datetime.now()
+                        _today_str = f"{_hoy_llm.day} de {_MESES_ES[_hoy_llm.month - 1]} de {_hoy_llm.year}"
                         prompt_tiggo = (
                             'Actúa como un Senior Analyst experto en predicción de demanda automotriz '
                             'y gestión de inventario de concesionarios.\n\n'
                             '## OBJETIVO:\n'
                             'Responder de forma precisa y accionable a la consulta del usuario '
                             'sobre el sistema de predicción TIGGO 2.\n\n'
+                            f'## FECHA ACTUAL:\n{_today_str}\n\n'
                             f'## CONTEXTO DEL MODELO:\n{context_tiggo}\n\n'
                             f'## SOLICITUD:\n{question_m}\n\n'
                             '## INSTRUCCIONES OBLIGATORIAS:\n'
@@ -1437,6 +1440,8 @@ if st.session_state.role in ['admin', 'analyst']:
             if btn_a and question_a:
                 if question_a not in st.session_state.cache_llm_tiggo:
                     try:
+                        _hoy_llm_a = datetime.now()
+                        _today_str_a = f"{_hoy_llm_a.day} de {_MESES_ES[_hoy_llm_a.month - 1]} de {_hoy_llm_a.year}"
                         prompt_tiggo_a = (
                             'Actúa como un Senior Data Scientist experto en series temporales '
                             'y modelos de predicción de demanda automotriz (SARIMA, Prophet, '
@@ -1444,6 +1449,7 @@ if st.session_state.role in ['admin', 'analyst']:
                             '## OBJETIVO:\n'
                             'Responder de forma técnica y precisa a la consulta del analista '
                             'sobre el modelo o sus métricas de validación.\n\n'
+                            f'## FECHA ACTUAL:\n{_today_str_a}\n\n'
                             f'## CONTEXTO DEL MODELO:\n{context_tiggo}\n\n'
                             f'## SOLICITUD:\n{question_a}\n\n'
                             '## INSTRUCCIONES OBLIGATORIAS:\n'
