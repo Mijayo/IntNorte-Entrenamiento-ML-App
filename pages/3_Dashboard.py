@@ -208,31 +208,52 @@ except Exception as _e:
 
 # ── Variables contextuales para LLM ──────────────────────────────────────────
 
-_orden     = metricas['mejor_modelo']['order']
-_orden_est = metricas['mejor_modelo']['seasonal_order']
-_mape      = metricas['walk_forward_validation']['mape']
-_proximo   = pred_total['Predicción'].iloc[0]
-_ic_inf    = pred_total['IC_Inferior'].iloc[0]
-_ic_sup    = pred_total['IC_Superior'].iloc[0]
-_prom_hist = hist_total.mean()
-_ultimos_3 = hist_total.iloc[-3:].mean()
-_tendencia_pct = ((_ultimos_3 - _prom_hist) / _prom_hist) * 100
-_cfg       = metricas.get('configuracion', {})
+@st.cache_data(ttl=300, show_spinner=False)
+def _build_llm_context(run_name: str) -> str:
+    metricas, pred_total, _, _, hist_total, _ = sio.load_precargados(run_name)
+    _orden      = metricas['mejor_modelo']['order']
+    _orden_est  = metricas['mejor_modelo']['seasonal_order']
+    _mape       = metricas['walk_forward_validation']['mape']
+    _proximo    = pred_total['Predicción'].iloc[0]
+    _ic_inf     = pred_total['IC_Inferior'].iloc[0]
+    _ic_sup     = pred_total['IC_Superior'].iloc[0]
+    _prom_hist  = hist_total.mean()
+    _ultimos_3  = hist_total.iloc[-3:].mean()
+    _tendencia_pct = ((_ultimos_3 - _prom_hist) / _prom_hist) * 100
+    _cfg        = metricas.get('configuracion', {})
+    return (
+        f"Modelo SARIMA{_orden}{_orden_est}\n"
+        f"AIC: {metricas['mejor_modelo']['aic']:.2f}  |  "
+        f"BIC: {metricas['mejor_modelo']['bic']:.2f}\n"
+        f"MAPE (walk-forward): {_mape:.2f}%\n"
+        f"Próxima predicción: {_proximo:.1f} uds "
+        f"[IC 95%: {_ic_inf:.1f}–{_ic_sup:.1f}]\n"
+        f"Tendencia reciente vs histórico: {_tendencia_pct:+.1f}%"
+    )
 
-context_tiggo = (
-    f"Modelo SARIMA{_orden}{_orden_est}\n"
-    f"AIC: {metricas['mejor_modelo']['aic']:.2f}  |  BIC: {metricas['mejor_modelo']['bic']:.2f}\n"
-    f"MAPE (walk-forward): {_mape:.2f}%\n"
-    f"Predicción próximo mes: {_proximo:.0f} uds  (IC 95%: {_ic_inf:.0f}–{_ic_sup:.0f})\n"
-    f"Predicción total horizonte ({_cfg.get('horizonte', 6)} meses): {pred_total['Predicción'].sum():.0f} uds\n"
-    f"Tendencia últimos 3 meses vs histórico: {_tendencia_pct:+.1f}%\n"
-    f"Promedio histórico mensual: {_prom_hist:.1f}  |  Total ventas: {metricas['datos_limpios']['total_ventas']:,}\n"
-    f"Período de datos: {metricas['datos_limpios']['periodo']}  |  Meses: {metricas['datos_limpios']['meses_datos']}\n"
-    f"Cadena de suministro Chery: lead time promedio 2025 = 22-24 días (mín 15, máx 30 días).\n"
-    f"Ruta logística: Puerto Callao → Almacén Lima → Piura / Chiclayo (sedes principales).\n"
-    f"Tarapoto y Cajamarca (apertura dic 2025): unidades principalmente desde Lima, a veces desde Piura/Chiclayo (flete extra).\n"
-    f"Financiación inventario Chery: 0% interés los primeros 60 días en stock, luego tasa referencial 8% anual."
-)
+context_tiggo = _build_llm_context(selected_run)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _build_wf_figure(run_name: str) -> go.Figure:
+    _, _, _, walk_forward, _, _ = sio.load_precargados(run_name)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=walk_forward['fecha'], y=walk_forward['real'],
+        mode='lines+markers', name='Real',
+        line=dict(color=COLORS['primary'], width=2.5),
+        marker=dict(size=7, color=COLORS['primary']),
+    ))
+    fig.add_trace(go.Scatter(
+        x=walk_forward['fecha'], y=walk_forward['prediccion'],
+        mode='lines+markers', name='Predicción',
+        line=dict(color=COLORS['accent'], width=2.5, dash='dot'),
+        marker=dict(size=7, color=COLORS['accent'], symbol='diamond'),
+    ))
+    apply_chart_theme(fig, height=480, title='Walk-Forward — Real vs Predicción')
+    fig.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
+    return fig
+
 
 # ── Tabs según rol ────────────────────────────────────────────────────────────
 
@@ -1081,21 +1102,7 @@ if st.session_state.role in ['admin', 'analyst']:
         col3.markdown(kpi_card("Peor Mes",        f"{walk_forward['error_pct'].max():.2f}%",  "⚠️", "red"), unsafe_allow_html=True)
         col4.markdown(kpi_card("Meses Evaluados", len(walk_forward),                           "📅", "blue"), unsafe_allow_html=True)
 
-        fig_wf = go.Figure()
-        fig_wf.add_trace(go.Scatter(
-            x=walk_forward['fecha'], y=walk_forward['real'],
-            mode='lines+markers', name='Real',
-            line=dict(color=COLORS['primary'], width=2.5),
-            marker=dict(size=7, color=COLORS['primary']),
-        ))
-        fig_wf.add_trace(go.Scatter(
-            x=walk_forward['fecha'], y=walk_forward['prediccion'],
-            mode='lines+markers', name='Predicción',
-            line=dict(color=COLORS['accent'], width=2.5, dash='dot'),
-            marker=dict(size=7, color=COLORS['accent'], symbol='diamond'),
-        ))
-        apply_chart_theme(fig_wf, height=480, title='Walk-Forward — Real vs Predicción')
-        fig_wf.update_layout(hovermode='x unified', xaxis_title='Fecha', yaxis_title='Unidades')
+        fig_wf = _build_wf_figure(selected_run)
         st.plotly_chart(fig_wf, use_container_width=True, config={'displayModeBar': False})
 
         wf_display = walk_forward.copy()

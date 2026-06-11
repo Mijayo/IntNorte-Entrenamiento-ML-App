@@ -221,7 +221,12 @@ def approve_model(run_name: str, usuario: str | None = None) -> None:
         log.warning("No se pudo actualizar activo en DB: %s", e)
     _upload("latest.txt", run_name.encode(), "text/plain")
     log_audit(usuario, "APPROVE_MODEL", run_name=run_name)
-    st.cache_data.clear()
+    get_available_runs.clear()
+    get_default_run.clear()
+    load_precargados.clear()
+    load_current_model.clear()
+    get_runs_df.clear()
+    load_training_log.clear()
     log.info("Modelo activado en producción: run='%s'", run_name)
 
 
@@ -371,7 +376,12 @@ def save_to_dashboard(
 
     n_esperados = 9 if exog_data is not None else 8
     n_guardados = n_esperados - len(failed)
-    st.cache_data.clear()
+    get_available_runs.clear()
+    get_default_run.clear()
+    load_precargados.clear()
+    load_current_model.clear()
+    get_runs_df.clear()
+    load_training_log.clear()
     log.info("Run '%s' guardado (%d/%d artefactos)", run_name, n_guardados, n_esperados)
 
 
@@ -529,8 +539,10 @@ def save_training_log(entry: dict) -> None:
         )
     except Exception as e:
         log.warning("No se pudo actualizar training_log.json: %s", e)
+    load_training_log.clear()
 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def load_training_log() -> list[dict]:
     """Carga el historial completo. Fuente primaria: DB. Fallback: training_log.json."""
     try:
@@ -558,8 +570,10 @@ def save_llm_cache(run_name: str, cache: dict) -> None:
         )
     except Exception as e:
         log.warning("No se pudo guardar llm_cache para run='%s': %s", run_name, e)
+    load_llm_cache.clear()
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_llm_cache(run_name: str) -> dict:
     """Descarga el caché de respuestas Gemini de un run. Devuelve {} si no existe."""
     try:
@@ -586,6 +600,7 @@ def log_audit(usuario: str | None, accion: str, run_name: str | None = None, det
         log.warning("No se pudo escribir audit_log: %s", e)
 
 
+@st.cache_data(ttl=60, show_spinner=False)
 def get_audit_log(limit: int = 100) -> list[dict]:
     """Devuelve las últimas `limit` entradas del audit_log ordenadas por timestamp desc."""
     try:

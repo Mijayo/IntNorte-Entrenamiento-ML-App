@@ -4,6 +4,22 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-11 — Optimización de caché (perf)
+
+#### `core/supabase_io.py`
+
+- **perf(cache)**: `load_llm_cache(run_name)` ahora lleva `@st.cache_data(ttl=3600)`. Evita descargar el JSON de caché Gemini en cada rerender; se invalida desde `save_llm_cache()`.
+- **perf(cache)**: `load_training_log()` ahora lleva `@st.cache_data(ttl=300)`. Evita queries DB repetidas al historial de entrenamientos; se invalida desde `save_training_log()`.
+- **perf(cache)**: `get_audit_log(limit)` ahora lleva `@st.cache_data(ttl=60)`. Evita queries repetidas al audit log en la página de Administración.
+- **perf(invalidación)**: `save_to_dashboard()` y `approve_model()` reemplazan `st.cache_data.clear()` global por invalidación granular de 6 funciones (`get_available_runs`, `get_default_run`, `load_precargados`, `load_current_model`, `get_runs_df`, `load_training_log`). Conserva cachés no relacionados (audit log, imágenes ACF/PACF, caché LLM) y reduce la latencia del primer rerender tras guardar o aprobar un modelo.
+
+#### `pages/3_Dashboard.py`
+
+- **perf(cache)**: Contexto LLM extraído a `_build_llm_context(run_name)` (`@st.cache_data ttl=300`). Reutiliza el string entre rerenders sin recalcular métricas ni hacer llamadas a `load_precargados` de forma redundante.
+- **perf(cache)**: Figura walk-forward extraída a `_build_wf_figure(run_name)` (`@st.cache_data ttl=600`). El objeto `go.Figure` se construye una sola vez por run y se reutiliza en rerenders y navegación de tabs.
+
+---
+
 ### 2026-06-10 (hotfix #2)
 
 - **ux(concesionarios/mapa)**: Zoom inicial del mapa de Perú aumentado de `4.5` → `5.5` para mostrar los concesionarios más próximos al visualizar la página.

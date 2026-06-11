@@ -146,7 +146,7 @@ Sección accionable con datos reales Chery 2025. El timeline se renderiza con `s
 
 **KPIs:** MAPE promedio, mejor mes, peor mes, meses evaluados.
 
-**Gráfico** — líneas de real vs predicción walk-forward por mes.
+**Gráfico** — construido por `_build_wf_figure(run_name)` (`@st.cache_data ttl=600`): líneas de real vs predicción walk-forward por mes. La figura se reutiliza entre rerenders sin reconstruir el objeto Plotly.
 
 **Tabla** — con gradiente de color en columna Error %.
 
@@ -189,16 +189,13 @@ Muestra los resultados de la Comparativa ML para el run activo:
 
 Consulta en lenguaje natural a **Gemini 2.5 Flash** sobre el modelo activo.
 
-**Contexto enviado automáticamente:**
-- Modelo SARIMA y parámetros.
+**Construcción del contexto:** la función `_build_llm_context(run_name)` (`@st.cache_data ttl=300`) llama a `sio.load_precargados` internamente y construye el string de contexto una sola vez por run y por TTL. El string incluye:
+- Modelo SARIMA y parámetros (order, seasonal_order).
 - AIC, BIC, MAPE walk-forward.
-- Predicción próximo mes e IC 95%.
-- Predicción total del horizonte.
-- Tendencia de los últimos 3 meses vs histórico.
-- Período de datos y total de ventas.
-- **Cadena de suministro Chery** *(v41)*: lead time min/avg/max, ruta logística, sedes, tasa de inventario (60d gratis + 8% anual).
+- Próxima predicción e IC 95% a 1 decimal.
+- Tendencia reciente vs histórico (%).
 
-**Caché LLM:** las respuestas se cachean en Supabase por run. Si el mismo run ya tiene respuestas guardadas, se recuperan instantáneamente sin llamar a la API.
+**Caché LLM:** las respuestas se cachean en Supabase por run (`sio.load_llm_cache` / `sio.save_llm_cache`). Si el mismo run ya tiene respuestas guardadas, se recuperan instantáneamente sin llamar a la API.
 
 **Ejemplos de preguntas (rol técnico):**
 - *"¿Por qué el MAPE walk-forward es mayor que el MAPE de Optuna?"*
