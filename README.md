@@ -474,9 +474,9 @@ Anclado dinámicamente a la **fecha actual** — calcula siempre para el mes sig
 | Elemento | Descripción |
 |----------|-------------|
 | **KPI Lead time** | 22–24 días promedio Chery 2025 (min 15, max 30) |
-| **KPI Fecha óptima** | Fecha de pedido recomendada = inicio del mes objetivo − 23 días |
+| **KPI Fecha óptima** | Fecha de pedido recomendada = día 1 del mes objetivo − 23 días (ancla en el primer día del mes, no en el último) |
 | **KPI Días al deadline** | Días restantes hasta la fecha óptima, con semáforo rojo/ámbar/verde |
-| **Timeline visual** | 4 hitos: Conservador (−30 d) → Óptimo (−23 d) → Agresivo (−15 d) → Inicio del mes |
+| **Timeline visual** | 4 hitos: Conservador (−30 d) → Óptimo (−23 d) → Agresivo (−15 d) → Inicio del mes (día 1) |
 | **Mapa logístico** | Puerto Callao → Almacén Lima → Piura/Chiclayo → *(opt.)* Tarapoto/Cajamarca |
 | **Nota financiación** | 0% interés los primeros 60 días en stock; 8% anual a partir del día 61 |
 

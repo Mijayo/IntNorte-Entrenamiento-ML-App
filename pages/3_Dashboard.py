@@ -247,7 +247,7 @@ def _build_llm_context(run_name: str) -> str:
     _LT_MIN, _LT_AVG, _LT_MAX = 15, 23, 30
     _sc_lines = []
     for _, row in pred_total.iterrows():
-        _f_inicio = pd.Timestamp(row['Fecha'])
+        _f_inicio = pd.Timestamp(row['Fecha']).replace(day=1)  # start of target month
         _f_cons = _f_inicio - pd.Timedelta(days=_LT_MAX)
         _f_opt  = _f_inicio - pd.Timedelta(days=_LT_AVG)
         _f_agr  = _f_inicio - pd.Timedelta(days=_LT_MIN)
@@ -789,9 +789,10 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
 
         _LT_MIN, _LT_AVG, _LT_MAX = 15, 23, 30
 
-        _f_cons = _fecha_lt - pd.Timedelta(days=_LT_MAX)
-        _f_opt  = _fecha_lt - pd.Timedelta(days=_LT_AVG)
-        _f_agr  = _fecha_lt - pd.Timedelta(days=_LT_MIN)
+        _f_inicio_mes = _fecha_lt.replace(day=1)  # first of target month — stock must arrive here
+        _f_cons = _f_inicio_mes - pd.Timedelta(days=_LT_MAX)
+        _f_opt  = _f_inicio_mes - pd.Timedelta(days=_LT_AVG)
+        _f_agr  = _f_inicio_mes - pd.Timedelta(days=_LT_MIN)
         _dr     = (_f_opt - _hoy_sc).days
 
         _kpi_dias_val   = f"Hace {-_dr}d ⚠️" if _dr < 0 else ("¡Hoy!" if _dr == 0 else f"{_dr} días")
@@ -868,7 +869,7 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
         🎯 Inicio mes
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:#C9D8E6;font-weight:700;">
-        {_fecha_lt.strftime("%d")} {_MESES_ES[_fecha_lt.month-1][:3]}
+        {_f_inicio_mes.strftime("%d")} {_MESES_ES[_f_inicio_mes.month-1][:3]}
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:.63rem;color:#64748B;">
         {_mes_lt_es}
@@ -1105,7 +1106,7 @@ if st.session_state.role == 'manager':
                     )
                     btn_m = st.form_submit_button('Consultar al asistente')
             with _col_clear_m:
-                st.write("")
+                st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
                 if st.button("🗑️ Limpiar caché", key='clear_cache_manager',
                              help="Borra las respuestas guardadas y fuerza nuevas consultas a la IA"):
                     st.session_state.cache_llm_tiggo = {}
@@ -1430,7 +1431,7 @@ if st.session_state.role in ['admin', 'analyst']:
                     )
                     btn_a = st.form_submit_button('Consultar al asistente')
             with _col_clear_a:
-                st.write("")
+                st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)
                 if st.button("🗑️ Limpiar caché", key='clear_cache_analyst',
                              help="Borra las respuestas guardadas y fuerza nuevas consultas a la IA"):
                     st.session_state.cache_llm_tiggo = {}

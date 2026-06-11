@@ -4,6 +4,15 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-11 (hotfix) — fechas de pedido corregidas + alineación botón caché
+
+#### `pages/3_Dashboard.py`
+
+- **fix(dashboard/cadena_suministro)**: Las fechas de la ventana de pedido en el timeline y en el contexto del Asistente IA ahora se calculan correctamente restando el lead time desde el **primer día del mes objetivo** (`_fecha_lt.replace(day=1)`) en lugar de desde `pred_total['Fecha']`, que contiene el último día del mes (`freq='ME'`, ej. `2026-07-31`). El bug hacía que, al preguntar por el pedido de julio, el sistema mostrara fechas en **julio** (Jul 1, Jul 8, Jul 16) en lugar de las correctas **fechas de junio** (Jun 1, Jun 8, Jun 16). Fix aplicado en dos puntos: sección de cadena de suministro del tab Recomendaciones y función `_build_llm_context()`. El tile "🎯 Inicio mes" del timeline pasa a mostrar `01 Jul` en lugar de `31 Jul`.
+- **ux(dashboard/asistente_ia)**: Botón "🗑️ Limpiar caché" alineado verticalmente con el campo de texto de la pregunta en ambos roles (`admin/analyst` y `manager`). Causa: `st.write("")` generaba un offset insuficiente respecto al label del input. Fix: reemplazado por `st.markdown('<div style="height:28px"></div>', unsafe_allow_html=True)`, que reproduce la altura exacta del label invisible y alinea el botón con el borde superior del campo de texto.
+
+---
+
 ### 2026-06-11 (v2) — i18n español + contexto cadena de suministro en asistente IA
 
 #### `pages/3_Dashboard.py`
