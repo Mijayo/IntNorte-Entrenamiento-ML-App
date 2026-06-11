@@ -54,11 +54,7 @@ from core.utils_validacion import (validate_dataframe, show_validation_results,
 st.set_page_config(page_title="Entrenamiento SARIMA", page_icon="🤖", layout="wide")
 
 # CSS global inyectado por show_header() — estilos extra de progreso
-st.markdown("""
-<style>
-.stProgress > div > div > div > div { background-color: #20C997 !important; }
-</style>
-""", unsafe_allow_html=True)
+st.html("<style>.stProgress > div > div > div > div { background-color: #20C997 !important; }</style>")
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
 

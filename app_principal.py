@@ -27,7 +27,7 @@ guard_page("🚗 Sistema TIGGO 2")
 
 show_header("Sistema de Predicción TIGGO 2", "Selecciona una aplicación en el menú lateral izquierdo.")
 show_user_info()
-st.markdown(get_home_css(), unsafe_allow_html=True)
+st.html(get_home_css())
 
 
 # ── Datos del modelo activo ───────────────────────────────────────────────────

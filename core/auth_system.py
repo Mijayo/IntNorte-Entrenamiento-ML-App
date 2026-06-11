@@ -159,7 +159,7 @@ def logout() -> None:
 
 def show_login_page(app_title: str = "Sistema TIGGO 2") -> None:
     """Mostrar página de login corporativa — dark premium."""
-    st.markdown(get_font_links() + get_login_css(), unsafe_allow_html=True)
+    st.html(get_font_links() + get_login_css())
 
     _, col, _ = st.columns([1, 1.4, 1])
 
@@ -289,7 +289,7 @@ def guard_page(
 
 def show_header(title: str, subtitle: str = "") -> None:
     """Header corporativo premium — inyecta el CSS global y muestra logo + título."""
-    st.markdown(get_font_links() + get_global_css(), unsafe_allow_html=True)
+    st.html(get_font_links() + get_global_css())
     sub_html = f'<div class="header-sub">{subtitle}</div>' if subtitle else ''
     st.markdown(f"""
 <div class="page-header">
