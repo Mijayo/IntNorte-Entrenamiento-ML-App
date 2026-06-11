@@ -4,6 +4,25 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-11 (mobile) — Diseño mobile-first
+
+#### `app_principal.py`
+
+- **ux(mobile)**: `initial_sidebar_state` cambiado de `"expanded"` a `"collapsed"`. En pantallas pequeñas la barra lateral ya no cubre el contenido al cargar la página.
+
+#### `core/styles.py`
+
+- **refactor(responsive)**: Todos los breakpoints CSS de la home page convertidos de desktop-first (`max-width`) a mobile-first (`min-width`). Los estilos base aplican a móvil; las pantallas más anchas heredan layouts progresivos:
+  - `.cards-grid`: `1col` (base) → `2col` @ 580 px → `3col` @ 960 px
+  - `.contexto-kpis`: `2col` (base) → `4col` @ 640 px
+  - `.home-hero`: `padding 24px` (base) → `44px` @ 640 px
+  - `.hero-meta-row`: `flex-wrap: wrap` en móvil para evitar overflow
+  - `.context-panel`: `padding 14/16px` (base) → `18/24px` @ 640 px
+  - `.home-footer`: columna centrada (base) → fila `space-between` @ 640 px
+- **feat(responsive)**: Añadido override de padding del `block-container` de Streamlit: `1rem` (base) → `2rem` @ 640 px → `3rem` @ 1024 px.
+
+---
+
 ### 2026-06-11 (perf) — Optimización de latencia de carga del frontend
 
 #### `core/styles.py`
