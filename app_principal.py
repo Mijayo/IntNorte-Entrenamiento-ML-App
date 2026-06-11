@@ -20,7 +20,7 @@ st.set_page_config(
     page_title="Sistema TIGGO 2",
     page_icon="🚗",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 guard_page("🚗 Sistema TIGGO 2")
