@@ -300,7 +300,8 @@ _f1, _f2, _f3 = st.columns([2, 2, 4])
 
 if fecha_col:
     years_all = sorted(df[fecha_col].dt.year.dropna().unique().astype(int), reverse=True)
-    years_sel = _f1.multiselect("", years_all, default=years_all,
+    _default_years = [y for y in years_all if 2022 <= y <= 2026] or years_all
+    years_sel = _f1.multiselect("", years_all, default=_default_years,
                                 placeholder="Año", label_visibility="collapsed")
     if years_sel:
         df = df[df[fecha_col].dt.year.isin(years_sel)]
@@ -309,7 +310,10 @@ else:
 
 if modelo_col:
     modelos_all = ['Todos'] + sorted(df[modelo_col].dropna().unique())
-    modelo_sel = _f2.selectbox("", modelos_all, label_visibility="collapsed")
+    _default_modelo = 'TIGGO 2' if 'TIGGO 2' in modelos_all else modelos_all[0]
+    modelo_sel = _f2.selectbox("", modelos_all,
+                               index=modelos_all.index(_default_modelo),
+                               label_visibility="collapsed")
     if modelo_sel != 'Todos':
         df = df[df[modelo_col] == modelo_sel]
 else:
