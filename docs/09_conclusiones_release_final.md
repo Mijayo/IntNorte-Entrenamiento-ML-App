@@ -76,7 +76,7 @@ Sistema web multi-página construido sobre Streamlit + Supabase que combina pred
 | 3 | **Comparativa ML** | Analyst | SARIMA vs Prophet vs XGBoost vs Random Forest — métricas comparativas, selección de modelo óptimo |
 | 4 | **Concesionarios** | Manager | Predicciones desagregadas por punto de venta — planificación de distribución |
 | 5 | **Proyección de Ingresos** | Manager | Proyección financiera 12 meses · ticket 15 000 USD · análisis de sensibilidad |
-| 6 | **Escalabilidad** | Manager | Simulación multi-marca (Tiggo 4, Tiggo 7, Arrizo 5) · mapa de expansión LatAm |
+| 6 | **Escalabilidad** | Manager | Portafolio de 10 modelos con datos reales (Chery, Jetour, Ford, KIA, DFSK, Mitsubishi) · mapa de expansión LatAm · playbook de onboarding 2–4 semanas |
 | 7 | **Registrar Ventas** | Analyst | Registro mensual de ventas reales · comparativa real vs predicho · MAPE de producción |
 | 8 | **Administración** | Admin | Gestión de modelos activos, datos precargados en Supabase Storage, historial de entrenamientos |
 
@@ -125,7 +125,7 @@ Sistema web multi-página construido sobre Streamlit + Supabase que combina pred
 - Dashboard embebido en el ERP existente de Int. Norte
 
 ### Mediano plazo (Q4 2026 – Q1 2027)
-- Expandir a portafolio completo Chery Perú: Tiggo 4, Tiggo 7, Tiggo 8, Arrizo 5
+- Expandir a portafolio completo Chery Perú: Tiggo 4 PRO y Arrizo 5 listos para entrenar (≥ 51 meses de datos); Jetour X70 (sub-marca Chery) con 61 meses y 25 uds/mes — onboarding estimado 2–3 semanas
 - Integrar CRM del distribuidor — correlacionar leads → conversiones → ventas para predicción leading
 - Modelo de precios dinámicos basado en predicción de demanda y stock disponible
 

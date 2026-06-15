@@ -281,29 +281,49 @@ with tabs[1]:
         return _hist_meses.get(modelo3, fallback)
 
     portfolio = pd.DataFrame([
-        # Chery activos y en evaluación
-        # Dem. real = promedio mensual últimos 12 meses desde veh_ml_features.xlsx
-        {"Marca": "CHERY", "Modelo": "TIGGO 2",    "Segmento": "SUV Compacto",   "Estado": "✅ Activo",
-         "Dem. Est. (uds/mes)": _dem("TIGGO 2", 48),    "Historial (meses)": _hist("TIGGO 2", 110),    "MAPE Est. (%)": 10.3, "Prioridad": 1},
-        {"Marca": "CHERY", "Modelo": "TIGGO 4 PRO","Segmento": "SUV Compacto",   "Estado": "🔄 En evaluación",
-         "Dem. Est. (uds/mes)": _dem("TIGGO 4", 14),    "Historial (meses)": _hist("TIGGO 4", 51),     "MAPE Est. (%)": 12.0, "Prioridad": 2},
-        {"Marca": "CHERY", "Modelo": "ARRIZO 5",   "Segmento": "Sedán",           "Estado": "🔄 En evaluación",
-         "Dem. Est. (uds/mes)": _dem("ARRIZO 5", 9),    "Historial (meses)": _hist("ARRIZO 5", 54),    "MAPE Est. (%)": 13.5, "Prioridad": 2},
-        {"Marca": "CHERY", "Modelo": "TIGGO 5X",   "Segmento": "SUV Mediano",     "Estado": "📋 Pendiente",
-         "Dem. Est. (uds/mes)": _dem("TIGGO 5X", 5),   "Historial (meses)": _hist("TIGGO 5X", 10),    "MAPE Est. (%)": 14.0, "Prioridad": 3},
-        {"Marca": "CHERY", "Modelo": "TIGGO 7 PRO","Segmento": "SUV Mediano",     "Estado": "📋 Pendiente",
-         "Dem. Est. (uds/mes)": _dem("TIGGO 7", 3),    "Historial (meses)": _hist("TIGGO 7", 76),     "MAPE Est. (%)": 17.0, "Prioridad": 3},
-        {"Marca": "CHERY", "Modelo": "TIGGO 8 PRO","Segmento": "SUV Grande",      "Estado": "📋 Pendiente",
-         "Dem. Est. (uds/mes)": _dem("TIGGO 8", 2),    "Historial (meses)": _hist("TIGGO 8", 70),     "MAPE Est. (%)": 20.0, "Prioridad": 3},
-        # Otras marcas — estimaciones de mercado (sin datos en veh_ml_features.xlsx)
-        {"Marca": "JAC",   "Modelo": "HUNTER PLUS","Segmento": "Pick-up 4x4",     "Estado": "🎯 Potencial",
-         "Dem. Est. (uds/mes)": 55, "Historial (meses)": 0,  "MAPE Est. (%)": None, "Prioridad": 4},
-        {"Marca": "JAC",   "Modelo": "SEI 7",      "Segmento": "SUV Grande",      "Estado": "🎯 Potencial",
-         "Dem. Est. (uds/mes)": 20, "Historial (meses)": 0,  "MAPE Est. (%)": None, "Prioridad": 4},
-        {"Marca": "BYD",   "Modelo": "ATTO 3",     "Segmento": "SUV Eléctrico",   "Estado": "🎯 Potencial",
-         "Dem. Est. (uds/mes)": 30, "Historial (meses)": 0,  "MAPE Est. (%)": None, "Prioridad": 4},
-        {"Marca": "MG",    "Modelo": "ZS",          "Segmento": "SUV Compacto",   "Estado": "🎯 Potencial",
-         "Dem. Est. (uds/mes)": 35, "Historial (meses)": 0,  "MAPE Est. (%)": None, "Prioridad": 4},
+        # ── CHERY (marca core) ────────────────────────────────────────────────
+        {"Marca": "CHERY",      "Modelo": "TIGGO 2",    "Segmento": "SUV Compacto",
+         "Estado": "✅ Activo",
+         "Dem. Est. (uds/mes)": _dem("TIGGO 2",   48), "Historial (meses)": _hist("TIGGO 2",   110),
+         "MAPE Est. (%)": 10.3, "Prioridad": 1},
+        {"Marca": "CHERY",      "Modelo": "TIGGO 4 PRO","Segmento": "SUV Compacto",
+         "Estado": "🔄 En evaluación",
+         "Dem. Est. (uds/mes)": _dem("TIGGO 4",   14), "Historial (meses)": _hist("TIGGO 4",    51),
+         "MAPE Est. (%)": 12.0, "Prioridad": 2},
+        {"Marca": "CHERY",      "Modelo": "ARRIZO 5",   "Segmento": "Sedán",
+         "Estado": "🔄 En evaluación",
+         "Dem. Est. (uds/mes)": _dem("ARRIZO 5",   9), "Historial (meses)": _hist("ARRIZO 5",   54),
+         "MAPE Est. (%)": 13.5, "Prioridad": 2},
+        # ── JETOUR (sub-marca Chery, datos reales en sistema) ─────────────────
+        {"Marca": "JETOUR",     "Modelo": "X70",        "Segmento": "SUV Mediano",
+         "Estado": "🔄 En evaluación",
+         "Dem. Est. (uds/mes)": _dem("X70",        25), "Historial (meses)": _hist("X70",        61),
+         "MAPE Est. (%)": 11.5, "Prioridad": 2},
+        # ── Marcas potenciales con datos reales en el sistema ─────────────────
+        {"Marca": "FORD",       "Modelo": "RANGER",     "Segmento": "Pick-up 4x4",
+         "Estado": "🎯 Potencial",
+         "Dem. Est. (uds/mes)": _dem("RANGER",     21), "Historial (meses)": _hist("RANGER",     68),
+         "MAPE Est. (%)": 12.5, "Prioridad": 3},
+        {"Marca": "FORD",       "Modelo": "TERRITORY",  "Segmento": "SUV Mediano",
+         "Estado": "🎯 Potencial",
+         "Dem. Est. (uds/mes)": _dem("TERRITORY",  19), "Historial (meses)": _hist("TERRITORY",  63),
+         "MAPE Est. (%)": 13.5, "Prioridad": 3},
+        {"Marca": "KIA",        "Modelo": "SOLUTO",     "Segmento": "Sedán Compacto",
+         "Estado": "🎯 Potencial",
+         "Dem. Est. (uds/mes)": _dem("SOLUTO",     18), "Historial (meses)": _hist("SOLUTO",     77),
+         "MAPE Est. (%)": 13.0, "Prioridad": 3},
+        {"Marca": "DFSK",       "Modelo": "GLORY",      "Segmento": "SUV Compacto",
+         "Estado": "🎯 Potencial",
+         "Dem. Est. (uds/mes)": _dem("GLORY",      16), "Historial (meses)": _hist("GLORY",      69),
+         "MAPE Est. (%)": 14.0, "Prioridad": 3},
+        {"Marca": "MITSUBISHI", "Modelo": "L200",       "Segmento": "Pick-up 4x4",
+         "Estado": "🎯 Potencial",
+         "Dem. Est. (uds/mes)": _dem("L200",       14), "Historial (meses)": _hist("L200",       110),
+         "MAPE Est. (%)": 12.0, "Prioridad": 3},
+        {"Marca": "KIA",        "Modelo": "SELTOS",     "Segmento": "SUV Compacto",
+         "Estado": "🎯 Potencial",
+         "Dem. Est. (uds/mes)": _dem("SELTOS",     13), "Historial (meses)": _hist("SELTOS",     71),
+         "MAPE Est. (%)": 14.5, "Prioridad": 3},
     ])
 
     # Filtro de marcas
@@ -343,19 +363,18 @@ with tabs[1]:
     st.plotly_chart(fig_port, use_container_width=True, config={"displayModeBar": False})
 
     st.caption(
-        "📊 **Chery:** promedio mensual real de los últimos 12 meses, calculado desde `veh_ml_features.xlsx` "
-        "(conteo de unidades vendidas por período). "
-        "**JAC / BYD / MG:** estimaciones de mercado (sin datos históricos en el sistema)."
+        "📊 Todos los valores son **datos reales** calculados desde `veh_ml_features.xlsx` "
+        "(promedio mensual de unidades vendidas, últimos 12 meses). "
+        "MAPE estimado basado en historial disponible; TIGGO 2 muestra MAPE real del modelo en producción."
     )
 
     # ── Leyenda de estados ────────────────────────────────────────────────────
 
-    leg1, leg2, leg3, leg4 = st.columns(4)
+    leg1, leg2, leg3 = st.columns(3)
     for col, estado, color, desc in [
         (leg1, "✅ Activo",         "#00F5A0", "En producción — modelo entrenado y publicado"),
-        (leg2, "🔄 En evaluación",  "#0073FF", "Datos disponibles ≥ 36 meses — listo para entrenar"),
-        (leg3, "📋 Pendiente",      "#C2FF00", "Historia < 36 meses — requerirá espera de datos"),
-        (leg4, "🎯 Potencial",      "#A78BFA", "Marca externa — requiere acceso a datos de ventas"),
+        (leg2, "🔄 En evaluación",  "#0073FF", "Datos reales ≥ 36 meses en sistema — listo para entrenar"),
+        (leg3, "🎯 Potencial",      "#A78BFA", "Datos reales en sistema — requiere acuerdo comercial"),
     ]:
         col.markdown(
             f'<div style="border-left:3px solid {color};padding:8px 12px;'

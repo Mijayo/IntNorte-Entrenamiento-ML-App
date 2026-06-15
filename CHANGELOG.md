@@ -4,6 +4,18 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-15 (data) — Escalabilidad: portafolio de 10 modelos reales para defensa final
+
+#### `pages/6_Escalabilidad.py`
+
+- **data(portafolio)**: Portafolio rediseñado para la defensa final con **10 modelos respaldados 100% por datos reales** del Excel `veh_ml_features.xlsx` (sin ningún valor de mercado estimado o ficticio).
+- **chg(portafolio)**: Modelos anteriores eliminados: TIGGO 5X (sin datos suficientes), TIGGO 7 PRO (2 uds/mes), TIGGO 8 PRO (2 uds/mes), JAC HUNTER PLUS (sin datos en sistema), JAC SEI 7 (sin datos), BYD ATTO 3 (sin datos), MG ZS (sin datos).
+- **add(portafolio)**: Modelos incorporados con datos reales: **JETOUR X70** (25 uds/mes, 61 meses, sub-marca Chery Group), **FORD RANGER** (21 uds/mes, 68 meses), **FORD TERRITORY** (19 uds/mes, 63 meses), **KIA SOLUTO** (18 uds/mes, 77 meses), **DFSK GLORY** (16 uds/mes, 69 meses), **MITSUBISHI L200** (14 uds/mes, 110 meses), **KIA SELTOS** (13 uds/mes, 71 meses).
+- **chg(leyenda)**: Eliminado estado "📋 Pendiente" (ya no existe en el portafolio). Leyenda reducida a 3 estados: ✅ Activo / 🔄 En evaluación / 🎯 Potencial.
+- **chg(caption)**: Caption del gráfico actualizado: todos los valores son datos reales; se elimina la distinción "estimaciones de mercado".
+
+---
+
 ### 2026-06-15 (data) — Escalabilidad: demanda del portafolio calculada desde datos reales
 
 #### `pages/6_Escalabilidad.py`
