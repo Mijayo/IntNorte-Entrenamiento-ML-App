@@ -589,7 +589,7 @@ Página disponible para **todos los roles**. Presenta la hoja de ruta para expor
 | Tab | Descripción |
 |-----|-------------|
 | 🏗️ Arquitectura | Diagrama del stack técnico y flujo de datos |
-| 🚗 Portafolio | Hoja de ruta de expansión a otros modelos del portafolio Chery |
+| 🚗 Portafolio | Hoja de ruta de expansión: demanda mensual calculada desde `veh_ml_features.xlsx` (promedio últimos 12 meses) |
 | 💼 Líneas de Negocio | Aplicación del sistema a flotillas, leasing y postventa |
 | 📋 Playbook de Onboarding | Pasos para incorporar un nuevo modelo o marca en < 2 semanas |
 | 🌎 Expansión Geográfica | Roadmap de despliegue en otros mercados LatAm |

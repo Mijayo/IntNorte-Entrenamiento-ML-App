@@ -4,6 +4,17 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-15 (data) — Escalabilidad: demanda del portafolio calculada desde datos reales
+
+#### `pages/6_Escalabilidad.py`
+
+- **data(portafolio)**: La columna "Dem. Est. (uds/mes)" del Tab Portafolio dejó de ser hardcodeada. Ahora se calcula dinámicamente desde `veh_ml_features.xlsx` como el **promedio mensual de los últimos 12 meses** (conteo de unidades por MODELO3 y PERIODO). Valores actualizados para Chery: TIGGO 2 → 48 uds/mes (era 65), TIGGO 4 PRO → 14 (era 45), ARRIZO 5 → 9 (era 22), TIGGO 7 PRO → 3 (era 18), TIGGO 8 PRO → 2 (era 10). TIGGO 5X sin datos en el Excel → fallback 5. JAC / BYD / MG sin cambio (estimaciones de mercado).
+- **data(portafolio)**: La columna "Historial (meses)" se calcula ahora contando los periodos únicos con ventas por MODELO3 en el Excel (antes hardcodeado con valores aproximados).
+- **ux(portafolio)**: Se agrega `st.caption()` bajo el gráfico indicando explícitamente la fuente y metodología de cálculo vs. estimaciones de mercado para las marcas sin datos.
+- **refactor**: Se añade `_cargar_dem_mensual_real()` con `@st.cache_data(ttl=3600)` usando el mismo patrón de ruta relativa (`Path(__file__).parent.parent`) que el resto de páginas. Función auxiliar `_dem(modelo3, fallback)` para resolución con fallback seguro.
+
+---
+
 ### 2026-06-15 (fix) — Concesionarios: mes en español y próximo mes correcto
 
 #### `pages/4_Concesionarios.py`

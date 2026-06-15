@@ -75,22 +75,24 @@ Estado de expansión a otros modelos del portafolio Chery y otras marcas:
 | 📋 Pendiente | Amarillo | Historia < 36 meses — requiere espera |
 | 🎯 Potencial | Violeta | Marca externa — requiere acceso a datos |
 
-**Modelos del portafolio** (datos estimados):
+**Modelos del portafolio** — Chery: promedio real últimos 12 meses desde `veh_ml_features.xlsx`; JAC/BYD/MG: estimaciones de mercado.
 
-| Marca | Modelo | Segmento | Dem. Est. (uds/mes) | Historial (m) |
-|-------|--------|----------|--------------------:|:-------------:|
-| CHERY | TIGGO 2 | SUV Compacto | 65 | 51 |
-| CHERY | TIGGO 4 PRO | SUV Compacto | 45 | 38 |
-| CHERY | ARRIZO 5 | Sedán | 22 | 40 |
-| CHERY | TIGGO 5X | SUV Mediano | 30 | 36 |
-| CHERY | TIGGO 7 PRO | SUV Mediano | 18 | 30 |
-| CHERY | TIGGO 8 PRO | SUV Grande | 10 | 28 |
-| JAC | HUNTER PLUS | Pick-up 4x4 | 55 | 0 |
-| JAC | SEI 7 | SUV Grande | 20 | 0 |
-| BYD | ATTO 3 | SUV Eléctrico | 30 | 0 |
-| MG | ZS | SUV Compacto | 35 | 0 |
+| Marca | Modelo | Segmento | Dem. Est. (uds/mes) | Historial (m) | Fuente |
+|-------|--------|----------|--------------------:|:-------------:|--------|
+| CHERY | TIGGO 2 | SUV Compacto | 48 | 110 | Real (12m avg) |
+| CHERY | TIGGO 4 PRO | SUV Compacto | 14 | 51 | Real → TIGGO 4 |
+| CHERY | ARRIZO 5 | Sedán | 9 | 54 | Real (12m avg) |
+| CHERY | TIGGO 5X | SUV Mediano | 5 | 10 | Estimación (sin MODELO3 exacto) |
+| CHERY | TIGGO 7 PRO | SUV Mediano | 3 | 76 | Real → TIGGO 7 |
+| CHERY | TIGGO 8 PRO | SUV Grande | 2 | 70 | Real → TIGGO 8 |
+| JAC | HUNTER PLUS | Pick-up 4x4 | 55 | 0 | Est. mercado |
+| JAC | SEI 7 | SUV Grande | 20 | 0 | Est. mercado |
+| BYD | ATTO 3 | SUV Eléctrico | 30 | 0 | Est. mercado |
+| MG | ZS | SUV Compacto | 35 | 0 | Est. mercado |
 
-Gráfico de barras horizontales coloreado por estado + tabla detallada con MAPE estimado.
+> La demanda Chery se calcula con `_cargar_dem_mensual_real()` (`@st.cache_data ttl=3600`): agrupa `veh_ml_features.xlsx` por `(MODELO3, PERIODO)`, filtra los últimos 12 meses y promedia las unidades mensuales. El historial es el número de periodos únicos con al menos 1 venta. Si el Excel no está disponible, se usan los fallbacks hardcodeados.
+
+Gráfico de barras horizontales coloreado por estado + `st.caption()` con fuente de datos + tabla detallada con MAPE estimado.
 
 ---
 

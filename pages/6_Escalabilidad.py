@@ -15,9 +15,40 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pathlib import Path
 
 from core.auth_system import (guard_page, show_user_info, show_header)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
+
+
+# ── Carga de datos reales para el portafolio ──────────────────────────────────
+
+@st.cache_data(ttl=3600)
+def _cargar_dem_mensual_real() -> dict[str, float]:
+    """
+    Retorna promedio mensual de unidades vendidas (últimos 12 meses)
+    por MODELO3, calculado desde veh_ml_features.xlsx.
+    Fuente: conteo de filas por (MODELO3, PERIODO).
+    """
+    path = Path(__file__).parent.parent / "data" / "processed" / "veh_ml_features.xlsx"
+    if not path.exists():
+        return {}
+    df = pd.read_excel(path, usecols=["FECHA-VENTA", "MODELO3"], engine="openpyxl")
+    df["FECHA-VENTA"] = pd.to_datetime(df["FECHA-VENTA"], errors="coerce")
+    df["PERIODO"] = df["FECHA-VENTA"].dt.to_period("M").astype(str)
+    cutoff = df["FECHA-VENTA"].max() - pd.DateOffset(months=12)
+    df_rec = df[df["FECHA-VENTA"] > cutoff]
+    monthly = df_rec.groupby(["MODELO3", "PERIODO"]).size().reset_index(name="uds")
+    avg = monthly.groupby("MODELO3")["uds"].mean().round(0).astype(int)
+    return avg.to_dict()
+
+
+_dem_real = _cargar_dem_mensual_real()
+
+
+def _dem(modelo3: str, fallback: int) -> int:
+    """Devuelve demanda real si existe en el Excel, si no usa el fallback."""
+    return _dem_real.get(modelo3, fallback)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -238,21 +269,33 @@ with tabs[1]:
 
     # ── Datos del portafolio ──────────────────────────────────────────────────
 
+    # Historial real calculado desde veh_ml_features.xlsx
+    # (conteo de periodos mensuales con al menos 1 venta por modelo)
+    path_xl = Path(__file__).parent.parent / "data" / "processed" / "veh_ml_features.xlsx"
+    _hist_meses: dict[str, int] = {}
+    if path_xl.exists():
+        _df_h = pd.read_excel(path_xl, usecols=["MODELO3", "PERIODO"], engine="openpyxl")
+        _hist_meses = _df_h.groupby("MODELO3")["PERIODO"].nunique().to_dict()
+
+    def _hist(modelo3: str, fallback: int) -> int:
+        return _hist_meses.get(modelo3, fallback)
+
     portfolio = pd.DataFrame([
         # Chery activos y en evaluación
+        # Dem. real = promedio mensual últimos 12 meses desde veh_ml_features.xlsx
         {"Marca": "CHERY", "Modelo": "TIGGO 2",    "Segmento": "SUV Compacto",   "Estado": "✅ Activo",
-         "Dem. Est. (uds/mes)": 65, "Historial (meses)": 51, "MAPE Est. (%)": 10.3, "Prioridad": 1},
+         "Dem. Est. (uds/mes)": _dem("TIGGO 2", 48),    "Historial (meses)": _hist("TIGGO 2", 110),    "MAPE Est. (%)": 10.3, "Prioridad": 1},
         {"Marca": "CHERY", "Modelo": "TIGGO 4 PRO","Segmento": "SUV Compacto",   "Estado": "🔄 En evaluación",
-         "Dem. Est. (uds/mes)": 45, "Historial (meses)": 38, "MAPE Est. (%)": 12.0, "Prioridad": 2},
+         "Dem. Est. (uds/mes)": _dem("TIGGO 4", 14),    "Historial (meses)": _hist("TIGGO 4", 51),     "MAPE Est. (%)": 12.0, "Prioridad": 2},
         {"Marca": "CHERY", "Modelo": "ARRIZO 5",   "Segmento": "Sedán",           "Estado": "🔄 En evaluación",
-         "Dem. Est. (uds/mes)": 22, "Historial (meses)": 40, "MAPE Est. (%)": 13.5, "Prioridad": 2},
+         "Dem. Est. (uds/mes)": _dem("ARRIZO 5", 9),    "Historial (meses)": _hist("ARRIZO 5", 54),    "MAPE Est. (%)": 13.5, "Prioridad": 2},
         {"Marca": "CHERY", "Modelo": "TIGGO 5X",   "Segmento": "SUV Mediano",     "Estado": "📋 Pendiente",
-         "Dem. Est. (uds/mes)": 30, "Historial (meses)": 36, "MAPE Est. (%)": 14.0, "Prioridad": 3},
+         "Dem. Est. (uds/mes)": _dem("TIGGO 5X", 5),   "Historial (meses)": _hist("TIGGO 5X", 10),    "MAPE Est. (%)": 14.0, "Prioridad": 3},
         {"Marca": "CHERY", "Modelo": "TIGGO 7 PRO","Segmento": "SUV Mediano",     "Estado": "📋 Pendiente",
-         "Dem. Est. (uds/mes)": 18, "Historial (meses)": 30, "MAPE Est. (%)": 17.0, "Prioridad": 3},
+         "Dem. Est. (uds/mes)": _dem("TIGGO 7", 3),    "Historial (meses)": _hist("TIGGO 7", 76),     "MAPE Est. (%)": 17.0, "Prioridad": 3},
         {"Marca": "CHERY", "Modelo": "TIGGO 8 PRO","Segmento": "SUV Grande",      "Estado": "📋 Pendiente",
-         "Dem. Est. (uds/mes)": 10, "Historial (meses)": 28, "MAPE Est. (%)": 20.0, "Prioridad": 3},
-        # Otras marcas del grupo / competidores clave
+         "Dem. Est. (uds/mes)": _dem("TIGGO 8", 2),    "Historial (meses)": _hist("TIGGO 8", 70),     "MAPE Est. (%)": 20.0, "Prioridad": 3},
+        # Otras marcas — estimaciones de mercado (sin datos en veh_ml_features.xlsx)
         {"Marca": "JAC",   "Modelo": "HUNTER PLUS","Segmento": "Pick-up 4x4",     "Estado": "🎯 Potencial",
          "Dem. Est. (uds/mes)": 55, "Historial (meses)": 0,  "MAPE Est. (%)": None, "Prioridad": 4},
         {"Marca": "JAC",   "Modelo": "SEI 7",      "Segmento": "SUV Grande",      "Estado": "🎯 Potencial",
@@ -298,6 +341,12 @@ with tabs[1]:
         showlegend=False,
     )
     st.plotly_chart(fig_port, use_container_width=True, config={"displayModeBar": False})
+
+    st.caption(
+        "📊 **Chery:** promedio mensual real de los últimos 12 meses, calculado desde `veh_ml_features.xlsx` "
+        "(conteo de unidades vendidas por período). "
+        "**JAC / BYD / MG:** estimaciones de mercado (sin datos históricos en el sistema)."
+    )
 
     # ── Leyenda de estados ────────────────────────────────────────────────────
 
