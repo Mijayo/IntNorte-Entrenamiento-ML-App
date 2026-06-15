@@ -741,11 +741,15 @@ if st.session_state.role in ['admin', 'analyst', 'manager']:
     with tabs[2]:
         st.header("💼 Recomendaciones de Compra", divider='orange')
 
-        proximo = pred_total['Predicción'].iloc[0]
-        ic_inf  = pred_total['IC_Inferior'].iloc[0]
-        ic_sup  = pred_total['IC_Superior'].iloc[0]
+        proximo = _pm_val
+        if not _pm_match.empty:
+            ic_inf = _pm_match['IC_Inferior'].iloc[0]
+            ic_sup = _pm_match['IC_Superior'].iloc[0]
+        else:
+            ic_inf = pred_total['IC_Inferior'].iloc[0]
+            ic_sup = pred_total['IC_Superior'].iloc[0]
 
-        st.markdown(f"### 📊 Análisis para el próximo mes\n"
+        st.markdown(f"### 📊 Análisis para {_pm_mes}\n"
                     f"**Predicción:** {proximo:.0f} unidades  \n"
                     f"**Rango IC 95%:** {ic_inf:.0f} – {ic_sup:.0f} unidades")
 
