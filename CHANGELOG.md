@@ -4,6 +4,15 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-15 (fix) — Concesionarios: mes en español y próximo mes correcto
+
+#### `pages/4_Concesionarios.py`
+
+- **fix(i18n)**: Los nombres de mes en el tab Predicciones por Tienda ahora se muestran en español. Causa raíz: la columna `Mes` se leía directamente de `pred_total` cargado desde Supabase, donde podía estar guardada en inglés (ej. "April 2026") si el modelo fue entrenado antes del fix i18n del Dashboard. Fix: tras construir `df_pred_conc`, la columna `Mes` se regenera desde `Fecha` usando `_MESES_ES` (lista de nombres en español), independientemente de lo que haya almacenado en Supabase.
+- **fix(prediccion)**: El KPI "Predicción próximo mes" y las tarjetas de concesionario ahora muestran el **primer mes futuro** (≥ hoy) en lugar del primer mes almacenado en las predicciones. Causa raíz: `df_pred_conc['Fecha'].min()` devolvía siempre el mes más antiguo del horizonte guardado (ej. Abril 2026), que podía ya ser pasado si el modelo no se reentrenó. Fix: se calcula `_hoy = pd.Timestamp.today().normalize()` y se filtra `Fecha >= _hoy`; si todas las predicciones están en el pasado, se muestra la más reciente disponible.
+
+---
+
 ### 2026-06-11 (mobile) — Diseño mobile-first
 
 #### `app_principal.py`

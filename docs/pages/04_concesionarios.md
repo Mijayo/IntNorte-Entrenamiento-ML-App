@@ -100,6 +100,8 @@ Permite ajustar el porcentaje de cada tienda para simular cambios estructurales 
 
 Una tarjeta por concesionario con unidades predichas y rango IC 95%.
 
+El mes mostrado es el **primer mes futuro** con `Fecha >= hoy`. Si todas las predicciones almacenadas ya son pasadas (modelo sin reentrenar), se muestra la más reciente disponible. La columna `Mes` siempre se regenera en español desde `Fecha` (`_MESES_ES`), independientemente del idioma con que se guardó el modelo en Supabase.
+
 ### Gráfico principal
 
 Histórico real (líneas sólidas) + predicción (líneas punteadas con diamantes) + banda IC 95% (relleno semitransparente), una traza por concesionario. Línea vertical punteada separa histórico de predicción.

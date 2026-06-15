@@ -719,8 +719,18 @@ ajusta los shares manualmente en la tabla de abajo.
                 })
         df_pred_conc = pd.DataFrame(pred_rows)
 
+        # Regenerar Mes en español (el modelo guardado puede tenerlo en inglés)
+        _MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+        df_pred_conc['Mes'] = df_pred_conc['Fecha'].apply(
+            lambda d: f"{_MESES_ES[d.month - 1]} {d.year}"
+        )
+
         # ── KPIs del próximo mes ──────────────────────────────────────────────
-        pred_next   = df_pred_conc[df_pred_conc['Fecha'] == df_pred_conc['Fecha'].min()]
+        _hoy = pd.Timestamp.today().normalize()
+        _fechas_futuras = df_pred_conc[df_pred_conc['Fecha'] >= _hoy]['Fecha']
+        _next_date = _fechas_futuras.min() if not _fechas_futuras.empty else df_pred_conc['Fecha'].max()
+        pred_next   = df_pred_conc[df_pred_conc['Fecha'] == _next_date]
         pred_total_next = int(pred_next['Predicción'].sum())
 
         st.markdown(f"### Predicción próximo mes — **{pred_next['Mes'].iloc[0]}**")
