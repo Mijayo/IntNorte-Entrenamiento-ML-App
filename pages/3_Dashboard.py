@@ -143,7 +143,7 @@ show_user_info()
 
 _hist_12_avg  = hist_total.iloc[-12:].mean() if len(hist_total) >= 12 else hist_total.mean()
 _fc_next      = pred_total['Predicción'].iloc[0]
-_fc_mes       = pred_total['Mes'].iloc[0]
+_fc_mes       = _traducir_mes(pred_total['Mes'].iloc[0])
 _fc_ic_inf    = pred_total['IC_Inferior'].iloc[0]
 _fc_ic_sup    = pred_total['IC_Superior'].iloc[0]
 _fc_dev_pct   = (_fc_next - _hist_12_avg) / (_hist_12_avg + 0.01) * 100
@@ -317,10 +317,12 @@ with tabs[0]:
     col1, col2, col3, col4 = st.columns(4)
     mape = metricas['walk_forward_validation']['mape']
     mape_color = "red" if mape > 15 else ("amber" if mape > 10 else "")
+    _next_pred_val = pred_total['Predicción'].iloc[0]
+    _next_pred_mes = _traducir_mes(pred_total['Mes'].iloc[0])
     col1.markdown(kpi_card("Total Ventas",    f"{metricas['datos_limpios']['total_ventas']:,}", "📦"), unsafe_allow_html=True)
     col2.markdown(kpi_card("Meses de Datos",  metricas['datos_limpios']['meses_datos'],         "📅", "blue"), unsafe_allow_html=True)
     col3.markdown(kpi_card("MAPE",            f"{mape:.2f}%",                                   "🎯", mape_color), unsafe_allow_html=True)
-    col4.markdown(kpi_card("Próximo Mes",     f"{int(metricas['predicciones_futuras']['proximo_mes'])} uds", "🔮"), unsafe_allow_html=True)
+    col4.markdown(kpi_card(f"Predicción {_next_pred_mes}", f"{int(_next_pred_val)} uds",        "🔮"), unsafe_allow_html=True)
 
     if mape > 15:
         st.error(

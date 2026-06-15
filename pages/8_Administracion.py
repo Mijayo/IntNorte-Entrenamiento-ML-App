@@ -121,7 +121,7 @@ with tab_audit:
         _acciones = _df_audit["accion"].value_counts()
         al1, al2, al3, al4 = st.columns(4)
         al1.markdown(kpi_card("Total acciones",  len(_df_audit),                         "📊", "blue"), unsafe_allow_html=True)
-        al2.markdown(kpi_card("Logins",          _acciones.get("LOGIN", 0),              "🔑"), unsafe_allow_html=True)
+        al2.markdown(kpi_card("Accesos",          _acciones.get("LOGIN", 0),              "🔑"), unsafe_allow_html=True)
         al3.markdown(kpi_card("Entrenamientos",  _acciones.get("SAVE_TRAINING", 0),      "🤖", "amber"), unsafe_allow_html=True)
         al4.markdown(kpi_card("Aprobaciones",    _acciones.get("APPROVE_MODEL", 0),      "✅"), unsafe_allow_html=True)
 

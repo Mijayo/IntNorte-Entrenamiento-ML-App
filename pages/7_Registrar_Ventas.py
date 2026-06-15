@@ -164,7 +164,7 @@ Si el error supera el 15%, se activa una alerta para reentrenar.
 
 with tab2:
 
-    st.markdown(section_header("Comparativa en Producción — Forecast vs Real", "📡"),
+    st.markdown(section_header("Comparativa en Producción — Predicción vs Real", "📡"),
                 unsafe_allow_html=True)
 
     ventas_reales = sio.get_ventas_reales()
@@ -261,7 +261,7 @@ with tab2:
             ))
 
             apply_chart_theme(_fig, height=440,
-                              title="Forecast del modelo vs ventas reales en producción")
+                              title="Predicción del modelo vs ventas reales en producción")
             _fig.update_layout(hovermode="x unified",
                                xaxis_title="Mes", yaxis_title="Unidades")
             st.plotly_chart(_fig, use_container_width=True, config={"displayModeBar": False})

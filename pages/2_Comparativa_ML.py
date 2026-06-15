@@ -208,9 +208,9 @@ def plot_importancias(importancias):
             marker_color=COLORES.get(nombre, "#999999"), opacity=0.85
         ))
     fig.update_layout(
-        title="Importancia de features — modelos ML",
+        title="Importancia de variables — modelos ML",
         barmode="group", template="plotly_white", height=360,
-        yaxis_title="Importancia", xaxis_title="Feature"
+        yaxis_title="Importancia", xaxis_title="Variable"
     )
     return fig
 
@@ -391,7 +391,7 @@ col_cfg1, col_cfg2 = st.columns(2)
 with col_cfg1:
     st.subheader("Partición train / test")
     n_test = st.slider("Meses para test (hold-out):", min_value=3, max_value=12, value=6)
-    st.caption(f"Train: {len(ventas_series) - n_test} meses | Test: {n_test} meses")
+    st.caption(f"Entrenamiento: {len(ventas_series) - n_test} meses | Prueba: {n_test} meses")
 
     st.subheader("Modelos a comparar")
     usar_sarima  = st.checkbox("SARIMAX",                   value=True)
