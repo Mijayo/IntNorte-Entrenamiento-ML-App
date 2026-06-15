@@ -121,6 +121,22 @@ if st.session_state.cache_llm_run != selected_run:
 with st.spinner('Cargando datos...'):
     metricas, pred_total, grid_search, walk_forward, hist_total, _exog = sio.load_precargados(selected_run)
 
+# ── Próximo mes calendario (hoy → mes siguiente real) ────────────────────────
+# pred_total empieza en el primer mes del horizonte del modelo (puede ser pasado).
+# Aquí buscamos el mes siguiente al mes actual en el calendario.
+_hoy_cal         = pd.Timestamp.today().normalize()
+_next_cal_ts     = (_hoy_cal + pd.DateOffset(months=1)).replace(day=1)
+_next_cal_period = pd.Period(_next_cal_ts, 'M')
+_pm_match = pred_total[
+    pd.to_datetime(pred_total['Fecha']).dt.to_period('M') == _next_cal_period
+]
+if not _pm_match.empty:
+    _pm_val = _pm_match['Predicción'].iloc[0]
+    _pm_mes = _traducir_mes(_pm_match['Mes'].iloc[0])
+else:
+    _pm_val = pred_total['Predicción'].iloc[0]
+    _pm_mes = _traducir_mes(pred_total['Mes'].iloc[0])
+
 # ── Header ───────────────────────────────────────────────────────────────────
 
 show_header(
@@ -317,12 +333,10 @@ with tabs[0]:
     col1, col2, col3, col4 = st.columns(4)
     mape = metricas['walk_forward_validation']['mape']
     mape_color = "red" if mape > 15 else ("amber" if mape > 10 else "")
-    _next_pred_val = pred_total['Predicción'].iloc[0]
-    _next_pred_mes = _traducir_mes(pred_total['Mes'].iloc[0])
     col1.markdown(kpi_card("Total Ventas",    f"{metricas['datos_limpios']['total_ventas']:,}", "📦"), unsafe_allow_html=True)
     col2.markdown(kpi_card("Meses de Datos",  metricas['datos_limpios']['meses_datos'],         "📅", "blue"), unsafe_allow_html=True)
     col3.markdown(kpi_card("MAPE",            f"{mape:.2f}%",                                   "🎯", mape_color), unsafe_allow_html=True)
-    col4.markdown(kpi_card(f"Predicción {_next_pred_mes}", f"{int(_next_pred_val)} uds",        "🔮"), unsafe_allow_html=True)
+    col4.markdown(kpi_card(f"Predicción {_pm_mes}", f"{int(_pm_val)} uds",                      "🔮"), unsafe_allow_html=True)
 
     if mape > 15:
         st.error(
@@ -528,7 +542,7 @@ Es la estimación más honesta del error real del sistema.
     mape_wf = walk_forward['error_pct'].mean()
     mape_color_wf = "red" if mape_wf > 15 else ("amber" if mape_wf > 10 else "")
     col1, col2, col3, col4 = st.columns(4)
-    col1.markdown(kpi_card("Próximo Mes",         f"{pred_total['Predicción'].iloc[0]:.0f} uds", "🔮"), unsafe_allow_html=True)
+    col1.markdown(kpi_card(f"Predicción {_pm_mes}", f"{int(_pm_val)} uds",                        "🔮"), unsafe_allow_html=True)
     col2.markdown(kpi_card("Total Horizonte",     f"{pred_total['Predicción'].sum():.0f} uds",   "📦", "blue"), unsafe_allow_html=True)
     col3.markdown(kpi_card("Promedio Mensual",    f"{pred_total['Predicción'].mean():.1f} uds",  "📊", "amber"), unsafe_allow_html=True)
     col4.markdown(kpi_card("MAPE real (1 mes)",   f"{mape_wf:.1f}%",                             "🎯", mape_color_wf), unsafe_allow_html=True)
