@@ -514,29 +514,51 @@ with tab_hist:
                 ),
             )
         else:
-            # Fallback: scatter sobre open-street-map si falla el fetch GeoJSON
-            fig_map = px.scatter_mapbox(
-                df_map, lat='lat', lon='lon',
-                size='Ventas', color='Concesionario',
-                hover_name='Concesionario',
-                hover_data={'Ventas': True, '% Total': True, 'lat': False, 'lon': False},
-                color_discrete_sequence=COLORS['series'][:len(df_map)],
-                size_max=55, zoom=5.5,
-                center={'lat': -9.19, 'lon': -75.0},
-                mapbox_style='open-street-map', height=520,
-            )
+            # Fallback: scatter sobre carto-darkmatter si falla el fetch GeoJSON
+            fig_map = go.Figure()
+
+            # Contorno de Perú
+            _border_lons = [c[0] for c in _PERU_BORDER_GEOJSON['features'][0]['geometry']['coordinates'][0]]
+            _border_lats = [c[1] for c in _PERU_BORDER_GEOJSON['features'][0]['geometry']['coordinates'][0]]
+            fig_map.add_trace(go.Scattermapbox(
+                lat=_border_lats, lon=_border_lons,
+                mode='lines',
+                line=dict(color='#F59E0B', width=2),
+                showlegend=False,
+                hoverinfo='skip',
+            ))
+
+            # Puntos por concesionario
+            for i, row in df_map.iterrows():
+                color = _MAP_COLORS[i % len(_MAP_COLORS)]
+                fig_map.add_trace(go.Scattermapbox(
+                    lat=[row['lat']], lon=[row['lon']],
+                    mode='markers+text',
+                    marker=dict(size=14, color=color, opacity=1.0),
+                    text=[f"  {row['Concesionario'].split()[-1].upper()}"],
+                    textposition='middle right',
+                    textfont=dict(color='white', size=12, family='Arial Black'),
+                    name=row['Concesionario'],
+                    hovertemplate=(
+                        f"<b>{row['Concesionario']}</b><br>"
+                        f"Ventas: {row['Ventas']:,}<br>"
+                        f"Share: {row['% Total']}%<extra></extra>"
+                    ),
+                ))
+
             fig_map.update_layout(
-                paper_bgcolor='#080D18', plot_bgcolor='#080D18',
+                mapbox_style='carto-darkmatter',
+                mapbox_zoom=4.5,
+                mapbox_center={'lat': -9.19, 'lon': -75.0},
+                paper_bgcolor='#080D18',
+                height=520,
                 margin=dict(l=0, r=0, t=36, b=0),
                 legend=dict(
                     bgcolor='rgba(8,13,24,0.85)', bordercolor='rgba(255,255,255,0.12)',
                     borderwidth=1, font=dict(color='#C9D8E6', size=12),
+                    title_text='Concesionario',
                     x=0.01, y=0.01, xanchor='left', yanchor='bottom',
                 ),
-                mapbox_layers=[{
-                    "sourcetype": "geojson", "source": _PERU_BORDER_GEOJSON,
-                    "type": "line", "color": "#F59E0B", "line": {"width": 2},
-                }],
             )
 
         st.plotly_chart(fig_map, use_container_width=True, config={
