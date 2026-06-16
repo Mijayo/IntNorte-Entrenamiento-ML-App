@@ -158,10 +158,14 @@ show_user_info()
 # reciente, SIN necesitar ventas reales registradas — es forward-looking.
 
 _hist_12_avg  = hist_total.iloc[-12:].mean() if len(hist_total) >= 12 else hist_total.mean()
-_fc_next      = pred_total['Predicción'].iloc[0]
-_fc_mes       = _traducir_mes(pred_total['Mes'].iloc[0])
-_fc_ic_inf    = pred_total['IC_Inferior'].iloc[0]
-_fc_ic_sup    = pred_total['IC_Superior'].iloc[0]
+_fc_next      = _pm_val
+_fc_mes       = _pm_mes
+if not _pm_match.empty:
+    _fc_ic_inf = _pm_match['IC_Inferior'].iloc[0]
+    _fc_ic_sup = _pm_match['IC_Superior'].iloc[0]
+else:
+    _fc_ic_inf = pred_total['IC_Inferior'].iloc[0]
+    _fc_ic_sup = pred_total['IC_Superior'].iloc[0]
 _fc_dev_pct   = (_fc_next - _hist_12_avg) / (_hist_12_avg + 0.01) * 100
 
 if abs(_fc_dev_pct) >= 15:

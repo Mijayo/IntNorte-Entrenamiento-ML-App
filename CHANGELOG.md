@@ -4,6 +4,14 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-16 (fix) — Dashboard: alerta predictiva mostraba mes incorrecto
+
+#### `pages/3_Dashboard.py`
+
+- **fix(dashboard/alerta_predictiva)**: La alerta predictiva proactiva mostraba siempre la predicción del primer mes del horizonte del modelo (`pred_total.iloc[0]`), que puede ser un mes ya pasado si el modelo no se reentrenó recientemente. Ejemplo: con fecha actual 16 Jun 2026 y un modelo entrenado en abril, la alerta mostraba la predicción de Abril 2026 en lugar de Julio 2026. Causa raíz: el bloque de la alerta ignoraba la lógica `_pm_val`/`_pm_mes` (que ya calculaba correctamente el próximo mes del **calendario real**) y leía `pred_total['Predicción'].iloc[0]`, `pred_total['Mes'].iloc[0]` y los IC 95% directamente del primer elemento. Fix: la alerta usa ahora `_pm_val`, `_pm_mes` y los IC de `_pm_match` — exactamente el mismo cálculo que el KPI card "Predicción {mes}" del Dashboard y que la sección de cadena de suministro. Si el mes siguiente no está en el horizonte del modelo, hace fallback al primer mes disponible.
+
+---
+
 ### 2026-06-15 (data) — Escalabilidad: portafolio de 10 modelos reales para defensa final
 
 #### `pages/6_Escalabilidad.py`

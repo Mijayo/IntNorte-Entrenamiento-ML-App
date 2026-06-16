@@ -438,10 +438,12 @@ La barra lateral lista todos los runs disponibles (fuente: tabla `training_runs`
 
 ### Alerta predictiva proactiva
 
-Aparece sobre los tabs cuando el primer mes del forecast desvía ≥ 15% respecto a la media de los últimos 12 meses del histórico:
+Aparece sobre los tabs cuando el **próximo mes en el calendario** (mes siguiente al mes actual, buscado dinámicamente en el horizonte del modelo) desvía ≥ 15% respecto a la media de los últimos 12 meses del histórico:
 
 - **Banner amarillo** — demanda inusualmente alta (`+X%`): sugiere anticipar el pedido o incrementar stock de seguridad.
 - **Banner azul** — demanda inusualmente baja (`-X%`): sugiere reducir el pedido para evitar sobrestock.
+
+> La alerta siempre apunta al mes siguiente real según la fecha actual del sistema, independientemente de cuándo se entrenó el modelo. Si ese mes no está en el horizonte activo, hace fallback al primer mes disponible del forecast.
 
 ### Indicador de frescura del modelo (sidebar)
 

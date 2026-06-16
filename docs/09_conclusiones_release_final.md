@@ -1,6 +1,6 @@
 # Conclusiones — Release Final
 
-**Sistema TIGGO 2 · Predicción de Demanda · ISDI Troncal** _Fecha: 2026-06-16 · Versión del sistema: v40_
+**Sistema TIGGO 2 · Predicción de Demanda · ISDI Troncal** _Fecha: 2026-06-16 · Versión del sistema: v40.1_
 
 ---
 
@@ -173,6 +173,16 @@ Chery ocupa el **4.º lugar** en ventas de SUVs compactos en Perú (2025), detr�
 | Estado | Diagnóstico | Modelo óptimo | **Sistema operativo completo** |
 
 > **Conclusión:** En tres iteraciones, el Sistema TIGGO 2 evolucionó de un prototipo de predicción a un sistema de decisión operativo. El mejor modelo del proyecto (Iter2, MAPE 10.32%) está disponible en producción; el modelo de Iter3 cierra el ciclo con MAPE 14.65% — dentro del umbral operacional — y un sistema completo de 8 módulos con cobertura nacional, ciclo de retroalimentación automático y arquitectura escalable. Listo para un piloto real en Int. Norte.
+
+---
+
+---
+
+## Correcciones post-Release Final
+
+### v40.1 — 2026-06-16
+
+- **fix(dashboard/alerta_predictiva)**: La alerta predictiva proactiva mostraba el mes incorrecto cuando el modelo no se había reentrenado recientemente. La causa era que usaba `pred_total.iloc[0]` (primer mes del horizonte, fijo desde el entrenamiento) en lugar del mes siguiente al calendario real. Con fecha 16 Jun 2026 y un modelo entrenado en abril, el sistema mostraba la predicción de Abril en vez de Julio. Corregido para usar la misma lógica de mes calendario que el KPI card del Dashboard.
 
 ---
 
