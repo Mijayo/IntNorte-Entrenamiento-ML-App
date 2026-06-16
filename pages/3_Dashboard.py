@@ -1452,6 +1452,7 @@ if st.session_state.role in ['admin', 'analyst']:
                 with st.form(key='form_llm_tiggo_analyst', border=False):
                     question_a = st.text_input(
                         placeholder='Ej: ¿Qué significa el MAPE obtenido? ¿Es fiable la predicción?',
+                        value='¿cuando hago el siguiente pedido?',
                         key='input_llm_tiggo_analyst', label='', label_visibility='collapsed',
                         max_chars=500
                     )
