@@ -58,8 +58,10 @@ Disponible una vez que hay al menos un mes registrado que coincida con el horizo
 |-----|-------|-------------|
 | MAPE producción | Rojo > 15%, ámbar > 10% | Error medio entre predicción y real, todos los meses registrados |
 | Dentro del IC 95% | — | % de meses cuya venta real cayó dentro del IC 95% del modelo |
-| Mejor mes | Verde | Mes con menor error porcentual |
-| Peor mes | Rojo | Mes con mayor error porcentual |
+| Mejor mes | Verde | Mes con menor error porcentual (formato: "Ene 2026") |
+| Peor mes | Rojo | Mes con mayor error porcentual (formato: "Ene 2026") |
+
+> **i18n:** los nombres de mes se muestran en español mediante `_MESES_ES` / `_mes_es()`. Aplica también a los tooltips del gráfico y a la columna Mes de la tabla detallada.
 
 ### Alertas de drift
 

@@ -23,6 +23,13 @@ import core.supabase_io as sio
 from core.auth_system import (guard_page, show_user_info, show_header)
 from core.styles import kpi_card, section_header, apply_chart_theme, COLORS
 
+_MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+             'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+def _mes_es(dt, fmt='largo'):
+    nombre = _MESES_ES[dt.month - 1]
+    return f"{nombre[:3]} {dt.year}" if fmt == 'corto' else f"{nombre} {dt.year}"
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 st.set_page_config(
@@ -205,8 +212,8 @@ with tab2:
             # ── KPIs de producción ─────────────────────────────────────────────
             _mape_prod = _merged["error_pct"].mean()
             _ic_rate   = _merged["dentro_ic"].mean() * 100
-            _mejor_mes = _merged.loc[_merged["error_pct"].idxmin(), "fecha"].strftime("%b %Y")
-            _peor_mes  = _merged.loc[_merged["error_pct"].idxmax(), "fecha"].strftime("%b %Y")
+            _mejor_mes = _mes_es(_merged.loc[_merged["error_pct"].idxmin(), "fecha"], 'corto')
+            _peor_mes  = _mes_es(_merged.loc[_merged["error_pct"].idxmax(), "fecha"], 'corto')
             _mape_col  = "red" if _mape_prod > 15 else ("amber" if _mape_prod > 10 else "")
 
             kc1, kc2, kc3, kc4 = st.columns(4)
@@ -242,13 +249,15 @@ with tab2:
                 line=dict(color="rgba(0,0,0,0)"), name="IC 95%",
             ))
             # Predicción
+            _meses_hover = _merged["fecha"].apply(lambda d: _mes_es(d, 'corto')).tolist()
             _fig.add_trace(go.Scatter(
                 x=_merged["fecha"], y=_merged["prediccion"],
                 mode="lines+markers", name="Predicción modelo",
                 line=dict(color=COLORS["accent"], width=2.5, dash="dot"),
                 marker=dict(size=8, color=COLORS["accent"], symbol="diamond",
                             line=dict(color="#080D18", width=1.5)),
-                hovertemplate="%{x|%b %Y}<br>Predicción: %{y:.0f} uds<extra></extra>",
+                customdata=_meses_hover,
+                hovertemplate="%{customdata}<br>Predicción: %{y:.0f} uds<extra></extra>",
             ))
             # Real
             _fig.add_trace(go.Scatter(
@@ -257,7 +266,8 @@ with tab2:
                 line=dict(color=COLORS["success"], width=2.5),
                 marker=dict(size=10, color=COLORS["success"],
                             line=dict(color="#080D18", width=1.5)),
-                hovertemplate="%{x|%b %Y}<br>Real: %{y:.0f} uds<extra></extra>",
+                customdata=_meses_hover,
+                hovertemplate="%{customdata}<br>Real: %{y:.0f} uds<extra></extra>",
             ))
 
             apply_chart_theme(_fig, height=440,
@@ -269,7 +279,7 @@ with tab2:
             # ── Tabla detallada ────────────────────────────────────────────────
             st.markdown(section_header("Detalle por mes", "📋"), unsafe_allow_html=True)
             _tbl = _merged[["fecha", "ventas", "prediccion", "error_abs", "error_pct", "dentro_ic"]].copy()
-            _tbl["fecha"] = _tbl["fecha"].dt.strftime("%B %Y")
+            _tbl["fecha"] = _tbl["fecha"].apply(_mes_es)
             _tbl.columns = ["Mes", "Real", "Predicción", "Error Abs", "Error %", "Dentro IC 95%"]
             _tbl["Dentro IC 95%"] = _tbl["Dentro IC 95%"].map({True: "✅ Sí", False: "❌ No"})
 

@@ -4,6 +4,14 @@ Todas las versiones relevantes del proyecto, de más reciente a más antigua.
 
 ---
 
+### 2026-06-16 (fix) — Registrar Ventas: meses en inglés en comparativa de producción
+
+#### `pages/7_Registrar_Ventas.py`
+
+- **fix(i18n)**: Los nombres de mes en la sección "Comparativa en Producción" se mostraban en inglés (p.ej. "Jun 2026", "June 2026"). Causa raíz: `strftime("%b %Y")` y `strftime("%B %Y")` devuelven nombres en inglés independientemente del sistema. Fix: se añade `_MESES_ES` y la función `_mes_es()` en el módulo, usando el mismo patrón que `3_Dashboard.py` y `4_Concesionarios.py`. Los tres puntos afectados corregidos: KPI "Mejor mes", KPI "Peor mes" (`_mes_es(..., 'corto')`), columna "Mes" de la tabla detallada (`_mes_es()` largo), y los tooltips del gráfico Predicción/Real (usando `customdata` con la etiqueta en español en lugar de `%{x|%b %Y}`).
+
+---
+
 ### 2026-06-16 (fix) — Dashboard: alerta predictiva mostraba mes incorrecto
 
 #### `pages/3_Dashboard.py`
