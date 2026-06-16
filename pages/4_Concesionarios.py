@@ -754,7 +754,9 @@ ajusta los shares manualmente en la tabla de abajo.
 
         # ── KPIs del próximo mes ──────────────────────────────────────────────
         _hoy = pd.Timestamp.today().normalize()
-        _fechas_futuras = df_pred_conc[df_pred_conc['Fecha'] >= _hoy]['Fecha']
+        # "Próximo mes" = el mes siguiente al actual (no el mes en curso aunque queden días)
+        _next_month_start = (_hoy + pd.offsets.MonthBegin(1)).normalize()
+        _fechas_futuras = df_pred_conc[df_pred_conc['Fecha'] >= _next_month_start]['Fecha']
         _next_date = _fechas_futuras.min() if not _fechas_futuras.empty else df_pred_conc['Fecha'].max()
         pred_next   = df_pred_conc[df_pred_conc['Fecha'] == _next_date]
         pred_total_next = int(pred_next['Predicción'].sum())
