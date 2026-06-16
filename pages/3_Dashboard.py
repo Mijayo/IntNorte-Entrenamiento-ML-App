@@ -1125,6 +1125,7 @@ if st.session_state.role == 'manager':
                 with st.form(key='form_llm_tiggo_manager', border=False):
                     question_m = st.text_input(
                         placeholder='Ej: ¿Cuántas unidades debería pedir para el próximo trimestre?',
+                        value='¿cuando hago el siguiente pedido?',
                         key='input_llm_tiggo_manager', label='', label_visibility='collapsed',
                         max_chars=500
                     )
